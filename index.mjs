@@ -58,6 +58,15 @@ const DEFAULTS = {
   pythonPath: 'D:/Python/python.exe',
   verifyTimeoutMs: 120000,
   verifyMinWaits: 2,
+  // 共享每轮注入预算（audit 注入 + D4 steer 合计，防叠加刷屏）
+  sharedMaxPerTurn: 3,
+  // D4 present-gate（verify-gated completion）：present 声明交付时，本轮若无独立验收痕迹
+  // （spawn 验收者 / 跑过 verify_agent.py）→ turn-stopping steer"做的人不能自己签字"。
+  // 依据：IOV Labs 896 任务实测——小模型虚假完成 ~13%，自检仅降 0.9 个百分点（同一盲区）；
+  //       verify-gate / done gate 社区实践：完成判定必须由独立方或环境给出。
+  presentGateEnabled: true,
+  maxPresentGatePerTurn: 1,
+  maxPresentGatePerSession: 2,
   probePath: ''
 }
 
@@ -220,6 +229,11 @@ export function apply(ctx, config) {
         s.continuations = 0
         s.last = undefined
         s.sharedInjections = 0
+        // D4 present-gate 本轮重置
+        s.presentCalled = false
+        s.spawnedThisTurn = false
+        s.verifyRan = false
+        s.presentGateCount = 0
         return
       }
       if (event.type === 'assistant/message') {
@@ -261,6 +275,13 @@ export function apply(ctx, config) {
         s.toolCalls += 1
         if (cfg.writeTools.includes(String(event.data?.name ?? ''))) s.writeCalls += 1
         const fullArgs = String(event.data?.arguments ?? '')
+        // D4 present-gate：验收痕迹观测（present / spawn 验收者 / 跑过 verify_agent）
+        {
+          const callName = String(event.data?.name ?? '')
+          if (callName === 'present') s.presentCalled = true
+          if (callName === 'spawn_teammate') s.spawnedThisTurn = true
+          if (callName === 'pwsh' && fullArgs.includes('verify_agent')) s.verifyRan = true
+        }
         s.trail.push({ kind: 'call', name: String(event.data?.name ?? ''), args: fullArgs.slice(0, 200), fullArgs, step: event.data?.step })
         if (s.trail.length > 40) s.trail.shift()
         // v3.2 代验收：记录 spawn_teammate 携带的验收标准（prompt/description），并继承最近产物
@@ -600,6 +621,29 @@ args 里的路径必须改写为短相对路径（如 memory/2026-11-16.md），
 
       if (state.continuations >= cfg.maxContinuationsPerTurn) return
       if (state.totalContinuations >= cfg.maxContinuationsPerSession) return
+
+      // ── D4 present-gate：present 声明交付但本轮无独立验收痕迹（verify-gated completion）──
+      if (
+        cfg.presentGateEnabled &&
+        state.presentCalled === true &&
+        state.spawnedThisTurn !== true &&
+        state.verifyRan !== true &&
+        (state.presentGateCount || 0) < cfg.maxPresentGatePerTurn &&
+        (state.presentGateTotal || 0) < cfg.maxPresentGatePerSession
+      ) {
+        state.presentGateCount = (state.presentGateCount || 0) + 1
+        state.presentGateTotal = (state.presentGateTotal || 0) + 1
+        state.sharedInjections += 1
+        agent.steer(createSteeringMessage(
+          '[harness 交付闸门] 你刚刚用 present 声明交付，但本轮没有独立验收痕迹（没有 spawn 验收者，也没有运行 verify_agent.py）。' +
+          '做的人不能自己签字：实测里小模型自检只能把虚假完成率从 12.7% 降到 11.8%（同一盲区，自检无效）。' +
+          '现在二选一：(1) 调用 spawn_teammate 让独立验收者按验收协议检查，或直接运行 bench 的 verify_agent.py；' +
+          '(2) 明确说明本产物为什么不需要独立验收（例如纯信息性回复）。不要直接结束。',
+          'behavior-guard'
+        ))
+        info(`behavior-guard: [D4] present-gate 拦截 session=${sessionId}（present 无独立验收痕迹）`)
+        return
+      }
 
       const verdict = guardDecide(state)
       if (verdict === null) return

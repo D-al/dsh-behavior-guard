@@ -2,6 +2,18 @@
 
 所有迭代以本地时间记录（UTC+8）。格式参考 Keep a Changelog。
 
+## [1.0.2] - 2026-11-17 23:10
+
+### Added
+- **D4 present-gate（verify-gated completion）**：present 声明交付时，本轮若无独立验收痕迹
+  （spawn 验收者 / 跑过 verify_agent.py）→ turn-stopping steer"做的人不能自己签字"。
+  每轮 1 次、每会话 2 次预算；有验收痕迹则放行。
+- 依据：IOV Labs 896 任务实测（小模型虚假完成 ~13%；自检仅 12.7%→11.8%，同一盲区）；
+  verify-gate 开源实现（状态机 + 硬拒自签）；Claude Code /goal（独立 evaluator）；
+  held-out gate 原则（Inconclusive 不放行）
+- 离线测试 10/10（含"有 spawn 不 steer""跑过 verify_agent 不 steer""无 present 不 steer"）
+- 补齐 sharedMaxPerTurn 到 DEFAULTS（此前仅使用未定义——预算实际未生效）
+
 ## [1.0.1] - 2026-11-17 21:45
 
 ### Added
