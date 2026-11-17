@@ -444,20 +444,26 @@ ${trail}${evidLog && evidLog.length ? `
 【你已取证的证据（只读代执行结果）】
 ${evidLog.map((e, i) => `证据${i + 1}: ${e.req}\n→ ${e.result}`).join('\n---\n')}` : ''}
 
-检查四类明确问题（只报能由上面事实直接支撑的）：
+检查四类明确问题（只报上面事实能直接支撑的）：
 A. 重复失败或重复非生产：同一目标的 FAIL 或 UNPRODUCTIVE 结果出现 2 次以上。
 B. 跑偏：出现了与任务明显无关的动作。
 C. 重复探测无进展：同一工具带相同参数连续调用 3 次以上（轨迹标[连续第N次]）。
-D. 遗漏（omission）：本该发生但没发生——任务要求的关键步骤（验证/写入/交付）在轨迹里找不到对应动作。
-   注意：只有当你明确知道"必须做却没做"时才报 D；不确定就不要报。
+D. 遗漏（omission）：任务要求的关键步骤（验证/写入/交付）在轨迹里找不到对应动作。
+   只报你能明确指出"哪一步该做这一步"的 D。
 
 如需更多证据才能判断（最多请求一次），可请求只读取证：
 {"verdict":"NEED_EVIDENCE","tool":"glob 或 read","args":{...},"reason":"一句话说明需要什么证据"}
 
-只输出 JSON（无其他文字），三选一（先给判定结论，不要逐条罗列分析过程）：
-{"verdict":"OK"}
-{"verdict":"ISSUE","issue":"一句话指出哪个 step 什么问题","fix":"一句话修正指令，直接命令下一步该做什么"}
-{"verdict":"UNCERTAIN","reason":"证据不足以判断（一句话）"}`
+只输出 JSON（无其他文字）。判定参考下面的实例（照这个形状输出）：
+
+实例1（重复失败）：
+{"verdict":"ISSUE","issue":"step5 glob 同参数连续第3次，结果与前两次相同","fix":"停止 glob 重试；改用 step3 结果里的 state.json 路径直接 read"}
+
+实例2（证据不足——拿不准就输出这个，别硬判）：
+{"verdict":"UNCERTAIN","reason":"轨迹里看不到 write 的结果，无法判断产物是否落盘"}
+
+实例3（正常）：
+{"verdict":"OK"}`
 
   const CORRECTOR_PROMPT = (task, failDetail, evidence) => `你是独立纠正器。主 agent 在执行任务时陷入重复失败，你来依据环境事实确定正确的下一步参数。你没有参与之前的工作，只能依据下面给出的证据。
 
@@ -476,12 +482,12 @@ ${evidence || '(无证据可用)'}
 或证据表明该目标不存在：
 {"action":"abandon","reason":"一句话"}
 
-注意：args 必须是可直接调用的完整参数（严格 JSON 对象），不要省略号。
-参数 schema 必须与真实工具一致（read: {file_path}; glob: {pattern}; pwsh: {command}），
-禁止编造参数名或使用其他工具的参数。
-路径规则（2026-11-17 实证修正：猜路径会造成注入干扰）：**路径只能原样取自上面的证据文本**——
-不得改写、不得缩短、不得推断未出现过的路径。证据里没有可用的完整路径时，输出 ask_user 或 abandon，
-绝不要自己拼一个"看起来对"的路径。`
+输出要求（正面表述）：
+- args 照抄证据里出现过的调用格式：read 用 {file_path}，glob 用 {pattern}，shell 工具用 {command}——
+  与证据中的实际调用一字一致（含完整字符串、引号、反斜杠）。
+- 严格 JSON 对象，所有字段写全（把示例里的省略号处写成实际值）。
+路径规则（2026-11-17 实证）：**路径原样复制证据文本里的那一段**（逐字符），
+证据里没有可用路径时输出 ask_user 或 abandon——你给出的每个路径都应该是证据里出现过的原文。`
 
   async function callLLM(prompt, maxTokens, timeoutMs) {
     const ctrl = new AbortController()

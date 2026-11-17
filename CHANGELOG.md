@@ -2,6 +2,15 @@
 
 所有迭代以本地时间记录（UTC+8）。格式参考 Keep a Changelog。
 
+## [1.0.8] - 2026-11-18 00:15
+
+### Changed（零成本 prompt 优化）
+- **Few-shot 实例**（Stanford/Google：few-shot 使输出变异性 -52%；关键示例放最后对抗 recency bias）：
+  审计 prompt 加入 3 个实例——ISSUE（重复失败）/ UNCERTAIN（证据不足）/ OK，
+  UNCERTAIN 实例放在最后（最需要抑制的错误模式）
+- **否定句改正例表述**：纠正器 prompt 的"禁止编造参数名/不要拼路径"改为
+  "args 照抄证据里的调用格式"/"路径原样复制证据文本里的那一段"（正例约束 > 否定句）
+
 ## [1.0.7] - 2026-11-18 00:05
 
 ### Added（Agent-as-Judge 定向取证 + 零成本 prompt 优化）
