@@ -34,6 +34,11 @@
 | **Planner 检查** | 首次 [VERIFY] 项 | 验"验收标准是否可验证" |
 | **verify-on-edit** | 每次 write/edit | 确定性语法检查（0 LLM）|
 | **present 深检** | present 前 | import 可解析/占位符/空文件/编码/重复段落/路径引用/交付物对照 |
+| **控制回合**（v2.1）| 每 8 步 | 已确立/当前项/已排除 + "列 2-3 个候选再选"（Meta agentic meta-reasoning）|
+| **Skills 技能卡**（v2.2）| 任务关键词命中 | 按需加载过程性知识（release-plugin/debug-llama-server/verify-artifact/web-fetch/git-workflow）|
+| **危险操作分级**（v2.2）| 工具调用含破坏性模式 | block（rm -rf/reset --hard）要求说明 + 给更安全方案；warn 提示核对 |
+| **per-step trace**（v2.2）| 每次工具/LLM 调用 | `_trace.jsonl` 记耗时/长度/状态/重试；`bench/trace_report.py` 按会话统计 |
+| **JSON 解析重试**（v2.2）| LLM 输出不可解析 | 附"只输出纯 JSON"重试一次，重试计入 trace |
 
 ### B. 任务连续性（原 dsh-task-continuity）
 
