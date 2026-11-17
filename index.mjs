@@ -86,6 +86,11 @@ const DEFAULTS = {
   todoEchoEnabled: true,
   maxEchoItems: 12,
   ledgerPath: 'D:/Brain/workspace/bench/_compaction_ledger.jsonl',
+  // 控制回合（meta-reasoning controller，零 LLM）：每 controlEverySteps 步注入一次控制器摘要，
+  // 含 已确立/已排除/当前项/已用步数 + "列 2-3 个候选再选一个"——模拟 Meta Controller 的四个动作。
+  controlEverySteps: 8,
+  maxControlPerSession: 6,
+  controlEnabled: true,
   messageNoTodo: '[harness 执行检查] 这是一个多步任务，但你还没有用 todo_write 建立任务清单。立即停下：先调用 todo_write 写出完整步骤清单（每条 = 动词 + 目标 + 完成标准，末尾加 [VERIFY] 验证项），把第一项标为 in_progress，然后按清单顺序执行。',
   messageStale: '[harness 执行检查] 你已经连续多步没有更新 todo 清单了。立即回到清单：把刚完成的项标为 completed，把下一项标为 in_progress，再继续执行。如果发现实际工作与清单偏离，先修订清单再继续。',
   // 审计员自校准：每次干预记录到 jsonl，3 步后结算"注入后是否还有新失败"（有效/无效）
@@ -444,6 +449,7 @@ export function apply(ctx, config) {
         s.sharedInjections = 0
         // continuity P1 计数重置
         s.turnTodoInjections = 0
+        s.controlCount = 0
         s.remindedNoTodo = false
         // D4 present-gate 本轮重置
         s.presentCalled = false
@@ -1157,6 +1163,26 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
             return { ...decision, messages }
           }
         }
+      }
+
+      // ── 控制回合（meta-reasoning controller，每 N 步一次，零 LLM）──
+      if (cfg.controlEnabled && s.step > 0 && s.step % cfg.controlEverySteps === 0 && (s.controlCount || 0) < cfg.maxControlPerSession) {
+        s.controlCount = (s.controlCount || 0) + 1
+        try {
+          const todos = Array.isArray(s.todos) ? s.todos : []
+          const done = todos.filter((t) => t?.status === 'completed').slice(-3).map((t) => String(t.content).slice(0, 40))
+          const cur = todos.find((t) => t?.status === 'in_progress')
+          const rej = (Array.isArray(s.rejectedItems) ? s.rejectedItems : []).slice(-3).map((x) => String(x).slice(0, 60))
+          const parts = ['[harness 控制回合] 你现在处在第 ' + s.step + ' 步。先做一次元决策再继续：']
+          parts.push('① 已确立：' + (done.length ? done.join('；') : '(暂无完成项)'))
+          if (cur) parts.push('② 当前项：' + String(cur.content).slice(0, 60))
+          if (rej.length) parts.push('③ 已排除：' + rej.join('｜'))
+          parts.push('④ 下一步：在思考里列出 2-3 个候选动作，评估哪个对完成目标收益最高，再选一个执行。')
+          info(`behavior-guard: [控制回合] step=${s.step}`)
+          const msg = createMessage(parts.join('\n'), 'behavior-guard')
+          const messages = Array.isArray(decision?.messages) ? [...decision.messages, msg] : [msg]
+          return { ...decision, messages }
+        } catch { /* ignore */ }
       }
 
       // ── P2 Planner 检查（首次 [VERIFY] 项，每会话 1 次，独立于审计预算）──
