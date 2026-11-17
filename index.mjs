@@ -21,7 +21,7 @@
 import { randomUUID } from 'node:crypto'
 import { writeFileSync, readFileSync, readdirSync, statSync, existsSync, appendFileSync, openSync, readSync, closeSync } from 'node:fs'
 import path from 'node:path'
-import { execFile } from 'node:child_process'
+import { execFile, execFileSync } from 'node:child_process'
 
 export const name = 'behavior-guard'
 
@@ -91,10 +91,39 @@ const DEFAULTS = {
   criticTimeoutMs: 90000,
   maxCriticPerSession: 2,
   // P2 Planner 检查：首次 todo 的 [VERIFY] 项是否可验证（1 次 LLM ~11s/任务）
+  // verify-on-edit：每次 write/edit 后做确定性语法检查（0 LLM，仅 py/json/yaml）
+  verifyOnEditEnabled: true,
   plannerCheckEnabled: true,
   plannerCheckTimeoutMs: 90000,
   maxPlannerCheckPerSession: 1,
   specSignalEnabled: true
+}
+
+// ── verify-on-edit：确定性语法检查（0 LLM 成本，仅 .py/.json/.yml/.yaml）──
+function checkSyntax(filePath) {
+  if (!filePath) return null
+  const p = String(filePath)
+  const lower = p.toLowerCase()
+  try {
+    if (lower.endsWith('.json')) {
+      JSON.parse(readFileSync(p, 'utf8'))
+      return null
+    }
+    if (lower.endsWith('.py')) {
+      // 用 python 编译检查（1 次进程，~80ms）
+      const r = execFileSync('D:/Python/python.exe', ['-c', 'import py_compile,sys;py_compile.compile(sys.argv[1],doraise=True)', p], { timeout: 8000, windowsHide: true, encoding: 'utf8', stdio: ['ignore', 'ignore', 'pipe'] })
+      return null
+    }
+    // .yml/.yaml 用 python -c yaml.safe_load（dsh 的 !!js 标签会误报，跳过 cordis 配置）
+    if ((lower.endsWith('.yml') || lower.endsWith('.yaml')) && !lower.includes('cordis')) {
+      execFileSync('D:/Python/python.exe', ['-c', 'import yaml,sys;yaml.safe_load(open(sys.argv[1],encoding="utf-8"))', p], { timeout: 8000, windowsHide: true, encoding: 'utf8', stdio: ['ignore', 'ignore', 'pipe'] })
+      return null
+    }
+  } catch (e) {
+    const msg = String(e?.stderr || e?.message || e).replace(/\s+/g, ' ').slice(0, 300)
+    return msg || '语法检查失败'
+  }
+  return null
 }
 
 // ── CritBank 经验检索（模块级加载一次）──
@@ -398,6 +427,18 @@ export function apply(ctx, config) {
               const a = JSON.parse(c.fullArgs || c.args || '{}')
               if (a.file_path) s.lastProduct = String(a.file_path)
             } catch { /* ignore */ }
+            // ── verify-on-edit（确定性语法检查，0 LLM 成本）──
+            // 依据：Qwen3.5-35B scaffold 实验——每次编辑后验证 vs 只做末次验证：
+            // SWE-bench Verified Hard 22.2% → 37.8%（+15.6pp）；9B 换 scaffold 19.11%→45.56%。
+            // 确定性修复在 LLM 循环外（tech4talk："deterministic fixups outside the inference loop"）。
+            if (cfg.verifyOnEditEnabled) {
+              const syntaxErr = checkSyntax(s.lastProduct)
+              if (syntaxErr) {
+                s.pendingInject = '[harness 语法检查] 刚写入的文件有语法错误：' + syntaxErr +
+                  '\n修复该语法错误后继续（不要跳过——后续步骤都会基于坏文件）。'
+                info(`behavior-guard: verify-on-edit 发现语法错误 ${s.lastProduct}: ${String(syntaxErr).slice(0, 60)}`)
+              }
+            }
           }
           // wait 连续超时计数（spawn 之后）
           try { writeFileSync('D:/llama.cpp/_trace.log', 'result ' + c.name + ' status=' + status + ' ctx=' + (s.verifyContext ? ('wB=' + s.verifyContext.waitBad + ' prod=' + s.verifyContext.product) : 'NULL') + ' lastProd=' + s.lastProduct + '\n', { flag: 'a' }) } catch { }

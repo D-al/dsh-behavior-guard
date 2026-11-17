@@ -2,6 +2,20 @@
 
 所有迭代以本地时间记录（UTC+8）。格式参考 Keep a Changelog。
 
+## [1.1.1] - 2026-11-18 01:00
+
+### Added（verify-on-edit：确定性语法检查，0 LLM 成本）
+- 每次 write/edit 成功后对 .py/.json/.yml(yaml) 做**确定性语法检查**（py_compile / JSON.parse /
+  yaml.safe_load），发现错误立即注入"修好再继续"。
+- 依据：**Qwen3.5-35B scaffold 实验**（r/LocalLLaMA, 288 upvotes）——verify-on-edit 让
+  SWE-bench Verified Hard **22.2% → 37.8%（+15.6pp）**；9B 换 scaffold 19.11%→45.56%。
+  tech4talk："确定性的修复应该在 LLM 推理循环之外"。
+- 成本：每文件 ~80-150ms 进程调用，0 token、0 LLM 调用——**这是当前性价比最高的质量杠杆**。
+- 跳过 cordis*.yml（dsh 的 !!js 扩展会让标准 yaml 解析误报）。
+
+### Tests
+- 26/26 + 16/16 + 模块加载 OK
+
 ## [1.1.0] - 2026-11-18 00:45
 
 ### Added（P1 Critic + P2 Planner 检查，角色架构完整化）
