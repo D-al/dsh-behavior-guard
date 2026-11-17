@@ -91,6 +91,26 @@ const DEFAULTS = {
   controlEverySteps: 8,
   maxControlPerSession: 6,
   controlEnabled: true,
+  // ── Observability（2026-11-18）：per-step trace（零 LLM，追加写 jsonl）──
+  // 社区共识（Keyhole/Praison/ZOOZ）：没有 trace 就无法度量，没有度量就无法优化。
+  traceEnabled: true,
+  tracePath: 'D:/Brain/workspace/bench/_trace.jsonl',
+  maxTraceBytes: 8000000,
+  // JSON 解析失败时的重试次数（社区标准：解析失败 → 附格式纠正重试一次）
+  jsonRetryTimes: 1,
+  // ── Skills（渐进披露，2026-11-18）──
+  // 社区（Keyhole 白皮书）：Skills = 只在相关时加载的过程性知识，是 AGENTS.md 4K 之外的容量出口。
+  // 实现：扫 bench/skills/*.md 的 frontmatter，按 initial+latest 的关键词命中注入"技能卡"（名称+摘要+路径），
+  // 模型需要细节时自行 read。零 LLM 成本。
+  skillsEnabled: true,
+  skillsDir: 'D:/Brain/workspace/bench/skills',
+  maxSkillCardsPerSession: 2,
+  // ── 危险操作分级（2026-11-18，社区 permission tiering：auto / read-only / confirm）──
+  // block：递归删除、强推、重置工作区等不可逆动作 → 注入确认要求（不静默执行）
+  // warn：覆盖已有文件、批量杀进程 → 提示
+  // 注：真正的拦截仍由 dsh 的 approval policy 执行；这里提供"模型侧的意识"与"可追溯的警告"
+  dangerGuardEnabled: true,
+  dangerGuardMaxPerSession: 5,
   messageNoTodo: '[harness 执行检查] 这是一个多步任务，但你还没有用 todo_write 建立任务清单。立即停下：先调用 todo_write 写出完整步骤清单（每条 = 动词 + 目标 + 完成标准，末尾加 [VERIFY] 验证项），把第一项标为 in_progress，然后按清单顺序执行。',
   messageStale: '[harness 执行检查] 你已经连续多步没有更新 todo 清单了。立即回到清单：把刚完成的项标为 completed，把下一项标为 in_progress，再继续执行。如果发现实际工作与清单偏离，先修订清单再继续。',
   // 审计员自校准：每次干预记录到 jsonl，3 步后结算"注入后是否还有新失败"（有效/无效）
@@ -117,6 +137,85 @@ const DEFAULTS = {
   plannerCheckTimeoutMs: 90000,
   maxPlannerCheckPerSession: 1,
   specSignalEnabled: true
+}
+
+// ── 危险操作分级模式（block=不可逆；warn=有风险但可恢复）──
+const DANGER_BLOCK = [
+  [/rm\s+-rf?\s+[^\s]*(\/|\\|C:|D:)/i, '递归删除（rm -rf）'],
+  [/Remove-Item[^|;]*-Recurse[^|;]*-Force/i, '递归强制删除（Remove-Item -Recurse -Force）'],
+  [/\bdel\s+\/s\b/i, 'del /s 递归删除'],
+  [/rd\s+\/s\s+\/q/i, 'rd /s /q 删目录'],
+  [/git\s+reset\s+--hard/i, 'git reset --hard（丢弃未提交改动）'],
+  [/git\s+clean\s+-[a-z]*f/i, 'git clean -f（删除未跟踪文件）'],
+  [/git\s+push[^\n]*--force/i, 'git push --force'],
+  [/format\s+[a-z]:/i, '格式化磁盘'],
+  [/shutil\.rmtree\s*\(/i, 'shutil.rmtree'],
+  [/Stop-Process[^|;]*-Name\s+\*?\w/i, '批量 Stop-Process'],
+]
+const DANGER_WARN = [
+  [/\brm\s+[^\s-]/i, '删除文件（rm）'],
+  [/Remove-Item\s+[^|;]*(?!-Recurse)/i, '删除文件（Remove-Item）'],
+  [/git\s+checkout\s+--\s+/i, 'git checkout --（丢弃文件改动）'],
+  [/\btruncate\b|>\s*\S+\.(py|json|md|yml)/i, '覆盖写入现有文件'],
+  [/moe-cache|n-cpu-moe|--ctx-size|--ngl/i, '改动引擎关键参数'],
+]
+
+function classifyDanger(name, argsText) {
+  const text = String(argsText || '')
+  for (const [re, label] of DANGER_BLOCK) {
+    if (re.test(text)) return { level: 'block', label }
+  }
+  for (const [re, label] of DANGER_WARN) {
+    if (re.test(text)) return { level: 'warn', label }
+  }
+  return null
+}
+
+// ── Skills：加载 skills 目录（frontmatter: name/summary/keywords）──
+function loadSkills(dir) {
+  const out = []
+  try {
+    for (const f of readdirSync(dir)) {
+      if (!f.endsWith('.md')) continue
+      const p = path.join(dir, f)
+      const txt = readFileSync(p, 'utf8')
+      const m = txt.match(/^---\n([\s\S]*?)\n---/)
+      if (!m) continue
+      const meta = {}
+      for (const line of m[1].split('\n')) {
+        const kv = line.match(/^([a-zA-Z]+):\s*(.*)$/)
+        if (kv) meta[kv[1]] = kv[2].trim()
+      }
+      if (!meta.name) continue
+      out.push({
+        name: meta.name,
+        summary: meta.summary || '',
+        keywords: (meta.keywords || '').replace(/[\[\]]/g, '').split(/[,，]/).map((x) => x.trim()).filter(Boolean),
+        path: p,
+        file: f,
+      })
+    }
+  } catch { /* 目录缺失则无技能 */ }
+  return out
+}
+
+// ── Observability：trace 记录（追加 jsonl，失败静默；超过 maxTraceBytes 轮转一次）──
+function makeTracer(cfg) {
+  let bytes = 0
+  try { bytes = statSync(cfg.tracePath).size } catch { bytes = 0 }
+  return function trace(rec) {
+    if (!cfg.traceEnabled) return
+    try {
+      const line = JSON.stringify(rec) + '\n'
+      if (bytes > cfg.maxTraceBytes) {
+        // 简单轮转：改名归档，重新开始
+        try { renameSync(cfg.tracePath, cfg.tracePath.replace('.jsonl', `-${Date.now()}.jsonl`)) } catch { /* ignore */ }
+        bytes = 0
+      }
+      appendFileSync(cfg.tracePath, line)
+      bytes += Buffer.byteLength(line)
+    } catch { /* ignore */ }
+  }
 }
 
 // ── Rubric 外置加载（JSON 单一来源；缺失则用内置默认）──
@@ -394,6 +493,8 @@ function blocksText(content) {
 
 export function apply(ctx, config) {
   const cfg = { ...DEFAULTS, ...TURN_GUARD_DEFAULTS }
+  const trace = makeTracer(cfg)
+  const SKILLS = cfg.skillsEnabled ? loadSkills(cfg.skillsDir) : []
   // normalizeConfig 只覆盖 raw 中显式给出的键——所以先改签名再手写合并：
   for (const k of Object.keys(cfg)) {
     if (rawHasKey(config, k)) cfg[k] = config[k]
@@ -422,6 +523,7 @@ export function apply(ctx, config) {
         // turn-guard L0-L3 状态（合并）
         turn: 0, turnStartedAt: undefined, toolCalls: 0, writeCalls: 0,
         continuations: 0, totalContinuations: 0, last: undefined, sharedInjections: 0,
+        sid: String(id || '').slice(0, 8), injectedSkills: [], skillCards: 0, dangerHits: 0,
         // continuity 状态（initial 复用上面的字段）
         latest: '', pendingArchive: false, pendingTodoEcho: false, lastTodos: null, todoCalls: 0, sinceLastTodo: 0,
         turnTodoInjections: 0, sessionTodoInjections: 0, remindedNoTodo: false, rejectedItems: [] }
@@ -538,8 +640,21 @@ export function apply(ctx, config) {
             s.todoCalls = (s.todoCalls || 0) + 1
             s.sinceLastTodo = 0
           }
+          // 危险操作分级（不阻断，注入意识；真正拦截由 dsh approval policy 负责）
+          if (cfg.dangerGuardEnabled && (s.dangerHits || 0) < cfg.dangerGuardMaxPerSession) {
+            const d = classifyDanger(callName, fullArgs)
+            if (d) {
+              s.dangerHits = (s.dangerHits || 0) + 1
+              s.pendingInject = (s.pendingInject ? s.pendingInject + '\n' : '') +
+                (d.level === 'block'
+                  ? `[harness 危险操作] 检测到「${d.label}」——这是不可逆操作。执行前必须在正文里说明：要删/改什么、为什么必须这样做、有没有更安全的方式（备份/移到回收站/只改目标文件）。若用户没有明确要求，改用非破坏性方案。`
+                  : `[harness 操作提示] 检测到「${d.label}」——确认目标正确（先 read/glob 核对路径），必要时先备份。`)
+              info(`behavior-guard: [危险操作] ${d.level} ${d.label}`)
+            }
+          }
         }
-        s.trail.push({ kind: 'call', name: String(event.data?.name ?? ''), args: fullArgs.slice(0, 200), fullArgs, step: event.data?.step })
+        s.trail.push({ kind: 'call', name: String(event.data?.name ?? ''), args: fullArgs.slice(0, 200), fullArgs, step: event.data?.step, ts: Date.now() })
+        trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'tool_call', name: String(event.data?.name ?? ''), argsChars: fullArgs.length, step: s.step })
         if (s.trail.length > 40) s.trail.shift()
         // v3.2 代验收：记录 spawn_teammate 携带的验收标准（prompt/description），并继承最近产物
         if (event.data?.name === 'spawn_teammate') {
@@ -567,6 +682,10 @@ export function apply(ctx, config) {
         if (c) {
           c.ok = status === 'OK'
           c.status = status
+          trace({
+            ts: new Date().toISOString(), sid: s.sid || '', kind: 'tool_result', name: c.name,
+            status, ms: c.ts ? Date.now() - c.ts : null, outChars: String(txt || '').length, step: s.step,
+          })
           // v2：证据类工具的成功结果保留全文（纠正器的定位依据）
           const isEvidence = cfg.evidenceTools.includes(c.name) && status === 'OK'
           c.result = txt.slice(0, isEvidence ? cfg.evidenceMaxChars : 80).replace(/\s+/g, ' ')
@@ -701,7 +820,7 @@ ${evidence || '(无证据可用)'}
 路径规则（2026-11-17 实证）：**路径原样复制证据文本里的那一段**（逐字符），
 证据里没有可用路径时输出 ask_user 或 abandon——你给出的每个路径都应该是证据里出现过的原文。`
 
-  async function callLLM(prompt, maxTokens, timeoutMs) {
+  async function callLLMOnce(prompt, maxTokens, timeoutMs) {
     const ctrl = new AbortController()
     const timer = setTimeout(() => ctrl.abort(), timeoutMs)
     try {
@@ -723,13 +842,35 @@ ${evidence || '(无证据可用)'}
       }
       const i = out.indexOf('{')
       const j = out.lastIndexOf('}')
-      if (i < 0 || j <= i) return null
-      return JSON.parse(out.slice(i, j + 1))
+      if (i < 0 || j <= i) return { parsed: null, raw: out }
+      try {
+        return { parsed: JSON.parse(out.slice(i, j + 1)), raw: out }
+      } catch {
+        return { parsed: null, raw: out }
+      }
     } catch (error) {
       clearTimeout(timer)
       warn(`audit-loop: LLM 调用失败 ${String(error)}`)
       return null
     }
+  }
+
+  // callLLM = callLLMOnce + trace + 一次 JSON 格式重试（社区标准：解析失败附纠正再试一次）
+  async function callLLM(prompt, maxTokens, timeoutMs, ctx = {}) {
+    const t0 = Date.now()
+    let r = await callLLMOnce(prompt, maxTokens, timeoutMs)
+    let retried = 0
+    if ((!r || !r.parsed) && (cfg.jsonRetryTimes || 0) > 0) {
+      retried = 1
+      const fixPrompt = prompt + '\n\n【格式修正】你上一次的输出无法解析为 JSON。这次只输出一个纯 JSON 对象：不要 markdown 代码块、不要任何解释文字、不要前后缀。'
+      r = await callLLMOnce(fixPrompt, maxTokens, timeoutMs)
+    }
+    const parsed = (r && r.parsed) ? r.parsed : null
+    trace({
+      ts: new Date().toISOString(), sid: ctx.sid || '', kind: 'llm', tag: ctx.tag || 'llm',
+      ms: Date.now() - t0, inChars: prompt.length, outChars: ((r && r.raw) || '').length, ok: !!parsed, retry: retried,
+    })
+    return parsed
   }
 
   async function runAudit(s) {
@@ -742,7 +883,7 @@ ${evidence || '(无证据可用)'}
     const rounds = cfg.auditEvidenceRounds ?? 2
     const evidLog = []
     for (let round = 0; round < rounds; round++) {
-      const out = await callLLM(AUDIT_PROMPT(s.initial, trail, evidLog), 600, cfg.auditTimeoutMs)
+      const out = await callLLM(AUDIT_PROMPT(s.initial, trail, evidLog), 600, cfg.auditTimeoutMs, { sid: s.sid || '', tag: 'audit' })
       if (!out || out.verdict !== 'NEED_EVIDENCE') return out
       if (round === rounds - 1) {
         // 取证轮次用尽仍要证据 → 视为弃权（不介入，记录）
@@ -790,7 +931,7 @@ ${items.map((x, i) => `${i + 1}. ${x}`).join('\n')}
   async function runPlannerCheck(s) {
     const items = s.pendingPlannerCheck
     if (!Array.isArray(items) || items.length === 0) return null
-    return callLLM(PLANNER_PROMPT(s.initial, items), 400, cfg.plannerCheckTimeoutMs || 90000)
+    return callLLM(PLANNER_PROMPT(s.initial, items), 400, cfg.plannerCheckTimeoutMs || 90000, { sid: s.sid || '', tag: 'planner' })
   }
 
   // ── P1 Critic：产物质量评审（异质 rubric；只读产物，不看执行过程）──
@@ -825,13 +966,13 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
       return null
     }
     if (!content.trim()) return null
-    return callLLM(CRITIC_PROMPT(s.initial, product, content), 500, cfg.criticTimeoutMs || 90000)
+    return callLLM(CRITIC_PROMPT(s.initial, product, content), 500, cfg.criticTimeoutMs || 90000, { sid: s.sid || '', tag: 'critic' })
   }
 
   async function runCorrector(s) {
     const { failDetail, evidence } = collectCorrectorInput(s)
     if (!failDetail) return null
-    return callLLM(CORRECTOR_PROMPT(s.initial, failDetail, evidence), 800, cfg.correctorTimeoutMs)
+    return callLLM(CORRECTOR_PROMPT(s.initial, failDetail, evidence), 800, cfg.correctorTimeoutMs, { sid: s.sid || '', tag: 'corrector' })
   }
 
   // v3.2 代验收：直接跑 verify_agent.py（三态环境判定），不等回注
@@ -1163,6 +1304,25 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
             return { ...decision, messages }
           }
         }
+      }
+
+      // ── Skills 技能卡（按任务关键词命中一次，零 LLM）──
+      if (cfg.skillsEnabled && SKILLS.length > 0 && (s.skillCards || 0) < cfg.maxSkillCardsPerSession) {
+        try {
+          const hay = (String(s.initial || '') + ' ' + String(s.latest || '')).toLowerCase()
+          const hit = SKILLS.filter((k) => !s.injectedSkills.includes(k.name) &&
+            k.keywords.some((kw) => kw && hay.includes(String(kw).toLowerCase())))
+          if (hit.length > 0) {
+            const pick = hit.slice(0, cfg.maxSkillCardsPerSession - (s.skillCards || 0))
+            s.skillCards = (s.skillCards || 0) + pick.length
+            s.injectedSkills.push(...pick.map((k) => k.name))
+            const lines = pick.map((k) => `- ${k.name}：${k.summary}\n  全文：${k.path}（需要细节时 read 它）`)
+            info(`behavior-guard: [Skills] 注入技能卡 ${pick.map((k) => k.name).join(',')}`)
+            const msg = createMessage('[harness 技能可用] 检测到任务涉及以下领域，已有现成手册（按需读取，不要凭记忆拼流程）：\n' + lines.join('\n'), 'behavior-guard')
+            const messages = Array.isArray(decision?.messages) ? [...decision.messages, msg] : [msg]
+            return { ...decision, messages }
+          }
+        } catch { /* ignore */ }
       }
 
       // ── 控制回合（meta-reasoning controller，每 N 步一次，零 LLM）──

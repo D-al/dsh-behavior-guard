@@ -2,6 +2,38 @@
 
 所有迭代以本地时间记录（UTC+8）。
 
+## [2.2.0] - 2026-11-18 02:25
+
+### Added（社区 harness 组件清单的四个缺口）
+
+**1. Observability（per-step trace）**
+- `_trace.jsonl`：每次工具调用/结果、每次 LLM 调用（审计/纠正/评审/规划）记录
+  时间、耗时、输入输出字符数、状态、是否重试；超 8MB 自动轮转
+- `bench/trace_report.py`：按会话统计步数/工具分布/失败率/LLM 调用耗时与重试
+- 依据：Keyhole/Praison/ZOOZ 三家 harness 清单都把 observability 列为必需层——
+  **没有 trace 就无法度量，没有度量就无法优化**
+
+**2. 输出鲁棒性（JSON 解析重试）**
+- `callLLMOnce` 拆分 + `callLLM` 包装：解析失败自动附"只输出纯 JSON、不要代码块"重试一次
+  （`jsonRetryTimes=1`），重试次数计入 trace
+- 依据：社区标准（guibai）——"解析失败 → 附格式纠正重试"，而非静默丢弃
+
+**3. Skills（渐进披露的过程性知识）**
+- `bench/skills/*.md`（frontmatter: name/summary/keywords），插件按任务关键词命中注入
+  "技能卡"（名称+摘要+路径），模型按需 read
+- 首批三个技能：release-plugin（发布插件 7 步）/ debug-llama-server（引擎排障）/
+  verify-artifact（产物验收清单）
+- 依据：Keyhole 白皮书——Skills 是"只在相关时加载的过程性知识"，AGENTS.md 4K 之外的容量出口
+
+**4. 危险操作分级（permission tiering）**
+- block 级（不可逆）：rm -rf / Remove-Item -Recurse -Force / del /s / git reset --hard /
+  git push --force / 格式化 / shutil.rmtree → 注入"执行前必须说明+给更安全方案"
+- warn 级：rm 单文件 / git checkout -- / 覆盖写 / 引擎关键参数 → 提示核对与备份
+- 不阻断（拦截仍归 dsh approval policy），提供模型侧意识 + 可追溯警告
+
+### Tests
+- 38/38（新增：Skills 3 例、危险操作 3 例、JSON 重试随 trace 验证）
+
 ## [2.1.0] - 2026-11-18 01:35
 
 ### Added（控制回合 / meta-reasoning controller）
