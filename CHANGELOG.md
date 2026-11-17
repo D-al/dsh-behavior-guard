@@ -2,6 +2,20 @@
 
 所有迭代以本地时间记录（UTC+8）。格式参考 Keep a Changelog。
 
+## [1.1.2] - 2026-11-18 00:40
+
+### Added（present 前确定性深检，~0.3s / 0 LLM）
+- **Python 顶层 import 可解析性**：AST 收集 import → `importlib.util.find_spec` 检查
+  （**不执行模块**，安全）——语法通过但依赖缺失的产物在这里被拦
+- **占位符扫描**：TODO/FIXME/XXX、`pass` 空实现、文档"待补充/占位"
+- **空文件/极短文件**（<10 字节）
+- **shell 脚本语法**（bash -n）
+- **Markdown 无标题结构**
+- 走 Critic 之前的独立确定性路径：发现问题直接 steer（不经 LLM，零延迟成本）
+
+### Tests
+- 18/18（新增：缺失 import 拦截 / 占位符拦截）
+
 ## [1.1.1] - 2026-11-18 01:00
 
 ### Added（verify-on-edit：确定性语法检查，0 LLM 成本）

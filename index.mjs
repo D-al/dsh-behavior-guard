@@ -93,10 +93,69 @@ const DEFAULTS = {
   // P2 Planner 检查：首次 todo 的 [VERIFY] 项是否可验证（1 次 LLM ~11s/任务）
   // verify-on-edit：每次 write/edit 后做确定性语法检查（0 LLM，仅 py/json/yaml）
   verifyOnEditEnabled: true,
+  // present 前深检（import 可解析/占位符/空文件/shell 语法）：~0.3s，0 LLM
+  deepCheckEnabled: true,
   plannerCheckEnabled: true,
   plannerCheckTimeoutMs: 90000,
   maxPlannerCheckPerSession: 1,
   specSignalEnabled: true
+}
+
+// ── verify-on-edit 深度检查（present 前跑一次，~0.3s，0 LLM）──
+// 1) Python 顶层 import 可解析性（find_spec 不执行模块，安全）
+// 2) 占位符扫描（TODO/FIXME/pass/... 等未实现痕迹）
+// 3) 空文件 / 极短文件
+function checkArtifactDeep(filePath) {
+  const issues = []
+  if (!filePath) return issues
+  try {
+    const st = statSync(filePath, { throwIfNoEntry: false })
+    if (!st) return issues
+    if (st.size < 10) {
+      issues.push('文件几乎为空（' + st.size + ' 字节）')
+      return issues
+    }
+    const lower = String(filePath).toLowerCase()
+    if (lower.endsWith('.py')) {
+      try {
+        const script = `import ast, json, importlib.util, sys
+p = sys.argv[1]
+tree = ast.parse(open(p, encoding='utf-8').read())
+mods = set()
+for node in tree.body:
+    if isinstance(node, ast.Import):
+        for a in node.names:
+            mods.add(a.name.split('.')[0])
+    elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
+        mods.add(node.module.split('.')[0])
+missing = [m for m in sorted(mods) if importlib.util.find_spec(m) is None]
+print(json.dumps(missing))`
+        const out = execFileSync('D:/Python/python.exe', ['-c', script, filePath], { timeout: 8000, windowsHide: true, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+        const missing = JSON.parse(String(out).trim() || '[]')
+        if (missing.length) issues.push('顶层 import 不可用: ' + missing.join(', '))
+      } catch { /* 语法错误已由 verify-on-edit 报过，跳过 */ }
+      const src = readFileSync(filePath, 'utf8')
+      const ph = src.match(/^\s*(TODO|FIXME|XXX)\b.*$/gm) || []
+      const passOnly = src.match(/^\s*pass\s*$/gm) || []
+      if (ph.length) issues.push('占位标记 ' + ph.length + ' 处（TODO/FIXME）')
+      if (passOnly.length) issues.push('空实现 pass ' + passOnly.length + ' 处')
+    }
+    if (lower.endsWith('.md')) {
+      const src = readFileSync(filePath, 'utf8')
+      const ph = src.match(/(TODO|FIXME|待补充|待填写|占位)/g) || []
+      if (ph.length) issues.push('文档占位标记 ' + ph.length + ' 处')
+      const heads = (src.match(/^#{1,6} /gm) || []).length
+      if (heads === 0) issues.push('Markdown 无任何标题结构')
+    }
+    if (lower.endsWith('.sh')) {
+      try {
+        execFileSync('bash', ['-n', filePath], { timeout: 5000, windowsHide: true, encoding: 'utf8', stdio: ['ignore', 'ignore', 'pipe'] })
+      } catch (e) {
+        issues.push('shell 语法错误: ' + String(e?.stderr || e?.message || '').replace(/\s+/g, ' ').slice(0, 120))
+      }
+    }
+  } catch { /* ignore */ }
+  return issues
 }
 
 // ── verify-on-edit：确定性语法检查（0 LLM 成本，仅 .py/.json/.yml/.yaml）──
@@ -855,6 +914,20 @@ ${content}
         (state.criticCount || 0) < cfg.maxCriticPerSession
       ) {
         state.criticCount = (state.criticCount || 0) + 1
+        // present 前确定性深检（~0.3s，0 LLM）：import 可解析 / 占位符 / 空文件
+        try {
+          const deepIssues = cfg.deepCheckEnabled ? checkArtifactDeep(state.lastProduct) : []
+          if (deepIssues.length) {
+            info(`behavior-guard: [深检] ${deepIssues.length} 项问题 — ${deepIssues.join(' | ').slice(0, 120)}`)
+            state.sharedInjections += 1
+            agent.steer(createSteeringMessage(
+              '[harness 产物深检] 交付前确定性检查发现问题：' + deepIssues.join('；') +
+              '。先修正这些问题再 present（占位符/空实现/缺失依赖都会让产物不可用）。',
+              'behavior-guard'
+            ))
+            return
+          }
+        } catch { /* 深检失败不阻断 */ }
         try {
           const critic = await runCritic(state)
           if (critic && critic.verdict === 'ACCEPT') {
