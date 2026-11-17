@@ -1,6 +1,6 @@
 {
   "name": "dsh-behavior-guard",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "DSH behavior governance suite: L0-L3 premature-finish guard (verified-finish L1 file claims), D1/D2/D3 deterministic signals (repeat probing / same-args double fail / redundant todo), adaptive-window live audit, corrector with read-only executor, and verify_agent proxy acceptance. Built and battle-tested on a local Qwen3.6-35B agent (2026-11).",
   "type": "module",
   "main": "index.mjs",
@@ -8,14 +8,32 @@
     ".": "./index.mjs",
     "./package.json": "./package.json"
   },
-  "files": ["index.mjs", "cordis.patch.yml"],
+  "files": [
+    "index.mjs",
+    "cordis.patch.yml"
+  ],
   "license": "MIT",
-  "keywords": ["deepseek-harness", "dsh", "dsh-plugin", "cordis", "agent", "guard", "audit", "behavior"],
-  "engines": { "node": ">=20" },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "cordis",
+    "agent",
+    "guard",
+    "audit",
+    "behavior"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "dsh": {
     "displayName": "Behavior Guard（行为治理全家桶）",
     "description": "早收尾拦截（L0-L3）+ 确定性信号（重复探测/同参失败/冗余 todo）+ 自适应窗口实时审计 + 纠正器 + 只读代执行 + 代验收。",
-    "engines": { "dsh": ">=0.2.0-rc.2" },
-    "bundle": { "patch": "./cordis.patch.yml" }
+    "engines": {
+      "dsh": ">=0.2.0-rc.2"
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
   }
 }
