@@ -30,6 +30,7 @@
         minCodeLines: 20
         requirePriorToolCall: true
         workspaceRoot: 'C:/Users/Ad/Documents/deepseek-harness/default-workspace'
+        probePath: 'D:/Brain/workspace/bench/_audit_loop_loaded.json'
         allowedRoots:
           - 'C:/Users/Ad/Documents/deepseek-harness/default-workspace'
           - 'D:/Brain/workspace'
