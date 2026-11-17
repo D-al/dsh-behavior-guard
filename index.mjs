@@ -101,6 +101,27 @@ const DEFAULTS = {
   specSignalEnabled: true
 }
 
+// ── Rubric 外置加载（JSON 单一来源；缺失则用内置默认）──
+function loadRubric(name, fallback) {
+  try {
+    const p = `D:/Brain/workspace/bench/rubrics/${name}`
+    const j = JSON.parse(readFileSync(p, 'utf8'))
+    return j && typeof j === 'object' ? j : fallback
+  } catch {
+    return fallback
+  }
+}
+const CRITIC_RUBRIC = loadRubric('critic_v1.json', {
+  version: 'critic-builtin',
+  dimensions: [
+    { id: 1, name: '达标性', question: '是否覆盖任务要求的每一项？' },
+    { id: 2, name: '完整性', question: '是否有空缺/占位符/截断？' },
+    { id: 3, name: '可用性', question: '能直接用/跑通吗？' },
+    { id: 4, name: '一致性', question: '内部有无矛盾？' },
+  ],
+})
+const AUDIT_RUBRIC = loadRubric('audit_v1.json', { version: 'audit-builtin', checks: [], gates: [] })
+
 // ── verify-on-edit 深度检查（present 前跑一次，~0.3s，0 LLM）──
 // 1) Python 顶层 import 可解析性（find_spec 不执行模块，安全）
 // 2) 占位符扫描（TODO/FIXME/pass/... 等未实现痕迹）
@@ -587,12 +608,8 @@ ${trail}${evidLog && evidLog.length ? `
 【你已取证的证据（只读代执行结果）】
 ${evidLog.map((e, i) => `证据${i + 1}: ${e.req}\n→ ${e.result}`).join('\n---\n')}` : ''}
 
-检查四类明确问题（只报上面事实能直接支撑的）：
-A. 重复失败或重复非生产：同一目标的 FAIL 或 UNPRODUCTIVE 结果出现 2 次以上。
-B. 跑偏：出现了与任务明显无关的动作。
-C. 重复探测无进展：同一工具带相同参数连续调用 3 次以上（轨迹标[连续第N次]）。
-D. 遗漏（omission）：任务要求的关键步骤（验证/写入/交付）在轨迹里找不到对应动作。
-   只报你能明确指出"哪一步该做这一步"的 D。
+检查以下问题（规则来自 ${AUDIT_RUBRIC.version} 手册；只报上面事实能直接支撑的）：
+${(AUDIT_RUBRIC.checks || []).map((c) => `${c.id}. ${c.name}：${c.description}${c.deterministic ? '  ← 系统已用 ' + c.deterministic + ' 确定性检测覆盖，你专注语义层面，不要重复报告已知的重复调用。' : ''}`).join('\n')}
 
 如需更多证据才能判断（最多请求一次），可请求只读取证：
 {"verdict":"NEED_EVIDENCE","tool":"glob 或 read","args":{...},"reason":"一句话说明需要什么证据"}
@@ -737,11 +754,8 @@ ${items.map((x, i) => `${i + 1}. ${x}`).join('\n')}
 【产物内容】
 ${content}
 
-按四个维度各判一行（达标 / 不达标 / 无法判断）：
-1. 达标性：是否覆盖任务要求的每一项
-2. 完整性：是否有空缺、占位符、未实现部分、明显截断
-3. 可用性：按任务要求能直接用/直接跑通吗
-4. 一致性：内部有无自相矛盾
+按以下维度各判一行（达标 / 不达标 / 无法判断）：
+${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question}${d.fail_example ? '（反例：' + d.fail_example + '）' : ''}`).join('\n')}
 
 只输出 JSON（无其他文字）：
 {"verdict":"ACCEPT","reasons":["1 达标","2 达标","3 达标","4 达标"]}
@@ -1211,7 +1225,7 @@ ${content}
       s.trail = [] // 修正后重新观察
       // 自校准：记录本次干预（3 步后结算有效性：注入后 3 步内无新失败 = 有效）
       try {
-        s.auditEval = { ts: new Date().toISOString(), kind: 'audit', gate: gateReason, step: s.step }
+        s.auditEval = { ts: new Date().toISOString(), kind: 'audit', gate: gateReason, rubric: AUDIT_RUBRIC.version || '', step: s.step }
       } catch { /* ignore */ }
 
       const msg = createMessage(text, 'audit-loop')

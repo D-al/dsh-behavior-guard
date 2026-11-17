@@ -2,6 +2,24 @@
 
 所有迭代以本地时间记录（UTC+8）。格式参考 Keep a Changelog。
 
+## [1.2.0] - 2026-11-18 01:05
+
+### Added（Rubric 外置 + 规则/代码联动）
+- **critic_v1.json / audit_v1.json / planner_v1.json** 三个 rubric 文件外置到
+  `bench/rubrics/`（JSON 单一来源——插件环境无 YAML 依赖，避免"文档一套 prompt 一套"）
+- **Critic prompt 从 rubric 生成**：改 rubric 即改评审标准（含 fail_example 反例），无需改代码
+- **审计 prompt 从 rubric 生成**，每条检查带 `deterministic` 标注：
+  A（重复失败）→ D2 覆盖、C（重复探测）→ D1 覆盖——prompt 里明示"系统已确定性检测，
+  你专注语义层面，不要重复报告"——**这是"外置规则 × 代码门控"的联动点**：
+  规则描述可外置可版本化，执行机制仍在代码里且对审计员可见（宏观知道自己在审什么）
+- **判决日志记 rubric 版本**（auditEval.rubric），能区分"行为变了"还是"标准变了"
+- 社区依据：TeachYou——rubric 存 YAML 进版本控制 + 判决记 rubric_version；
+  Gopherding——"prompt 从 rubric 文件生成，避免文档一套 prompt 一套"；
+  维度上限 5-6（我们 4 维在安全区）
+
+### Tests
+- 26/26 + 22/22
+
 ## [1.1.3] - 2026-11-18 00:50
 
 ### Added（5 项低成本检查全部落地，0 LLM）
