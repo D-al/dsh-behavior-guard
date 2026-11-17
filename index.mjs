@@ -72,7 +72,27 @@ const DEFAULTS = {
   presentGateEnabled: true,
   maxPresentGatePerTurn: 1,
   maxPresentGatePerSession: 2,
-  probePath: ''
+  probePath: '',
+  // CritBank：结构化失效教训库（零 LLM 成本的检索式注入；U-Fold 检索式上下文思路）
+  critbankPath: 'D:/Brain/workspace/bench/critbank.json'
+}
+
+// ── CritBank 经验检索（模块级加载一次）──
+let CRITBANK = []
+try {
+  CRITBANK = JSON.parse(readFileSync('D:/Brain/workspace/bench/critbank.json', 'utf8'))
+} catch { /* 缺失则静默不启 */ }
+
+function matchCritbank(s) {
+  if (!Array.isArray(CRITBANK) || CRITBANK.length === 0) return []
+  const trail = Array.isArray(s?.trail) ? s.trail.slice(-8) : []
+  const hay = trail.map((x) => `${x?.name || ''} ${x?.result || ''} ${x?.status || ''}`).join(' ').toLowerCase()
+  return CRITBANK
+    .map((c) => ({ c, score: (c.tags || []).filter((t) => hay.includes(String(t).toLowerCase())).length }))
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 2)
+    .map((x) => `【相关教训 ${x.c.id}】${x.c.lesson}`)
 }
 
 
@@ -656,7 +676,8 @@ args 里的路径必须改写为短相对路径（如 memory/2026-11-16.md），
         agent.steer(createSteeringMessage(
           '[harness 交付闸门] 你刚刚用 present 声明交付，但本轮没有独立验收痕迹（没有 spawn 验收者，也没有运行 verify_agent.py）。' +
           '做的人不能自己签字：实测里小模型自检只能把虚假完成率从 12.7% 降到 11.8%（同一盲区，自检无效）。' +
-          '现在二选一：(1) 调用 spawn_teammate 让独立验收者按验收协议检查，或直接运行 bench 的 verify_agent.py；' +
+          '现在二选一：(1) 调用 spawn_teammate 让独立验收者按验收协议检查，或直接运行 verify_agent.py' +
+          '（验收标准引用 todo 清单里的 [VERIFY] 项，逐条对照）；' +
           '(2) 明确说明本产物为什么不需要独立验收（例如纯信息性回复）。不要直接结束。',
           'behavior-guard'
         ))
@@ -798,6 +819,13 @@ args 里的路径必须改写为短相对路径（如 memory/2026-11-16.md），
           if (!text) {
             text = `[harness 独立审计] 无历史的审计员审阅了你最近的工具轨迹，发现：${audit.issue}。修正指令：${audit.fix}。请立即执行修正，不要辩解或重复已失败的路径。`
           }
+          // ── CritBank 经验检索（零 LLM 成本：关键词匹配，2026-11-17）──
+          // U-Fold 的"检索式上下文"思路：不让全部教训常驻 AGENTS.md（4K 内放不下），
+          // 而是在信号命中时按轨迹特征检索最相关的 1~2 条注入。
+          try {
+            const lessons = matchCritbank(s)
+            if (lessons.length) text = (text || '') + '\n' + lessons.join('\n')
+          } catch { /* ignore */ }
         }
       } finally {
         s.auditing = false
