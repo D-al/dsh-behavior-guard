@@ -84,6 +84,8 @@ const DEFAULTS = {
   // 阶段 1 只读日志尾部，不触发额外推理；< threshold 时作为审计门控信号之一。
   specLogPath: 'D:/Brain/dsh-data/profiles/desktop/node_modules/dsh-llama-server-autostart/llama-server-run.log',
   specAcceptanceMin: 0.65,
+  // Agent-as-Judge 定向取证：审计员可请求只读取证的最大轮次（每轮 +1 LLM +1 工具）
+  auditEvidenceRounds: 2,
   specSignalEnabled: true
 }
 
@@ -432,12 +434,15 @@ export function apply(ctx, config) {
     return lines.join('\n').slice(-4000)
   }
 
-  const AUDIT_PROMPT = (task, trail) => `你是独立会话审计员，没有参与这段 agent 工作。只依据以下事实判断，不要猜测。
+  const AUDIT_PROMPT = (task, trail, evidLog) => `你是独立会话审计员，没有参与这段 agent 工作。只依据以下事实判断，不要猜测。
 
 【任务】${task || '(未知)'}
 
 【最近工具轨迹（状态三档：OK=有进展 / FAIL=报错 / UNPRODUCTIVE=超时或空结果无进展）】
-${trail}
+${trail}${evidLog && evidLog.length ? `
+
+【你已取证的证据（只读代执行结果）】
+${evidLog.map((e, i) => `证据${i + 1}: ${e.req}\n→ ${e.result}`).join('\n---\n')}` : ''}
 
 检查四类明确问题（只报能由上面事实直接支撑的）：
 A. 重复失败或重复非生产：同一目标的 FAIL 或 UNPRODUCTIVE 结果出现 2 次以上。
@@ -446,7 +451,10 @@ C. 重复探测无进展：同一工具带相同参数连续调用 3 次以上�
 D. 遗漏（omission）：本该发生但没发生——任务要求的关键步骤（验证/写入/交付）在轨迹里找不到对应动作。
    注意：只有当你明确知道"必须做却没做"时才报 D；不确定就不要报。
 
-只输出 JSON（无其他文字），三选一：
+如需更多证据才能判断（最多请求一次），可请求只读取证：
+{"verdict":"NEED_EVIDENCE","tool":"glob 或 read","args":{...},"reason":"一句话说明需要什么证据"}
+
+只输出 JSON（无其他文字），三选一（先给判定结论，不要逐条罗列分析过程）：
 {"verdict":"OK"}
 {"verdict":"ISSUE","issue":"一句话指出哪个 step 什么问题","fix":"一句话修正指令，直接命令下一步该做什么"}
 {"verdict":"UNCERTAIN","reason":"证据不足以判断（一句话）"}`
@@ -509,7 +517,30 @@ ${evidence || '(无证据可用)'}
   async function runAudit(s) {
     const trail = buildTrailText(s)
     if (!trail) return null
-    return callLLM(AUDIT_PROMPT(s.initial, trail), 600, cfg.auditTimeoutMs)
+    // ── Agent-as-Judge 定向取证（2026-11-17，文献驱动）──
+    // 依据：Agent-as-a-Judge（arXiv 2410.10934）+ 生产实践（证据预算/动作预算/早停）。
+    // 审计员可输出 NEED_EVIDENCE + 只读工具请求，插件确定性代执行后回喂——最多 N 轮、
+    // 只读白名单、总超时受 auditTimeoutMs 约束。成本：每轮 +1 次 LLM（5-15s）+ 1 次工具。
+    const rounds = cfg.auditEvidenceRounds ?? 2
+    const evidLog = []
+    for (let round = 0; round < rounds; round++) {
+      const out = await callLLM(AUDIT_PROMPT(s.initial, trail, evidLog), 600, cfg.auditTimeoutMs)
+      if (!out || out.verdict !== 'NEED_EVIDENCE') return out
+      if (round === rounds - 1) {
+        // 取证轮次用尽仍要证据 → 视为弃权（不介入，记录）
+        info(`audit-loop: 取证轮次用尽 → 弃权（${String(out.reason || '').slice(0, 50)}）`)
+        return { verdict: 'UNCERTAIN', reason: 'evidence-budget-exhausted: ' + String(out.reason || '') }
+      }
+      // 只读白名单 + 限频：仅 read/glob/grep/list_agents；每次一轮一调用
+      const pkg = { action: 'retry_with', tool: String(out.tool || ''), args: out.args || {} }
+      const exec = cfg.executorEnabled ? executeReadOnly(pkg) : null
+      evidLog.push({
+        req: `${out.tool} ${JSON.stringify(out.args || {}).slice(0, 120)}`,
+        result: exec && exec.ok ? String(exec.content || '').slice(0, 1200) : ('取证失败: ' + String(exec?.error || 'executor disabled')),
+      })
+      info(`audit-loop: 审计员请求取证 ${out.tool} → ${exec && exec.ok ? '成功' : '失败'}（第 ${round + 1} 轮）`)
+    }
+    return null
   }
 
   /** v2 纠正器：从失败详情 + 成功证据产出修正包 */
