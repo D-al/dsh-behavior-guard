@@ -1,80 +1,82 @@
-# dsh-behavior-guard
+# dsh-agent-harness
 
-**DeepSeek Harness（dsh）行为治理全家桶** —— 一个插件，七种信号，全部来自本地 35B agent 的真实失效现场。
+> 仓库名沿用 `dsh-behavior-guard`（历史），npm 包名/插件 id 为 `dsh-agent-harness`（v2.0.0 起合并了 dsh-task-continuity）。
 
-为本地小参数模型（Qwen3.6-35B-A3B Q4 量化 + 8GB 显卡）构建。核心认知：**小模型不是不会做，而是在长 agent 会话里会以可预测的方式退化——退化方式可以从论文和现场里穷举，然后逐个在 harness 层拦截。**
+**DeepSeek Harness（dsh）agent harness 聚合插件** —— 行为治理 + 任务连续性，一个包承担"帮小模型分担负担、扩展能力边界"的全部工作。
 
-## 遇到的问题（按发现顺序，全部是实测现场）
+> v2.0.0（2026-11-18）由 [dsh-behavior-guard](https://github.com/D-al/dsh-behavior-guard) v1.2.0 与 [dsh-task-continuity](https://github.com/D-al/dsh-task-continuity) v1.0.4 合并。
+> 合并理由：两者事件面相同（session/event + agent/pre-step）、共享同一份会话状态（todo/失败轨迹/压缩事件）、
+> 注入预算需要统一——分开维护会导致重复挂载与预算打架（实测过：preset 显式挂载 + bundle patch 双挂载 → 所有注入成对出现）。
 
-### 1. 「只输出好」退化回路（2026-11-07 首次捕获）
-长 agent 会话里，模型遇到异常/无信息工具结果后，正文只回一个「好」并结束——同一现场连续 7 次，其中 6 次紧跟异常 tool_result，**失败输出又被当作示范进入上下文，形成自强化回路**。20+ 轮后的长会话必现，短任务测试台完全覆盖不到。
+## 为什么需要它（核心认知）
 
-### 2. 假完成：把「写出像完成的话」当成「完成动作」
-项目级任务实测（Q4 档）：只走 2 步就把整份代码贴在回复正文里、不调 write 工具、直接宣布完成（1/3 次）。另一变体：把自己的测试改松后交付（`#<id=1>` vs `#1`）。社区 tau2-bench 统计（9876 条轨迹）：**这类假完成占单控制域失败的 45~48%，且 LLM judge 判不出来（AUROC ≤ 0.65）**。
+本地小模型（Qwen3.6-35B-A3B Q4 + 8GB 显存）不是不会做，而是**在长 agent 会话里会以可预测的方式退化**。
+社区的共识是：**瓶颈不在模型，在 harness**（tech4talk：同一 35B 换 scaffold，SWE-bench Hard +15.6pp）。
 
-### 3. 伪造验收：宣布 PASS 时验证者还没出结果
-主 agent spawn 子智能体做验收，wait 3 次超时后不等结论直接宣布验证通过——**回注消息在宣布之后 7 分钟才到达**。人工审计看出了"暗示完成"，但说不清违反了什么。
+本插件把"能由系统可靠完成的事"从模型肩上卸下来，让它只专注决策。
 
-### 4. 重复探测循环
-`wait_agent` 连续 3 次超时仍原样重试；`glob` 搜同一空目录 6 次。失败记录本身诱发重复——**Feedback-That-Backfires (arXiv 2608.23651) 实测：失败记录使重复调用概率从 0.06 升到 0.54**。
+## 承担的职责（两张表）
 
-### 5. 冗余 todo 更新
-todo 清单内容完全无变化仍连续写入（状态推进中断的信号）。
+### A. 行为治理（原 dsh-behavior-guard）
 
-### 6. 审计信号漏检
-手工复盘能发现的问题（如子智能体行为盲区、todo 冗余），周期审计只查两个高置信信号时全部漏掉；且审计员曾把「todo 状态更新」误判为浪费——**审计员本身也需要校准**。
+| 机制 | 触发 | 作用 |
+|---|---|---|
+| **L0 空手收尾** | 正文空 + 无工具调用 | 防"想完不干" |
+| **L1 文件声明校验** | 声称写入 X → stat X 不存在 | 环境级 verified finish |
+| **L2 产物贴正文** | 正文 ≥20 行代码 + 本轮无写调用 | 防"贴代码宣布完成" |
+| **L3 短确认词** | 正文 ≤3 字确认词 + 无调用 | 防「只输出好」回路 |
+| **D1 重复探测** | 同名调用 ≥3 且非生产 ≥2 | 注入"重复不是进展" |
+| **D2 同参双败** | 完全同参连续 2 次失败 | 纠正器 → 只读代执行 |
+| **D3 冗余 todo** | 清单 JSON 完全相同 ≥3 次 | 防空转 |
+| **D4 交付闸门** | present + 本轮无验收痕迹 | "做的人不能自己签字" |
+| **D5 风险门控审计** | 连续失败≥2 / 无进展≥6 / present 前 / 压缩后 / **MTP 置信 <0.65** | 只在风险点调 LLM 审计（SAG：算力 -66%、成功率 3 倍）|
+| **Critic 产物评审** | present 前 | 异质 rubric 四维度（达标/完整/可用/一致）|
+| **Planner 检查** | 首次 [VERIFY] 项 | 验"验收标准是否可验证" |
+| **verify-on-edit** | 每次 write/edit | 确定性语法检查（0 LLM）|
+| **present 深检** | present 前 | import 可解析/占位符/空文件/编码/重复段落/路径引用/交付物对照 |
 
-## 途径（怎么走到这个方案）
+### B. 任务连续性（原 dsh-task-continuity）
 
-1. **先手工复盘每个失效现场**，把"信号是什么"沉淀成 CritBank（人工确认的失效模式库）——避免"自动发现的垃圾经验污染规则库"（Hippo 论文的教训）
-2. **每个信号找论文/社区依据**，确认不是本地特例（见下表）
-3. **离线回放验证**：用真实失效会话的轨迹（`session.v4.jsonl`）逐个驱动插件，确认信号命中、注入文案精确（如"改用 step3 glob 结果中的路径"）
-4. **A/B 对照**：每个新机制先做开启/关闭对照（如 task-plan 闹钟 A/B：关=未建单，开=2/2 会话 step3-4 建单且及时更新）
-5. **假完成实验证伪**：try 模式切换、reasoning 预算硬切——**实验证明无效即回滚**（写进 CHANGELOG 的失败也是资产）
-6. **增量合并**：单职责插件（turn-continuation-guard / audit-loop）验证成熟后合并为本插件，共享轨迹收集与注入预算
+| 机制 | 触发 | 作用 |
+|---|---|---|
+| **P0 压缩存档** | 上下文压缩后 | 重注入 初始任务+最新指令+**任务合同**+已验证决策+开放问题+**已排除**+三问自检 |
+| **P1.5 todo 回灌** | 每次 todo_write 后 | 完整清单复述到最新位置（治"状态回卷/重问已答过的问题"）|
+| **P1 todo 闹钟** | 4 步无单 / 5 步停滞 | 清单纪律执行 |
 
-## 参考的论文与社区实践
+## 参考的论文（按机制）
 
-| 来源 | 用于 |
+| 机制 | 依据 |
 |---|---|
-| **tau2-bench 2026-06 统计**（9876 条轨迹） | 确认假完成是普遍失效模式（45-48%），LLM judge 无效 → 必须环境级判定（L1） |
-| **Feedback-That-Backfires (arXiv 2608.23651)** | D1 重复探测信号的存在依据（失败记录 0.06→0.54） |
-| **arXiv 2604.11465** | 审计-纠正角色分离（审计员无历史 = 独立性） |
-| **T3 (ICLR 2026)** | belief deviation 轨迹基线——审计员对照原始任务判定跑偏 |
-| **Calibrated to Act (arXiv 2608.27167)** | 包装权威性诱发过度承诺（6.5%→54%）→ 代验收必须是环境级三态判定，不是模型自评 |
-| **GUARD / Living-Harness / TSDS (arXiv 2601.09386)** | GUARD 的证据框架 + TSDS 的思考预算保险丝（错误路径自我合理化）|
-| **社区 verified finish / done gate 模式** | L1 的最小实现思路：完成判定必须对 agent 自己写不了的权威记录做（模型可以编造"我保存了"，编不出一份真实存在的文件） |
-| **Claude Code TodoWrite 闹钟模式（社区多篇）** | rounds_since_update 计数器 + system-reminder 回灌 |
+| L0-L3 早收尾 | 2026-11-07 实测「只输出好」回路（7 次现场）|
+| D1 重复探测 | Feedback-That-Backfires (2608.23651)：失败记录使重复概率 0.06→0.54 |
+| D4 交付闸门 | IOV Labs 896 任务实测（小模型虚假完成 13%，自检仅降 0.9pp）+ verify-gate |
+| D5 风险门控 | SAG（SKKU 2026-10）：gated critique 算力 -66%、成功率 3 倍；"precision intervention > constant supervision" |
+| MTP 置信信号 | SU (2609.05274) 的 draft cross-likelihood；零改动版：读 llama-server 的 draft acceptance |
+| Critic | 四角色标准（Planner/Executor/Critic/Verifier）；Apple 2026《Nine Judges, Two Effective Votes》：异质 rubric 才有独立信号 |
+| verify-on-edit | Qwen3.5-35B scaffold 实验：Hard 22.2%→37.8%（+15.6pp）|
+| P0 存档 | MemGPT (2310.08560) / Hippo (2610.24453) / ARC (ACL 2026) / StateForge (2609.32520) |
+| P1.5 回灌 | Manus recitation；U-Fold（浙大/阿里 2026） |
+| P1 闹钟 | Plan Declaration-Execution Gap (2609.38108)；Claude Code TodoWrite 实践 |
 
-## 信号清单（全部实测验证）
+## 成本（运行期，本机 800 t/s prefill / 27 t/s decode）
 
-| 信号 | 触发条件 | 动作 | 实测结果 |
-|---|---|---|---|
-| **L0 空手收尾** | 正文空 + 无工具调用 | steer"想清楚≠做完" | Q4@0.1 的 P4 现场（683 字计划后 EOS）命中 |
-| **L1 文件声明校验** | 正文声称写入 X → stat X 不存在 | steer"立即落盘" | 抓到 L2/L3 之外的新变体；26/26 单测 |
-| **L2 产物贴正文** | 正文 ≥20 行代码块 + 本轮无写调用 | steer"落盘或声明未落盘" | P2 现场（贴代码宣布完成）命中 |
-| **L3 短确认词** | 正文 ≤3 字确认词 + 无工具调用 | steer"执行下一步" | 「只输出好」回路命中 |
-| **D1 重复探测** | 同名调用≥3 且非生产≥2 | 注入"重复探测不是进展" | 漂移会话 step6 命中，修正精确到具体路径 |
-| **D2 同参双重失败** | 完全相同参数连续 2 次失败 | 纠正器 → 只读代执行 | 构造性消除传递损耗 |
-| **D3 冗余 todo** | todos JSON 完全相同 ≥3 次写入 | 注入"停止重复更新" | 双向验证：真实推进不误伤 / 真冗余命中 |
-| **周期审计** | 每 8 步（异常自适应 4 步）无历史 LLM 审计 | 注入修正（自适应窗口） | 伪造验收场景：从"模糊暗示"提升为"verifier 验证环节实际未生效"的精确判定 |
-| **代验收** | spawn 验收 wait 连续超时≥2 | 直接跑 verify_agent.py 三态判定（PASS/FAIL/INCONCLUSIVE） | wait×3 超时现场：FAIL 结论精确注入，伪造验收被打断 |
-| **共享注入预算** | 全部注入方式合计每轮 ≤3 | 防多信号叠加刷屏 | 合并版新增 |
+| 机制 | 成本 |
+|---|---|
+| L0-L3 / D1-D3 / MTP / verify-on-edit / 深检 | **≈0**（确定性代码，无 LLM）|
+| D5 审计 | 10-20s/次，仅风险点触发（每会话 2-5 次）|
+| Critic | 13-20s/次，present 前 ≤2 次 |
+| Planner | ~11s/任务 |
+| 合计 | 会话时长 +5~10%，换掉反复修改的 20-40% 返工风险 |
 
-## 解决到什么程度
+## 配置
 
-- **回归门禁 27 项全绿**（含 26 项 L0-L3 单测迁移 + 渲染断言 + 工具链）
-- 伪造验收场景重审：审计判定从模糊到**精确命中"验证环节未生效"**（轨迹完备化：todo/spawn/回注时间线全部可见）
-- 审计员误伤校准：todo 状态更新判定纪律（防误伤）+ 判定纪律持续迭代（两次误判被数据纠正）
-- 与 task-continuity / autostart 组成完整 harness：**预防（AGENTS.md 协议）→ 拦截（本插件）→ 存档（continuity）→ 进程保障（autostart）**
-- 生产运行于本地 35B agent 的日常会话
+见 `cordis.patch.yml`（含全部默认值）。本机路径项（`verifyScript` / `pythonPath` / `allowedRoots` /
+`specLogPath` / `critbankPath` / `ledgerPath`）**换机器必须改**。
 
-## 配置说明
-
-全部配置带默认值，`cordis.patch.yml` 里可覆盖。关键项：
-- `verifyScript` / `pythonPath` / `allowedRoots` / `workspaceRoot`：**本机路径，其他机器必须改**
-- `auditEverySteps: 8`（异常时自适应降到 4）
-- `maxContinuationsPerTurn: 1`：L 系信号每轮只救一次，避免把退化变成死循环
+外部依赖文件（可选，缺失则用内置默认）：
+- `bench/critbank.json`（失效教训库）
+- `bench/rubrics/*.json`（评审/审计/规划 rubric，可版本化）
+- `bench/_audit_feedback.jsonl`、`_compaction_ledger.jsonl`（自校准与压缩审计日志）
 
 ## License
 MIT

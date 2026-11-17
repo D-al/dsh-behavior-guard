@@ -23,7 +23,7 @@ import { writeFileSync, readFileSync, readdirSync, statSync, existsSync, appendF
 import path from 'node:path'
 import { execFile, execFileSync } from 'node:child_process'
 
-export const name = 'behavior-guard'
+export const name = 'agent-harness'
 
 const DEFAULTS = {
   enabled: true,
@@ -72,9 +72,22 @@ const DEFAULTS = {
   presentGateEnabled: true,
   maxPresentGatePerTurn: 1,
   maxPresentGatePerSession: 2,
-  probePath: '',
+  probePath: 'D:/Brain/workspace/bench/_agent_harness_loaded.json',
   // CritBank：结构化失效教训库（零 LLM 成本的检索式注入；U-Fold 检索式上下文思路）
   critbankPath: 'D:/Brain/workspace/bench/critbank.json',
+  // ── 任务连续性（2026-11-18 合并自 dsh-task-continuity）──
+  // P0 压缩存档（MemGPT/Hippo/ARC）+ P1.5 todo 回灌（Manus recitation）+ P1 todo 闹钟（2609.38108）
+  continuityEnabled: true,
+  archiveHeader: '[harness 任务存档] 本会话经历压缩。以下是自动维护的任务状态，以此为准：',
+  noTodoStepThreshold: 4,
+  staleStepThreshold: 5,
+  maxTodoInjectionsPerTurn: 1,
+  maxTodoInjectionsPerSession: 4,
+  todoEchoEnabled: true,
+  maxEchoItems: 12,
+  ledgerPath: 'D:/Brain/workspace/bench/_compaction_ledger.jsonl',
+  messageNoTodo: '[harness 执行检查] 这是一个多步任务，但你还没有用 todo_write 建立任务清单。立即停下：先调用 todo_write 写出完整步骤清单（每条 = 动词 + 目标 + 完成标准，末尾加 [VERIFY] 验证项），把第一项标为 in_progress，然后按清单顺序执行。',
+  messageStale: '[harness 执行检查] 你已经连续多步没有更新 todo 清单了。立即回到清单：把刚完成的项标为 completed，把下一项标为 in_progress，再继续执行。如果发现实际工作与清单偏离，先修订清单再继续。',
   // 审计员自校准：每次干预记录到 jsonl，3 步后结算"注入后是否还有新失败"（有效/无效）
   auditFeedbackPath: 'D:/Brain/workspace/bench/_audit_feedback.jsonl',
   // ── MTP 信心信号（2026-11-17，SU/SAG 的零改动代理）──
@@ -403,7 +416,10 @@ export function apply(ctx, config) {
       s = { initial: '', step: 0, trail: [], turnInjections: 0, auditing: false,
         // turn-guard L0-L3 状态（合并）
         turn: 0, turnStartedAt: undefined, toolCalls: 0, writeCalls: 0,
-        continuations: 0, totalContinuations: 0, last: undefined, sharedInjections: 0 }
+        continuations: 0, totalContinuations: 0, last: undefined, sharedInjections: 0,
+        // continuity 状态（initial 复用上面的字段）
+        latest: '', pendingArchive: false, pendingTodoEcho: false, lastTodos: null, todoCalls: 0, sinceLastTodo: 0,
+        turnTodoInjections: 0, sessionTodoInjections: 0, remindedNoTodo: false, rejectedItems: [] }
       states.set(id, s)
     }
     return s
@@ -426,6 +442,9 @@ export function apply(ctx, config) {
         s.continuations = 0
         s.last = undefined
         s.sharedInjections = 0
+        // continuity P1 计数重置
+        s.turnTodoInjections = 0
+        s.remindedNoTodo = false
         // D4 present-gate 本轮重置
         s.presentCalled = false
         s.spawnedThisTurn = false
@@ -444,11 +463,15 @@ export function apply(ctx, config) {
       if (event.type === 'compaction/prune' || event.type === 'compaction/summary') {
         // D5：压缩后是状态重建高危期，标记一次（审计门控会在此触发一次）
         s.justCompacted = true
+        s.pendingArchive = true
         return
       }
       if (event.type === 'user/message' && event.data?.source?.kind === 'user') {
         const t = blocksText(event.data.content).trim()
-        if (t && !t.startsWith('<system-reminder>')) s.initial = t.slice(0, 400)
+        if (t && !t.startsWith('<system-reminder>')) {
+          if (!s.initial) s.initial = t.slice(0, 400)
+          s.latest = t.slice(0, 1000)
+        }
         return
       }
       // v3.3 todo/write 观测：冗余更新检测（与上次 todos 内容完全一致 = 无意义调用）
@@ -459,6 +482,10 @@ export function apply(ctx, config) {
           const arr = Array.isArray(todos) ? todos : []
           const done = arr.filter((x) => x && x.status === 'completed').length
           s.todos = arr  // 供 present 前"交付物清单对照"使用
+          if (Array.isArray(arr) && arr.length > 0) {
+            s.lastTodos = arr
+            s.pendingTodoEcho = true
+          }
           // P2 Planner 检查：首次出现 [VERIFY] 项时标记（pre-step 里跑一次可验证性检查）
           if (s.plannerChecked !== true && cfg.plannerCheckEnabled) {
             const verifyItems = arr.filter((t) => String(t?.content ?? '').includes('[VERIFY]'))
@@ -483,6 +510,10 @@ export function apply(ctx, config) {
         } catch (e) { warn(`behavior-guard: todo 事件处理失败 ${String(e)}`) }
         return
       }
+      if (event.type === 'step/end') {
+        s.sinceLastTodo = (s.sinceLastTodo || 0) + 1
+        return
+      }
       if (event.type === 'tool/call') {
         // turn-guard：工具调用计数 + writeTools 计数（L2/L3 判定依据）
         s.toolCalls += 1
@@ -496,6 +527,11 @@ export function apply(ctx, config) {
           if (callName === 'pwsh' && fullArgs.includes('verify_agent')) s.verifyRan = true
           // D5 生产性调用标记（写/编辑/todo 更新 = 有进展）
           if (callName === 'write' || callName === 'edit' || callName === 'todo_write') s.lastStepProductive = true
+          // continuity P1：todo 调用计数
+          if (callName === 'todo_write') {
+            s.todoCalls = (s.todoCalls || 0) + 1
+            s.sinceLastTodo = 0
+          }
         }
         s.trail.push({ kind: 'call', name: String(event.data?.name ?? ''), args: fullArgs.slice(0, 200), fullArgs, step: event.data?.step })
         if (s.trail.length > 40) s.trail.shift()
@@ -530,6 +566,13 @@ export function apply(ctx, config) {
           c.result = txt.slice(0, isEvidence ? cfg.evidenceMaxChars : 80).replace(/\s+/g, ' ')
           if (isEvidence) c.fullEvidence = true
           // v3.2 代验收：write/edit 成功 = 记录最近产物路径（spawn 时继承）
+          if (status !== 'OK' && c) {
+            const item = `${c.name}(${String(c.args || '').slice(0, 90)}) → ${String(txt || '').slice(0, 80)}`
+            if (!s.rejectedItems.some((x) => x.slice(0, 120) === item.slice(0, 120))) {
+              s.rejectedItems.push(item)
+              if (s.rejectedItems.length > 6) s.rejectedItems.shift()
+            }
+          }
           if (status === 'OK' && (c.name === 'write' || c.name === 'edit')) {
             try {
               const a = JSON.parse(c.fullArgs || c.args || '{}')
@@ -1054,6 +1097,67 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
       const s = stateOf(agent.session?.id)
       if (!s || s.auditing) return decision
       s.step += 1
+
+      // ── continuity P0/P1.5/P1（任务连续性，2026-11-18 合并自 dsh-task-continuity）──
+      if (cfg.continuityEnabled) {
+        // P0：压缩后重注入任务存档（最高优先级）
+        if (s.pendingArchive && s.initial) {
+          const parts = [cfg.archiveHeader]
+          parts.push('【初始任务】' + s.initial)
+          if (s.latest && s.latest !== s.initial) parts.push('【最新用户指令】' + s.latest)
+          try {
+            const todos = Array.isArray(s.lastTodos) ? s.lastTodos : []
+            const verifyItems = todos.filter((t) => String(t?.content ?? '').includes('[VERIFY]'))
+            const doneItems = todos.filter((t) => t?.status === 'completed')
+            const openItems = todos.filter((t) => t?.status !== 'completed')
+            if (verifyItems.length) parts.push('【任务合同】' + verifyItems.map((t) => String(t.content).replace('[VERIFY]', '').trim()).join('；'))
+            if (doneItems.length) parts.push('【已验证决策】' + doneItems.slice(0, 8).map((t) => String(t.content).slice(0, 40)).join('；'))
+            if (openItems.length) parts.push('【开放问题】' + openItems.slice(0, 8).map((t) => (t?.status === 'in_progress' ? '◐' : '☐') + String(t.content).slice(0, 40)).join('；'))
+            if (Array.isArray(s.rejectedItems) && s.rejectedItems.length) parts.push('【已排除】' + s.rejectedItems.slice(-5).join('\n'))
+            parts.push('【压缩后自检】先回答三问再继续：①要完成什么？②已经证明了什么？③下一个安全的动作是什么？')
+            try {
+              appendFileSync(cfg.ledgerPath, JSON.stringify({
+                ts: new Date().toISOString(), session: String(agent.session?.id || '').slice(0, 8),
+                todos: todos.length, completed: doneItems.length, rejected: (s.rejectedItems || []).length, hasVerify: verifyItems.length,
+              }) + '\n')
+            } catch { /* ignore */ }
+          } catch { /* ignore */ }
+          s.pendingArchive = false
+          info(`behavior-guard: [P0] 压缩后重注入任务存档（初始 ${s.initial.length} 字）`)
+          const msg = createMessage(parts.join('\n'), 'task-continuity')
+          const messages = Array.isArray(decision?.messages) ? [...decision.messages, msg] : [msg]
+          return { ...decision, messages }
+        }
+        // P1.5：todo 回灌（recitation）
+        if (cfg.todoEchoEnabled && s.pendingTodoEcho && Array.isArray(s.lastTodos) && s.lastTodos.length > 0) {
+          s.pendingTodoEcho = false
+          const items = s.lastTodos.slice(0, cfg.maxEchoItems).map((t) => (t?.status === 'completed' ? '☑' : t?.status === 'in_progress' ? '◐' : '☐') + ' ' + String(t?.content ?? '').slice(0, 60))
+          const more = s.lastTodos.length > cfg.maxEchoItems ? `\n（另有 ${s.lastTodos.length - cfg.maxEchoItems} 项）` : ''
+          info(`behavior-guard: [P1.5] todo 回灌 ${s.lastTodos.length} 项`)
+          const msg = createMessage('[harness 状态复述] 你当前的 todo 清单（以此为准，不要重新从头追问已确认的信息）：\n' + items.join('\n') + more, 'task-continuity')
+          const messages = Array.isArray(decision?.messages) ? [...decision.messages, msg] : [msg]
+          return { ...decision, messages }
+        }
+        // P1：todo 闹钟（无单 / 停滞）
+        if ((s.turnTodoInjections || 0) < cfg.maxTodoInjectionsPerTurn && (s.sessionTodoInjections || 0) < cfg.maxTodoInjectionsPerSession) {
+          let text = ''
+          if (s.todoCalls === 0 && s.step >= cfg.noTodoStepThreshold && !s.remindedNoTodo) {
+            text = cfg.messageNoTodo
+            s.remindedNoTodo = true
+          } else if (s.todoCalls > 0 && (s.sinceLastTodo || 0) >= cfg.staleStepThreshold) {
+            text = cfg.messageStale
+            s.sinceLastTodo = 0
+          }
+          if (text) {
+            s.turnTodoInjections = (s.turnTodoInjections || 0) + 1
+            s.sessionTodoInjections = (s.sessionTodoInjections || 0) + 1
+            info(`behavior-guard: [P1] todo 闹钟注入 todoCalls=${s.todoCalls} step=${s.step}`)
+            const msg = createMessage(text, 'task-continuity')
+            const messages = Array.isArray(decision?.messages) ? [...decision.messages, msg] : [msg]
+            return { ...decision, messages }
+          }
+        }
+      }
 
       // ── P2 Planner 检查（首次 [VERIFY] 项，每会话 1 次，独立于审计预算）──
       if (cfg.plannerCheckEnabled && s.pendingPlannerCheck && s.plannerChecked !== true) {

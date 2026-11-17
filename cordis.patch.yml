@@ -1,26 +1,40 @@
-# Bundle patch：挂载 behavior-guard（行为治理全家桶）
-# L0-L3 早收尾拦截 + D1/D2/D3 确定性信号 + 周期审计（自适应窗口）
-# + 纠正器 + 只读代执行 + verify_agent 代验收 + todo 观测 + 共享注入预算
+# Bundle patch：挂载 agent-harness（行为治理 + 任务连续性，v2.0.0 合并）
+# = dsh-behavior-guard v1.2.0 + dsh-task-continuity v1.0.4 合并为一个包 =
+# 行为治理：L0-L3 早收尾拦截 / D1 重复探测 / D2 同参双败 / D3 冗余 todo / D4 交付闸门
+#           / D5 风险门控审计（含 MTP 信心信号）/ 纠正器 + 只读代执行 + 代验收
+#           / Critic 产物评审 / Planner 验收标准检查 / verify-on-edit / present 深度检查
+# 任务连续性：P0 压缩存档（合同/决策/开放项/已排除/三问）/ P1.5 todo 回灌 / P1 todo 闹钟
 - insert:
-    - id: behavior-guard
-      name: dsh-behavior-guard
+    - id: agent-harness
+      name: dsh-agent-harness
       config:
         enabled: true
         auditEverySteps: 8
-        auditEveryStepsAnomaly: 4
+        noProgressSteps: 6
         auditTimeoutMs: 90000
         correctorTimeoutMs: 90000
         evidenceTools: [glob, grep, pwsh, list_agents, job_output]
         evidenceMaxChars: 2000
+        auditEvidenceRounds: 2
         executorEnabled: true
         executorMaxChars: 4000
         maxInjectionsPerTurn: 1
         maxInjectionsPerSession: 4
+        sharedMaxPerTurn: 3
         verifyEnabled: true
         verifyScript: 'D:/Brain/workspace/bench/verify_agent.py'
         pythonPath: 'D:/Python/python.exe'
         verifyTimeoutMs: 120000
         verifyMinWaits: 2
+        verifyOnEditEnabled: true
+        deepCheckEnabled: true
+        criticEnabled: true
+        criticTimeoutMs: 90000
+        maxCriticPerSession: 2
+        plannerCheckEnabled: true
+        presentGateEnabled: true
+        maxPresentGatePerTurn: 1
+        maxPresentGatePerSession: 2
         maxContinuationsPerTurn: 1
         maxContinuationsPerSession: 20
         maxBodyChars: 3
@@ -29,11 +43,17 @@
         blockCodeWithoutWrite: true
         minCodeLines: 20
         requirePriorToolCall: true
+        specLogPath: 'D:/Brain/dsh-data/profiles/desktop/node_modules/dsh-llama-server-autostart/llama-server-run.log'
+        specAcceptanceMin: 0.65
+        specSignalEnabled: true
+        critbankPath: 'D:/Brain/workspace/bench/critbank.json'
+        auditFeedbackPath: 'D:/Brain/workspace/bench/_audit_feedback.jsonl'
+        ledgerPath: 'D:/Brain/workspace/bench/_compaction_ledger.jsonl'
         workspaceRoot: 'C:/Users/Ad/Documents/deepseek-harness/default-workspace'
-        probePath: 'D:/Brain/workspace/bench/_audit_loop_loaded.json'
         allowedRoots:
           - 'C:/Users/Ad/Documents/deepseek-harness/default-workspace'
           - 'D:/Brain/workspace'
           - 'D:/Brain/dsh-data'
           - 'D:/llama.cpp'
           - 'D:/GGUF_Download'
+        probePath: 'D:/Brain/workspace/bench/_agent_harness_loaded.json'
