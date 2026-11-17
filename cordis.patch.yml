@@ -1,0 +1,38 @@
+# Bundle patch：挂载 behavior-guard（行为治理全家桶）
+# L0-L3 早收尾拦截 + D1/D2/D3 确定性信号 + 周期审计（自适应窗口）
+# + 纠正器 + 只读代执行 + verify_agent 代验收 + todo 观测 + 共享注入预算
+- insert:
+    - id: behavior-guard
+      name: dsh-behavior-guard
+      config:
+        enabled: true
+        auditEverySteps: 8
+        auditEveryStepsAnomaly: 4
+        auditTimeoutMs: 90000
+        correctorTimeoutMs: 90000
+        evidenceTools: [glob, grep, pwsh, list_agents, job_output]
+        evidenceMaxChars: 2000
+        executorEnabled: true
+        executorMaxChars: 4000
+        maxInjectionsPerTurn: 1
+        maxInjectionsPerSession: 4
+        verifyEnabled: true
+        verifyScript: 'D:/Brain/workspace/bench/verify_agent.py'
+        pythonPath: 'D:/Python/python.exe'
+        verifyTimeoutMs: 120000
+        verifyMinWaits: 2
+        maxContinuationsPerTurn: 1
+        maxContinuationsPerSession: 20
+        maxBodyChars: 3
+        checkFileClaims: true
+        blockEmptyFinish: true
+        blockCodeWithoutWrite: true
+        minCodeLines: 20
+        requirePriorToolCall: true
+        workspaceRoot: 'C:/Users/Ad/Documents/deepseek-harness/default-workspace'
+        allowedRoots:
+          - 'C:/Users/Ad/Documents/deepseek-harness/default-workspace'
+          - 'D:/Brain/workspace'
+          - 'D:/Brain/dsh-data'
+          - 'D:/llama.cpp'
+          - 'D:/GGUF_Download'
