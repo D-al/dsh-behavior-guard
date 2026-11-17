@@ -2,6 +2,26 @@
 
 所有迭代以本地时间记录（UTC+8）。格式参考 Keep a Changelog。
 
+## [1.1.0] - 2026-11-18 00:45
+
+### Added（P1 Critic + P2 Planner 检查，角色架构完整化）
+- **Critic（产物质量评审）**：present 前触发，只读产物文件（≤3000 字），按**异质 rubric**
+  四维度（达标性/完整性/可用性/一致性）输出 ACCEPT/REJECT/UNCERTAIN。
+  REJECT → steer 带"最关键修正动作"；ACCEPT → 放行（等价独立验收，不再触发 D4 闸门）；
+  UNCERTAIN → 回退 D4。每会话 ≤2 次、超时 90s。
+  依据：四角色标准（Planner/Executor/Critic/Verifier）；Apple 2026——异质 rubric 才有独立信号。
+- **Planner 检查（P2）**：首次出现 [VERIFY] 项时，验"验收标准是否可验证"
+  （可执行判据 vs 感受性描述），不可验证则注入改写要求。每会话 1 次。
+  依据：verify-gate 的 criteria-at-birth；spec-driven——一次成功 vs 四轮修正的差别来自 spec 精确度。
+
+### 运行期成本（本机 800 t/s prefill / 27 t/s decode）
+- Critic：10-20s × 1-2 次/会话 = +15~40s（+3~8%）
+- Planner：~11s × 1 次/任务 = +2%
+- 合计 P1+P2 全开：+5~10% 会话时长；净收益为正（省 2-3 轮返工 60~180s/任务）
+
+### Tests
+- 26/26 + 16/16；AGENTS.md 重整为四段结构（铁律/开工/做工/收工）3873 token（<4096）
+
 ## [1.0.9] - 2026-11-18 00:30
 
 ### Changed（P0 角色架构：零成本 schema 化）

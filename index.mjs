@@ -86,6 +86,14 @@ const DEFAULTS = {
   specAcceptanceMin: 0.65,
   // Agent-as-Judge 定向取证：审计员可请求只读取证的最大轮次（每轮 +1 LLM +1 工具）
   auditEvidenceRounds: 2,
+  // P1 Critic：present 前产物质量评审（异质 rubric，每会话 ≤2 次，1 次 LLM 10-20s）
+  criticEnabled: true,
+  criticTimeoutMs: 90000,
+  maxCriticPerSession: 2,
+  // P2 Planner 检查：首次 todo 的 [VERIFY] 项是否可验证（1 次 LLM ~11s/任务）
+  plannerCheckEnabled: true,
+  plannerCheckTimeoutMs: 90000,
+  maxPlannerCheckPerSession: 1,
   specSignalEnabled: true
 }
 
@@ -314,6 +322,13 @@ export function apply(ctx, config) {
           const sig = JSON.stringify(todos)
           const arr = Array.isArray(todos) ? todos : []
           const done = arr.filter((x) => x && x.status === 'completed').length
+          // P2 Planner 检查：首次出现 [VERIFY] 项时标记（pre-step 里跑一次可验证性检查）
+          if (s.plannerChecked !== true && cfg.plannerCheckEnabled) {
+            const verifyItems = arr.filter((t) => String(t?.content ?? '').includes('[VERIFY]'))
+            if (verifyItems.length) {
+              s.pendingPlannerCheck = verifyItems.map((t) => String(t.content).slice(0, 200))
+            }
+          }
           s.trail.push({ kind: 'todo', name: 'todo', args: sig.slice(0, 200), fullArgs: sig, step: s.step,
             status: 'OK', result: arr.length + '项(完成' + done + ') ' + String(arr[0]?.content || '').slice(0, 60) })
           if (s.trail.length > 40) s.trail.shift()
@@ -563,6 +578,65 @@ ${evidence || '(无证据可用)'}
     return { failDetail, evidence }
   }
 
+  // ── P2 Planner 检查：首次 [VERIFY] 项是否"可验证"（1 次 LLM，每会话 1 次）──
+  const PLANNER_PROMPT = (task, items) => `你是计划评审（Planner 视角）。判断下面任务的验收项是否"可验证"。
+
+【任务】${task || '(未知)'}
+
+【验收项】
+${items.map((x, i) => `${i + 1}. ${x}`).join('\n')}
+
+"可验证" = 能由命令/文件/阈值/输出直接判定（如"运行 agentlab 7/7 通过"、"文件存在且含 X 段"）。
+"不可验证" = 只有感受性描述（如"确认功能正常"、"确保质量良好"）。
+
+只输出 JSON（无其他文字）：
+{"verdict":"OK"}
+或
+{"verdict":"UNVERIFIABLE","items":["第2项：'确保质量良好'——改写为具体判据"],"fix":"一句话给出更可验证的写法"}`
+  async function runPlannerCheck(s) {
+    const items = s.pendingPlannerCheck
+    if (!Array.isArray(items) || items.length === 0) return null
+    return callLLM(PLANNER_PROMPT(s.initial, items), 400, cfg.plannerCheckTimeoutMs || 90000)
+  }
+
+  // ── P1 Critic：产物质量评审（异质 rubric；只读产物，不看执行过程）──
+  const CRITIC_PROMPT = (task, product, content) => `你是独立的产物评审员（Critic）。你只评审产物本身，不看执行过程，也没有参与制作。
+
+【任务要求】${task || '(未知)'}
+
+【产物】${product}
+
+【产物内容】
+${content}
+
+按四个维度各判一行（达标 / 不达标 / 无法判断）：
+1. 达标性：是否覆盖任务要求的每一项
+2. 完整性：是否有空缺、占位符、未实现部分、明显截断
+3. 可用性：按任务要求能直接用/直接跑通吗
+4. 一致性：内部有无自相矛盾
+
+只输出 JSON（无其他文字）：
+{"verdict":"ACCEPT","reasons":["1 达标","2 达标","3 达标","4 达标"]}
+或
+{"verdict":"REJECT","reasons":["3 不达标: 缺少 main 入口"],"fix":"一句最关键的修正动作"}
+或
+{"verdict":"UNCERTAIN","reasons":["无法判断: 产物内容为空"]}`
+
+  async function runCritic(s) {
+    const product = s.lastProduct
+    if (!product) return null
+    let content = ''
+    try {
+      const st = statSync(product, { throwIfNoEntry: false })
+      if (!st || !st.isFile()) return null
+      content = readFileSync(product, 'utf8').slice(0, 3000)
+    } catch {
+      return null
+    }
+    if (!content.trim()) return null
+    return callLLM(CRITIC_PROMPT(s.initial, product, content), 500, cfg.criticTimeoutMs || 90000)
+  }
+
   async function runCorrector(s) {
     const { failDetail, evidence } = collectCorrectorInput(s)
     if (!failDetail) return null
@@ -729,10 +803,44 @@ ${evidence || '(无证据可用)'}
       if (state.continuations >= cfg.maxContinuationsPerTurn) return
       if (state.totalContinuations >= cfg.maxContinuationsPerSession) return
 
+      // ── P1 Critic：present 前的产物质量评审（异质 rubric，与过程审计不同视角）──
+      // 依据：四角色标准（Planner/Executor/Critic/Verifier）中 Critic 是"对照意图评产物质量"；
+      // Apple 2026：异质 rubric 才能产生独立信号（同 rubric 重复=伪多样性）。
+      // 成本：1 次 LLM（10-20s），每会话 ≤2 次，只在 present 触发。
+      if (
+        cfg.criticEnabled &&
+        state.presentCalled === true &&
+        state.criticAccepted !== true &&
+        (state.criticCount || 0) < cfg.maxCriticPerSession
+      ) {
+        state.criticCount = (state.criticCount || 0) + 1
+        try {
+          const critic = await runCritic(state)
+          if (critic && critic.verdict === 'ACCEPT') {
+            state.criticAccepted = true
+            info(`behavior-guard: [Critic] ACCEPT session=${sessionId}`)
+          } else if (critic && critic.verdict === 'REJECT') {
+            state.sharedInjections += 1
+            agent.steer(createSteeringMessage(
+              '[harness 产物评审 C-REJECT] 独立评审员（只看产物不看过程）判定产物未达验收要求：' +
+              (Array.isArray(critic.reasons) ? critic.reasons.join('；') : String(critic.reasons || '')) +
+              '。最关键的修正：' + String(critic.fix || '补齐未达标项后重新交付') +
+              '。修正后再 present。',
+              'behavior-guard'
+            ))
+            info(`behavior-guard: [Critic] REJECT session=${sessionId} — ${String(critic.fix || '').slice(0, 60)}`)
+            return
+          } else {
+            info(`behavior-guard: [Critic] UNCERTAIN session=${sessionId}（回退验收闸门）`)
+          }
+        } catch { /* 评审失败不阻断 */ }
+      }
+
       // ── D4 present-gate：present 声明交付但本轮无独立验收痕迹（verify-gated completion）──
       if (
         cfg.presentGateEnabled &&
         state.presentCalled === true &&
+        state.criticAccepted !== true &&
         state.spawnedThisTurn !== true &&
         state.verifyRan !== true &&
         (state.presentGateCount || 0) < cfg.maxPresentGatePerTurn &&
@@ -778,6 +886,27 @@ ${evidence || '(无证据可用)'}
       const s = stateOf(agent.session?.id)
       if (!s || s.auditing) return decision
       s.step += 1
+
+      // ── P2 Planner 检查（首次 [VERIFY] 项，每会话 1 次，独立于审计预算）──
+      if (cfg.plannerCheckEnabled && s.pendingPlannerCheck && s.plannerChecked !== true) {
+        s.plannerChecked = true
+        try {
+          const pc = await runPlannerCheck(s)
+          s.pendingPlannerCheck = null
+          if (pc && pc.verdict === 'UNVERIFIABLE') {
+            const itemsTxt = Array.isArray(pc.items) && pc.items.length ? pc.items.join('；') : '(见验收项)'
+            info(`behavior-guard: [Planner] 验收项不可验证 — ${String(itemsTxt).slice(0, 60)}`)
+            const msg = createMessage(
+              '[harness 计划评审] 你的验收项里有不可验证的表述：' + itemsTxt +
+              '。修正为可执行判据：' + String(pc.fix || '写出具体命令/文件/阈值') +
+              '。请更新 todo 的 [VERIFY] 项后继续。',
+              'behavior-guard'
+            )
+            const messages = Array.isArray(decision?.messages) ? [...decision.messages, msg] : [msg]
+            return { ...decision, messages }
+          }
+        } catch { /* ignore */ }
+      }
       // v3.3 共享每轮注入预算（audit 注入 + turn-guard steer 合计，防叠加刷屏）
       if (s.sharedInjections >= cfg.sharedMaxPerTurn) return decision
 
