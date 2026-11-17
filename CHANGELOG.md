@@ -2,6 +2,23 @@
 
 所有迭代以本地时间记录（UTC+8）。格式参考 Keep a Changelog。
 
+## [1.0.6] - 2026-11-17 23:55
+
+### Added（MTP 信心信号 —— 阶段 1，零改动落地）
+- **读 llama-server 日志的 `draft acceptance` 作为 MTP 信心信号**：llama-server 每次请求
+  都会打印 `draft acceptance = 0.89 (X accepted / Y generated)`——MTP draft 头与主模型的一致率。
+  **低接受率 = 模型在犹豫/漂移（不确定）**，与 SU（arXiv 2609.05274）的 draft cross-likelihood
+  同源，只是聚合到请求级。每次读取只扫日志尾部 16KB，**零额外推理、零显存**（<0.01ms/次）。
+- D5 审计门控新增第 5 信号：`draft acceptance < 0.65` → `low-draft-acceptance` 触发审计。
+  基线：正常会话 0.84~0.95（实测 78 条记录），<0.65 为显著异常。
+- 这是"多审计员"的正确替代方向：**信号源多样性（MTP/重复/交付/压缩）>> judge 数量多样性**
+  （Apple 2026-06《Nine Judges, Two Effective Votes》：9 个 LLM judge ≈ 2 个独立投票，
+  同家族错误高度相关；JudgePanel 2608.29168 用 1 个 compact judge 蒸馏 panel 能力）。
+
+### Note
+- 阶段 2（per-token surprisal 需改 llama-server C++ 输出）经评估**不做**：门控是"每步决策"，
+  请求级聚合信号（接受率）已足够；per-token 只在 postmortem 诊断"哪个 token 开始崩"时才有价值。
+
 ## [1.0.5] - 2026-11-17 23:45
 
 ### Added（审计员完善：校准闭环 + 盲点补齐 + 弃权通道）

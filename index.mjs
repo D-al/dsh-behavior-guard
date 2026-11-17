@@ -19,7 +19,7 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import { writeFileSync, readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
+import { writeFileSync, readFileSync, readdirSync, statSync, existsSync, appendFileSync, openSync, readSync, closeSync } from 'node:fs'
 import path from 'node:path'
 import { execFile } from 'node:child_process'
 
@@ -76,7 +76,15 @@ const DEFAULTS = {
   // CritBank：结构化失效教训库（零 LLM 成本的检索式注入；U-Fold 检索式上下文思路）
   critbankPath: 'D:/Brain/workspace/bench/critbank.json',
   // 审计员自校准：每次干预记录到 jsonl，3 步后结算"注入后是否还有新失败"（有效/无效）
-  auditFeedbackPath: 'D:/Brain/workspace/bench/_audit_feedback.jsonl'
+  auditFeedbackPath: 'D:/Brain/workspace/bench/_audit_feedback.jsonl',
+  // ── MTP 信心信号（2026-11-17，SU/SAG 的零改动代理）──
+  // llama-server 每次请求都会打印 "draft acceptance = 0.89 (X accepted / Y generated)"——
+  // 这是 MTP draft 头与主模型的一致率：低接受率 = 模型在犹豫/漂移（不确定），
+  // 与 SU（arXiv 2609.05274）的 draft cross-likelihood 同源，只是聚合到请求级（零改动）。
+  // 阶段 1 只读日志尾部，不触发额外推理；< threshold 时作为审计门控信号之一。
+  specLogPath: 'D:/Brain/dsh-data/profiles/desktop/node_modules/dsh-llama-server-autostart/llama-server-run.log',
+  specAcceptanceMin: 0.65,
+  specSignalEnabled: true
 }
 
 // ── CritBank 经验检索（模块级加载一次）──
@@ -95,6 +103,22 @@ function matchCritbank(s) {
     .sort((a, b) => b.score - a.score)
     .slice(0, 2)
     .map((x) => `【相关教训 ${x.c.id}】${x.c.lesson}`)
+}
+
+// ── MTP 信心信号（读 llama-server 日志尾部的 draft acceptance，零额外推理）──
+function readSpecAcceptance(logPath) {
+  try {
+    const st = statSync(logPath)
+    const len = Math.min(st.size, 16384)
+    const buf = Buffer.alloc(len)
+    const fd = openSync(logPath, 'r')
+    try { readSync(fd, buf, 0, len, st.size - len) } finally { closeSync(fd) }
+    const text = buf.toString('utf8')
+    const m = [...text.matchAll(/draft acceptance = ([0-9.]+)/g)].pop()
+    return m ? Number.parseFloat(m[1]) : null
+  } catch {
+    return null
+  }
 }
 
 
@@ -790,8 +814,12 @@ ${evidence || '(无证据可用)'}
       //   (d) 刚经历压缩（状态重建高危期；由 s.justCompacted 标记，处理一次即清）
       //   确定性信号（D1/D2/D3）仍然每步零成本检查——那部分不变。
       const badCount = s.trail.filter((x) => x.kind === 'call' && (x.status === 'FAIL' || x.status === 'UNPRODUCTIVE')).length
+      // MTP 信心信号：读 llama-server 日志尾部最后一条 draft acceptance（零额外推理）
+      const specAcc = cfg.specSignalEnabled ? readSpecAcceptance(cfg.specLogPath) : null
+      s.specAcceptance = specAcc
       let gateReason = ''
       if (badCount >= 2) gateReason = 'repeated-failure'
+      else if (specAcc !== null && specAcc < cfg.specAcceptanceMin) gateReason = 'low-draft-acceptance'
       else if ((s.noProgressSteps || 0) >= (cfg.noProgressSteps || 6)) gateReason = 'no-progress'
       else if (s.presentCalled === true) gateReason = 'pre-delivery'
       else if (s.justCompacted === true) gateReason = 'post-compaction'
