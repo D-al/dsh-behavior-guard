@@ -28,6 +28,11 @@ export const name = 'behavior-guard'
 const DEFAULTS = {
   enabled: true,
   auditEverySteps: 8,
+  // D5 审计门控（SAG gated critique，2026-11-17）：不再按固定步数审计，改风险信号触发
+  // （连续失败≥2 / 无进展≥noProgressSteps / present 前 / 压缩后）。
+  // 依据：SAG（SKKU/Soongsil 2026-10）算力 -66% / 成功率 3 倍；"precision intervention
+  // > constant supervision"。确定性信号 D1/D2/D3 仍每步零成本检查。
+  noProgressSteps: 6,
   endpoint: 'http://127.0.0.1:8081/v1/chat/completions',
   model: 'Qwen3.6-35B-A3B-UD-Q4_K_XL',
   auditTimeoutMs: 90000,
@@ -239,6 +244,14 @@ export function apply(ctx, config) {
       if (event.type === 'assistant/message') {
         // turn-guard：记录本轮最后的 assistant 正文与工具调用数（L0-L3 判定依据）
         s.last = summarizeAssistant(event.data?.message)
+        // D5 无进展计数：上一步没有生产性调用（write/edit/todo_write）则 +1，否则清零
+        s.noProgressSteps = s.lastStepProductive ? 0 : (s.noProgressSteps || 0) + 1
+        s.lastStepProductive = false
+        return
+      }
+      if (event.type === 'compaction/prune' || event.type === 'compaction/summary') {
+        // D5：压缩后是状态重建高危期，标记一次（审计门控会在此触发一次）
+        s.justCompacted = true
         return
       }
       if (event.type === 'user/message' && event.data?.source?.kind === 'user') {
@@ -281,6 +294,8 @@ export function apply(ctx, config) {
           if (callName === 'present') s.presentCalled = true
           if (callName === 'spawn_teammate') s.spawnedThisTurn = true
           if (callName === 'pwsh' && fullArgs.includes('verify_agent')) s.verifyRan = true
+          // D5 生产性调用标记（写/编辑/todo 更新 = 有进展）
+          if (callName === 'write' || callName === 'edit' || callName === 'todo_write') s.lastStepProductive = true
         }
         s.trail.push({ kind: 'call', name: String(event.data?.name ?? ''), args: fullArgs.slice(0, 200), fullArgs, step: event.data?.step })
         if (s.trail.length > 40) s.trail.shift()
@@ -557,8 +572,12 @@ args 里的路径必须改写为短相对路径（如 memory/2026-11-16.md），
   function formatExecutorResult(pkg, exec) {
     const argsStr = JSON.stringify(pkg.args ?? {}, null, 0)
     if (!exec.ok) {
-      // 代执行失败（安全边界/目标不存在）→ 降级为 v2 指令注入，并附上失败原因
-      return `[harness 系统修正] 独立纠正器建议调用 ${pkg.tool}，参数：${argsStr}（理由：${pkg.reason || '见证据'}）。代执行未能完成：${exec.error}。请你按上述参数自行调用一次核实。`
+      // 代执行失败（安全边界/目标不存在）→ 降级注入。
+      // ⚠ 2026-11-17 实证修正：此前把纠正器猜的路径原样写进上下文（"目标不存在 <猜测路径>"），
+      // 该失败信息成为干扰源（会话里注入后模型反而进入重问循环）。现在只给方向性指引，
+      // 不把未经验证的猜测路径写进上下文。
+      return `[harness 系统修正] 独立纠正器认为你陷入了「${exec.error && String(exec.error).includes('不存在') ? '目标定位错误' : pkg.tool + ' 调用方式问题'}」（理由：${pkg.reason || '见证据'}）。` +
+        `不要原样重试上一次调用：换一种方法核实目标（glob 搜工作区 / es.exe 全盘搜索 / 用已知短路径重新定位），或向用户确认目标位置。`
     }
     if (exec.kind === 'list') {
       return `[harness 系统修正+代执行] 独立纠正器确定了正确目标（${pkg.reason || '见证据'}），且已代为执行目录列举，结果如下。\n目录：${exec.target}\n内容：\n${exec.content}\n\n请基于以上事实继续任务——无需重新调用工具，也不要改动正确参数。`
@@ -737,13 +756,26 @@ args 里的路径必须改写为短相对路径（如 memory/2026-11-16.md），
         return decision
       }
 
-      // v3.2 自适应窗口：轨迹异常（FAIL/UNPRODUCTIVE）时审计加密（8→4 步）
+      // 审计触发门控（2026-11-17 D5，SAG 原则 gated critique）：
+      //   "precision intervention > constant supervision"——SAG（SKKU/Soongsil 2026-10）
+      //   算力 -66% / 成功率 3 倍。固定周期（每 N 步）与真实风险无关，改为风险信号门控：
+      //   (a) 轨迹中 FAIL/UNPRODUCTIVE ≥2（D2 已确定性覆盖，此处置门控开启）
+      //   (b) 无进展：连续 ≥ noProgressSteps 步无 write 且无 todo 更新（漂移高危）
+      //   (c) 本轮 present 已调用（交付前 = 风险最高点，与 D4 合流）
+      //   (d) 刚经历压缩（状态重建高危期；由 s.justCompacted 标记，处理一次即清）
+      //   确定性信号（D1/D2/D3）仍然每步零成本检查——那部分不变。
       const badCount = s.trail.filter((x) => x.kind === 'call' && (x.status === 'FAIL' || x.status === 'UNPRODUCTIVE')).length
-      const interval = badCount >= 2 ? cfg.auditEveryStepsAnomaly : cfg.auditEverySteps
-      if (s.step % interval !== 0) return decision
+      let gateReason = ''
+      if (badCount >= 2) gateReason = 'repeated-failure'
+      else if ((s.noProgressSteps || 0) >= (cfg.noProgressSteps || 6)) gateReason = 'no-progress'
+      else if (s.presentCalled === true) gateReason = 'pre-delivery'
+      else if (s.justCompacted === true) gateReason = 'post-compaction'
+      if (!gateReason) return decision
       if (s.turnInjections >= cfg.maxInjectionsPerTurn) return decision
       if (sessionInjections >= cfg.maxInjectionsPerSession) return decision
       if (!s.trail.length) return decision
+      s.justCompacted = false
+      info(`audit-loop: [D5] 审计门控触发（${gateReason}）step=${s.step}`)
 
       s.auditing = true
       let text = null
