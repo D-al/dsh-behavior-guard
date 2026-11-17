@@ -2,6 +2,25 @@
 
 所有迭代以本地时间记录（UTC+8）。格式参考 Keep a Changelog。
 
+## [1.0.5] - 2026-11-17 23:45
+
+### Added（审计员完善：校准闭环 + 盲点补齐 + 弃权通道）
+- **审计员自校准闭环**：每次审计干预写入 `_audit_feedback.jsonl`（gate 类型/step/时间），
+  3 步后自动结算"注入后是否有新失败"（有效/无效）→ `auditor_metrics.py` 按门控统计有效率，
+  有效率 <50% 的门控提示收紧——回答"谁审计审计员"（Agnost AI 校准方法论：per-type precision/recall）
+- **审计 prompt 加 D 类检查（遗漏/omission）**：SLEIGHT-Bench（Anthropic Fellows 2026-05）
+  实测 omission 是 per-step 检查最弱处（40 条规避轨迹中 omission/N-hops/jailbreak 类 0% 检出）
+- **弃权通道（UNCERTAIN）**：证据不足时审计员输出"不可确定"而不是被迫给 OK/ISSUE
+  （AGNOST 原则：必须保留 insufficient-evidence 输出；也不放行——held-out gate 原则）
+
+### Fixed
+- **纠正器路径规则修正**（猜路径实证）：从"改写为短相对路径"改为"只能原样取自证据文本，
+  不得推断/改写；没有就 ask_user/abandon"——此前该规则诱导纠正器拼出不存在的路径
+  （memory/dsh-session-trash-bin/package.json），注入后成为干扰源
+
+### Tests
+- 26/26（turn-guard）+ 14/14（new_guards）
+
 ## [1.0.4] - 2026-11-17 23:35
 
 ### Added

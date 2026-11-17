@@ -74,7 +74,9 @@ const DEFAULTS = {
   maxPresentGatePerSession: 2,
   probePath: '',
   // CritBank：结构化失效教训库（零 LLM 成本的检索式注入；U-Fold 检索式上下文思路）
-  critbankPath: 'D:/Brain/workspace/bench/critbank.json'
+  critbankPath: 'D:/Brain/workspace/bench/critbank.json',
+  // 审计员自校准：每次干预记录到 jsonl，3 步后结算"注入后是否还有新失败"（有效/无效）
+  auditFeedbackPath: 'D:/Brain/workspace/bench/_audit_feedback.jsonl'
 }
 
 // ── CritBank 经验检索（模块级加载一次）──
@@ -413,15 +415,17 @@ export function apply(ctx, config) {
 【最近工具轨迹（状态三档：OK=有进展 / FAIL=报错 / UNPRODUCTIVE=超时或空结果无进展）】
 ${trail}
 
-检查三类明确问题：
+检查四类明确问题（只报能由上面事实直接支撑的）：
 A. 重复失败或重复非生产：同一目标的 FAIL 或 UNPRODUCTIVE 结果出现 2 次以上。
 B. 跑偏：出现了与任务明显无关的动作。
 C. 重复探测无进展：同一工具带相同参数连续调用 3 次以上（轨迹标[连续第N次]）。
+D. 遗漏（omission）：本该发生但没发生——任务要求的关键步骤（验证/写入/交付）在轨迹里找不到对应动作。
+   注意：只有当你明确知道"必须做却没做"时才报 D；不确定就不要报。
 
-只输出 JSON（无其他文字）：
+只输出 JSON（无其他文字），三选一：
 {"verdict":"OK"}
-或
-{"verdict":"ISSUE","issue":"一句话指出哪个 step 什么问题","fix":"一句话修正指令，直接命令下一步该做什么"}`
+{"verdict":"ISSUE","issue":"一句话指出哪个 step 什么问题","fix":"一句话修正指令，直接命令下一步该做什么"}
+{"verdict":"UNCERTAIN","reason":"证据不足以判断（一句话）"}`
 
   const CORRECTOR_PROMPT = (task, failDetail, evidence) => `你是独立纠正器。主 agent 在执行任务时陷入重复失败，你来依据环境事实确定正确的下一步参数。你没有参与之前的工作，只能依据下面给出的证据。
 
@@ -443,9 +447,9 @@ ${evidence || '(无证据可用)'}
 注意：args 必须是可直接调用的完整参数（严格 JSON 对象），不要省略号。
 参数 schema 必须与真实工具一致（read: {file_path}; glob: {pattern}; pwsh: {command}），
 禁止编造参数名或使用其他工具的参数。
-路径约束：若目标在工作区 junction 覆盖范围内（p/ bench/ memory/ dsh/ wb/ llama/ gguf/ 任一前缀可达），
-args 里的路径必须改写为短相对路径（如 memory/2026-11-16.md），禁止 70+ 字符的绝对路径——
-主模型抄写长路径会逐字漂移（实测）。`
+路径规则（2026-11-17 实证修正：猜路径会造成注入干扰）：**路径只能原样取自上面的证据文本**——
+不得改写、不得缩短、不得推断未出现过的路径。证据里没有可用的完整路径时，输出 ask_user 或 abandon，
+绝不要自己拼一个"看起来对"的路径。`
 
   async function callLLM(prompt, maxTokens, timeoutMs) {
     const ctrl = new AbortController()
@@ -798,10 +802,28 @@ args 里的路径必须改写为短相对路径（如 memory/2026-11-16.md），
       s.justCompacted = false
       info(`audit-loop: [D5] 审计门控触发（${gateReason}）step=${s.step}`)
 
+      // ── 审计员自校准闭环（2026-11-17，文献驱动）──
+      // 结算上一次干预（3 步后看失败信号是否消失 = 采纳/有效），写 feedback jsonl。
+      try {
+        if (s.auditEval && s.step - s.auditEval.step >= 3) {
+          const badNow = s.trail.filter((x) => x.kind === 'call' && (x.status === 'FAIL' || x.status === 'UNPRODUCTIVE')).length
+          appendFileSync(cfg.auditFeedbackPath, JSON.stringify({
+            ...s.auditEval, badNow, effective: badNow === 0, stepNow: s.step,
+          }) + '\n')
+          s.auditEval = null
+        }
+      } catch { /* ignore */ }
+
       s.auditing = true
       let text = null
       try {
         const audit = await runAudit(s)
+        // 弃权通道（AGNOST 原则：证据不足必须可输出"不可确定"，不得被迫给 OK/ISSUE）
+        if (audit && audit.verdict === 'UNCERTAIN') {
+          info(`audit-loop: 审计弃权（证据不足）— ${String(audit.reason || '').slice(0, 60)}`)
+          s.auditing = false
+          return decision
+        }
         if (audit && audit.verdict === 'ISSUE') {
           info(`audit-loop: 审计发现问题 — ${String(audit.issue).slice(0, 80)}`)
           // v2：交给纠正器产出修正包；失败则降级到 v1 的 fix 文本
@@ -836,6 +858,10 @@ args 里的路径必须改写为短相对路径（如 memory/2026-11-16.md），
       sessionInjections += 1
       s.sharedInjections += 1
       s.trail = [] // 修正后重新观察
+      // 自校准：记录本次干预（3 步后结算有效性：注入后 3 步内无新失败 = 有效）
+      try {
+        s.auditEval = { ts: new Date().toISOString(), kind: 'audit', gate: gateReason, step: s.step }
+      } catch { /* ignore */ }
 
       const msg = createMessage(text, 'audit-loop')
       const messages = Array.isArray(decision?.messages) ? [...decision.messages, msg] : [msg]
