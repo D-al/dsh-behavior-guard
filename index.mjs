@@ -238,6 +238,10 @@ const CRITIC_RUBRIC = loadRubric('critic_v1.json', {
   ],
 })
 const AUDIT_RUBRIC = loadRubric('audit_v1.json', { version: 'audit-builtin', checks: [], gates: [] })
+const PLANNER_RUBRIC = loadRubric('planner_v1.json', {
+  version: 'planner-builtin',
+  rules: [{ id: 'criteria', requirement: '验收标准能由命令/文件/阈值直接判定', bad_example: '确保质量良好' }],
+})
 
 // ── verify-on-edit 深度检查（present 前跑一次，~0.3s，0 LLM）──
 // 1) Python 顶层 import 可解析性（find_spec 不执行模块，安全）
@@ -914,15 +918,15 @@ ${evidence || '(无证据可用)'}
   }
 
   // ── P2 Planner 检查：首次 [VERIFY] 项是否"可验证"（1 次 LLM，每会话 1 次）──
-  const PLANNER_PROMPT = (task, items) => `你是计划评审（Planner 视角）。判断下面任务的验收项是否"可验证"。
+  const PLANNER_PROMPT = (task, items) => `你是计划评审（Planner 视角，规则 ${PLANNER_RUBRIC.version}）。判断下面任务的验收项是否"可验证"。
 
 【任务】${task || '(未知)'}
 
 【验收项】
 ${items.map((x, i) => `${i + 1}. ${x}`).join('\n')}
 
-"可验证" = 能由命令/文件/阈值/输出直接判定（如"运行 agentlab 7/7 通过"、"文件存在且含 X 段"）。
-"不可验证" = 只有感受性描述（如"确认功能正常"、"确保质量良好"）。
+判据（每条验收项都应满足）：
+${(PLANNER_RUBRIC.rules || []).map((r) => `- ${r.requirement}（反例：${r.bad_example || '感受性描述'}）`).join('\n')}
 
 只输出 JSON（无其他文字）：
 {"verdict":"OK"}
@@ -1318,6 +1322,7 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
             s.injectedSkills.push(...pick.map((k) => k.name))
             const lines = pick.map((k) => `- ${k.name}：${k.summary}\n  全文：${k.path}（需要细节时 read 它）`)
             info(`behavior-guard: [Skills] 注入技能卡 ${pick.map((k) => k.name).join(',')}`)
+            trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'skill_card', names: pick.map((k) => k.name).join(','), step: s.step })
             const msg = createMessage('[harness 技能可用] 检测到任务涉及以下领域，已有现成手册（按需读取，不要凭记忆拼流程）：\n' + lines.join('\n'), 'behavior-guard')
             const messages = Array.isArray(decision?.messages) ? [...decision.messages, msg] : [msg]
             return { ...decision, messages }
@@ -1339,6 +1344,7 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
           if (rej.length) parts.push('③ 已排除：' + rej.join('｜'))
           parts.push('④ 下一步：在思考里列出 2-3 个候选动作，评估哪个对完成目标收益最高，再选一个执行。')
           info(`behavior-guard: [控制回合] step=${s.step}`)
+          trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'control_turn', step: s.step })
           const msg = createMessage(parts.join('\n'), 'behavior-guard')
           const messages = Array.isArray(decision?.messages) ? [...decision.messages, msg] : [msg]
           return { ...decision, messages }

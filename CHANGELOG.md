@@ -2,6 +2,19 @@
 
 所有迭代以本地时间记录（UTC+8）。
 
+## [2.2.1] - 2026-11-18 03:35
+
+### Changed
+- **planner rubric 外置接入**：P2 检查的判据从硬编码改为读 `bench/rubrics/planner_v1.json`
+  （此前 critic/audit 已外置，planner 漏了 → 三个 rubric 现在全部"单一来源 + 被代码使用"）
+- skills 关键词收紧（防误注入）：verify-artifact 去掉"检查/测试"、release-plugin 去掉"版本"、
+  git-workflow 改为短语（"git commit/tag/push"）；新增 session-debug / harness-debug 两个技能（共 7 个）
+
+### Verified
+- 26/26 + 38/38 + 门禁 29/29
+- **P5 PASS**（17 步 551.8s，六维画像全 OK）/ **P4 PASS**（11 步 300.0s，比历史 -38% 墙钟）
+- 显存观察：长任务余量 107~113 MiB（低于 450 安全线）→ 跑长任务前建议重启清 MoE cache
+
 ## [2.2.0] - 2026-11-18 02:25
 
 ### Added（社区 harness 组件清单的四个缺口）
