@@ -115,6 +115,15 @@ function checkArtifactDeep(filePath) {
       issues.push('文件几乎为空（' + st.size + ' 字节）')
       return issues
     }
+    // 编码检查（BOM / 非 UTF-8 字节序列）
+    try {
+      const head = Buffer.alloc(3)
+      const fd = openSync(filePath, 'r')
+      try { readSync(fd, head, 0, 3, 0) } finally { closeSync(fd) }
+      if (head[0] === 0xef && head[1] === 0xbb && head[2] === 0xbf) issues.push('文件带 UTF-8 BOM（部分工具解析异常）')
+      const raw = readFileSync(filePath)
+      if (raw.toString('utf8').includes('\ufffd')) issues.push('文件含非法 UTF-8 序列（可能是 GBK 编码）')
+    } catch { /* ignore */ }
     const lower = String(filePath).toLowerCase()
     if (lower.endsWith('.py')) {
       try {
@@ -146,6 +155,24 @@ print(json.dumps(missing))`
       if (ph.length) issues.push('文档占位标记 ' + ph.length + ' 处')
       const heads = (src.match(/^#{1,6} /gm) || []).length
       if (heads === 0) issues.push('Markdown 无任何标题结构')
+      // 重复段落检测（今晚"正文重复"的机器版）：长段落哈希重复率
+      try {
+        const paras = src.split(/\n\s*\n/).map((x) => x.trim()).filter((x) => x.length >= 40)
+        const seen = new Map()
+        let dup = 0
+        for (const para of paras) {
+          const key = para.slice(0, 200)
+          if (seen.has(key)) dup += 1
+          else seen.set(key, 1)
+        }
+        if (dup >= 1) issues.push('文档有 ' + dup + ' 段重复内容（首次出现后又重复）')
+      } catch { /* ignore */ }
+      // 路径引用检查（仅绝对路径 D:/ 或 C:/ 开头的引用）
+      try {
+        const refs = [...src.matchAll(/[A-Za-z]:[\\/][^\s`"'()\[\]]{4,}/g)].map((m) => m[0].replace(/[.,;:]+$/, ''))
+        const missing = refs.filter((r) => !existsSync(r)).slice(0, 3)
+        if (missing.length) issues.push('引用了不存在的路径: ' + missing.join(', '))
+      } catch { /* ignore */ }
     }
     if (lower.endsWith('.sh')) {
       try {
@@ -410,6 +437,7 @@ export function apply(ctx, config) {
           const sig = JSON.stringify(todos)
           const arr = Array.isArray(todos) ? todos : []
           const done = arr.filter((x) => x && x.status === 'completed').length
+          s.todos = arr  // 供 present 前"交付物清单对照"使用
           // P2 Planner 检查：首次出现 [VERIFY] 项时标记（pre-step 里跑一次可验证性检查）
           if (s.plannerChecked !== true && cfg.plannerCheckEnabled) {
             const verifyItems = arr.filter((t) => String(t?.content ?? '').includes('[VERIFY]'))
@@ -903,6 +931,32 @@ ${content}
       if (state.continuations >= cfg.maxContinuationsPerTurn) return
       if (state.totalContinuations >= cfg.maxContinuationsPerSession) return
 
+      // ── present 前确定性深检（独立于 Critic 开关：~0.3s，0 LLM）──
+      if (cfg.deepCheckEnabled && state.presentCalled === true && state.deepChecked !== true) {
+        state.deepChecked = true
+        try {
+          const deepIssues = checkArtifactDeep(state.lastProduct)
+          // 交付物清单对照：todo 里未完成的 [VERIFY] 项（声明了验收却没做）
+          try {
+            const pendingVerify = (Array.isArray(state.todos) ? state.todos : [])
+              .filter((t) => String(t?.content ?? '').includes('[VERIFY]') && t?.status !== 'completed')
+            if (pendingVerify.length) {
+              deepIssues.push('清单中的验收项尚未完成：' + pendingVerify.slice(0, 2).map((t) => String(t.content).slice(0, 60)).join('；'))
+            }
+          } catch { /* ignore */ }
+          if (deepIssues.length) {
+            info(`behavior-guard: [深检] ${deepIssues.length} 项问题 — ${deepIssues.join(' | ').slice(0, 120)}`)
+            state.sharedInjections += 1
+            agent.steer(createSteeringMessage(
+              '[harness 产物深检] 交付前确定性检查发现问题：' + deepIssues.join('；') +
+              '。先修正这些问题再 present（占位符/空实现/缺失依赖/未完成验收项都会让产物不可用）。',
+              'behavior-guard'
+            ))
+            return
+          }
+        } catch { /* 深检失败不阻断 */ }
+      }
+
       // ── P1 Critic：present 前的产物质量评审（异质 rubric，与过程审计不同视角）──
       // 依据：四角色标准（Planner/Executor/Critic/Verifier）中 Critic 是"对照意图评产物质量"；
       // Apple 2026：异质 rubric 才能产生独立信号（同 rubric 重复=伪多样性）。
@@ -914,20 +968,6 @@ ${content}
         (state.criticCount || 0) < cfg.maxCriticPerSession
       ) {
         state.criticCount = (state.criticCount || 0) + 1
-        // present 前确定性深检（~0.3s，0 LLM）：import 可解析 / 占位符 / 空文件
-        try {
-          const deepIssues = cfg.deepCheckEnabled ? checkArtifactDeep(state.lastProduct) : []
-          if (deepIssues.length) {
-            info(`behavior-guard: [深检] ${deepIssues.length} 项问题 — ${deepIssues.join(' | ').slice(0, 120)}`)
-            state.sharedInjections += 1
-            agent.steer(createSteeringMessage(
-              '[harness 产物深检] 交付前确定性检查发现问题：' + deepIssues.join('；') +
-              '。先修正这些问题再 present（占位符/空实现/缺失依赖都会让产物不可用）。',
-              'behavior-guard'
-            ))
-            return
-          }
-        } catch { /* 深检失败不阻断 */ }
         try {
           const critic = await runCritic(state)
           if (critic && critic.verdict === 'ACCEPT') {
