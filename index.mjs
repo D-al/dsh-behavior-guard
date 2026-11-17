@@ -457,7 +457,10 @@ D. 遗漏（omission）：任务要求的关键步骤（验证/写入/交付）�
 只输出 JSON（无其他文字）。判定参考下面的实例（照这个形状输出）：
 
 实例1（重复失败）：
-{"verdict":"ISSUE","issue":"step5 glob 同参数连续第3次，结果与前两次相同","fix":"停止 glob 重试；改用 step3 结果里的 state.json 路径直接 read"}
+{"verdict":"ISSUE","issue":"step5: glob 同参数连续第3次，结果与前两次相同","fix":"停止 glob 重试，直接 read step3 结果里的 state.json"}
+
+字段纪律：issue 必须以 stepN: 开头（引用具体步骤）；fix 只写**一个可执行动作**（动词开头，
+不含"或者/二选一"这类多选建议）——执行者照做即可。
 
 实例2（证据不足——拿不准就输出这个，别硬判）：
 {"verdict":"UNCERTAIN","reason":"轨迹里看不到 write 的结果，无法判断产物是否落盘"}
