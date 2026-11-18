@@ -1,3 +1,20 @@
+## [2.8.1] - 2026-11-18 15:00
+
+### Changed（文档架构重组：薄 README + ROADMAP + ADR + 历史说明书）
+
+参考社区大项目（Linux/Rust/LLVM 的 Documentation 分层、MADR ADR、Nygard 决策记录、
+Diátaxis 四分法、Keep a Changelog）与 6 路调研后重构：
+
+- **README 从 304 行瘦到 92 行**：只留定位/三认知/三阶段目标骨架/硬约束/开箱/文档地图
+- **新增 ROADMAP.md**：短(1-2周)/中(1-2月)/长(季度)目标，每条带**验证方法**；含"明确不做"清单
+- **新增 decisions/**：16 条 ADR（Context/Decision/Consequences 格式），含 2 条翻案 + 2 条证伪；
+  accepted 后不改原文，改变主意写新 ADR supersede
+- **新增 docs/history/**：TIMELINE（5 阶段里程碑）+ tuning 专区
+  （DECISIONS 10 条调优决策链 / EVIDENCE 实测数据 / EXPERIMENT-TEMPLATE）
+  ——把 2679 行调优日志蒸馏成可扫读历史，原始日志仍保留 append-only
+- **新增 docs/README.md**：文档地图按 Diátaxis 分层
+- 链接完整性检查：从 15 断链修到 **0**
+
 ## [2.8.0] - 2026-11-18 14:30
 
 ### Added（心智拼图 P0-P2 全部落地）
