@@ -121,6 +121,10 @@ REASONING_BUDGET 4096 / DRY 0.8-1.75-32-512`。
    解决：要么 `pnpm install` 重装（会动所有插件，谨慎），要么**只同步版本戳**
    （若 `index.mjs` md5 与库一致，功能无差异，直接改 node_modules 里的 package.json version）。
 
+**3. ⚠ prompt 变量白名单收紧（踩过坑）**：rc.3 的 `deployment:persona-suffix` 只注册 `provider`/`model`，
+   原 `Your working directory is {{cwd}}.` 会报 `unknown prompt variable "{{cwd}}"` 并使本轮运行失败。
+   已改为静态文本（工作区路径在 AGENTS.md 里）。**升级后务必 grep 所有 `{{...}}` 变量**。
+
 升级后实测：app.asar 11-13、插件 5 个全在、AGENTS.md/env/cordis/junction 全部保留、
 bundles 少了 `dsh-experimental-agent-team-profile`（rc.2 起 AgentTeam 改具名，不影响我们）、
 web_search 的 searxng provider 保留、26+40+30/30 全过、服务健康、探针正常。
