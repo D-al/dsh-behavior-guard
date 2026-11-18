@@ -21,6 +21,8 @@
   name: "@deepseek-ai/dsh-client-ui-chat"
   config:
     transcriptView: compact
+    # 折叠时只保留最终回答，中间 assistant 回复收进过程组（官方 FOLDED_REPLIES=final）
+    foldedReplies: final
     performanceUsage: compact
 - id: ui-settings
   name: "@deepseek-ai/dsh-client-ui-settings"

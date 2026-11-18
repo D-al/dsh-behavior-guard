@@ -35,6 +35,7 @@ CritBank 真实命中）、共享状态总线（GWT）、预期闭环（FEP）�
 | S2 | **可控遗忘常态化** | CritBank 目前 0 计数，假记忆会自我强化 | 真实 helpful/harmful 计数非零；`crit_decay.py --apply` 月度跑；无过时经验被引用（假记忆自检） | [ ] |
 | S3 | **频次重设收尾** | 审计发现 learn_watcher 每 30s 全量巩固是空转（已改）；还剩两项小改 | ① trace 加 `turn`/`controlTotal` 字段；② `docs/CADENCE_REDESIGN.md` 三条结论落地；心跳日志验证 `[deep]` 每 10 分钟一次 | [ ]（部分完成：watcher 已改）|
 | S4 | **自适应原型端到端对照** | 机制已有（`adaptiveThinkEnabled`），默认关，缺证据 | P3/P4/P5 各跑 2 次取中位；token 降且成功率不降才开，否则保持关闭 | [ ] |
+| S5 | **角色失效修复** | 诊断发现验收员触发路径脱节（`wait_agent` 0 次 vs `spawn_teammate` 73 次）；Critic LLM 0% 成功 | ① 验收员触发扩展到 spawn 完成检测；② Critic 0% 根因复现；③ 角色 LLM 失败写明确 error 字段不静默。见 [诊断](docs/COMPACTION_AND_ROLES_DIAGNOSIS.md) | [ ] |
 
 **S1 的实现路径 = Self-Harness 四阶段**（[完整方案](docs/SELF_HARNESS_PLAN.md) / [ADR-0018](decisions/0018-self-harness-two-stage.md)）：
 - P0 可编辑面白名单 + 双 split 评测台（安全面禁改；基线方差 <10%）

@@ -687,6 +687,7 @@ export function apply(ctx, config) {
         sid: String(id || '').replace(/^session-/, '').slice(0, 8), injectedSkills: [], skillCards: 0, dangerHits: 0,
         // continuity 状态（initial 复用上面的字段）
         latest: '', pendingArchive: false, pendingTodoEcho: false, lastTodos: null, todoCalls: 0, sinceLastTodo: 0,
+        lastArchiveSig: '', archiveRepeatCount: 0,  // P0 存档去重：相同存档只完整注入一次（实测 82 次重复）
         turnTodoInjections: 0, sessionTodoInjections: 0, remindedNoTodo: false, rejectedItems: [],
         // 学习闭环 A 段：appenders + 本会话已注入的沉淀反馈计数
         appendOutcome, appendPendingLearn, learnedInjected: 0,
@@ -1571,6 +1572,7 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
           const parts = [cfg.archiveHeader]
           parts.push('【初始任务】' + s.initial)
           if (s.latest && s.latest !== s.initial) parts.push('【最新用户指令】' + s.latest)
+          let archiveSig = ''
           try {
             const todos = Array.isArray(s.lastTodos) ? s.lastTodos : []
             const verifyItems = todos.filter((t) => String(t?.content ?? '').includes('[VERIFY]'))
@@ -1580,16 +1582,34 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
             if (doneItems.length) parts.push('【已验证决策】' + doneItems.slice(0, 8).map((t) => String(t.content).slice(0, 40)).join('；'))
             if (openItems.length) parts.push('【开放问题】' + openItems.slice(0, 8).map((t) => (t?.status === 'in_progress' ? '◐' : '☐') + String(t.content).slice(0, 40)).join('；'))
             if (Array.isArray(s.rejectedItems) && s.rejectedItems.length) parts.push('【已排除】' + s.rejectedItems.slice(-5).join('\n'))
-            parts.push('【压缩后自检】先回答三问再继续：①要完成什么？②已经证明了什么？③下一个安全的动作是什么？')
+            // 存档签名：初始任务 + todo 状态 + 已排除项。内容不变则视为"同一份存档"。
+            archiveSig = JSON.stringify([s.initial, todos.map((t) => [t?.content, t?.status]), (s.rejectedItems || []).slice(-5)])
+            const repeats = archiveSig === s.lastArchiveSig ? (s.archiveRepeatCount || 0) + 1 : 0
+            s.lastArchiveSig = archiveSig
+            s.archiveRepeatCount = repeats
+            if (repeats > 0) {
+              // 去重：同一份存档已注入过 → 不再刷屏完整存档，改为"未变化"的简短纠偏。
+              // 实测依据：s1 会话 82 次压缩注入完全相同的存档（todo 2/完成 0），形成自我强化循环。
+              parts.length = 0
+              parts.push('[harness 任务存档] 任务状态自上次压缩后**完全没有变化**（已重复 ' + repeats + ' 次）：'
+                + doneItems.length + '/' + todos.length + ' 项完成。')
+              parts.push('这不是新的指令——不要因此重新规划或重做已完成的事。'
+                + '若清单中的待办仍未推进，说明卡在非文件操作环节：换工具/换参数/或直接说明卡点并结束本轮，'
+                + '而不是再次重复同一批动作。')
+              trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'archive_dedup', repeats, step: s.step })
+            } else {
+              parts.push('【压缩后自检】先回答三问再继续：①要完成什么？②已经证明了什么？③下一个安全的动作是什么？')
+            }
             try {
               appendFileSync(cfg.ledgerPath, JSON.stringify({
                 ts: new Date().toISOString(), session: String(agent.session?.id || '').slice(0, 8),
-                todos: todos.length, completed: doneItems.length, rejected: (s.rejectedItems || []).length, hasVerify: verifyItems.length,
+                todos: todos.length, completed: doneItems.length, rejected: (s.rejectedItems || []).length,
+                hasVerify: verifyItems.length, repeated: repeats,
               }) + '\n')
             } catch { /* ignore */ }
           } catch { /* ignore */ }
           s.pendingArchive = false
-          info(`behavior-guard: [P0] 压缩后重注入任务存档（初始 ${s.initial.length} 字）`)
+          info(`behavior-guard: [P0] 压缩后重注入存档（初始 ${s.initial.length} 字，重复 ${s.archiveRepeatCount || 0} 次）`)
           const msg = createMessage(parts.join('\n'), 'task-continuity')
           const messages = Array.isArray(decision?.messages) ? [...decision.messages, msg] : [msg]
           return { ...decision, messages }

@@ -1,3 +1,32 @@
+## [2.15.0] - 2026-11-19 01:25（压缩存档去重 + 角色失效诊断 + 过程折叠配置）
+
+### Fixed
+- **压缩存档去重**：实测 s1 会话 82 次压缩注入**完全相同**的存档（todos=2/完成=0 一字不变），
+  形成"没推进→压缩→注入相同存档→重做同样事"的自我强化循环。现加 `lastArchiveSig` 签名：
+  首次注入完整存档，内容未变时改为简短"状态未变化（已重复 N 次）+ 不要重新规划"纠偏；
+  todo 状态变化后自动恢复完整存档。trace 记 `archive_dedup`，ledger 加 `repeated` 字段。
+  单测 `test_archive_dedup.mjs` 9/9。
+- **过程折叠配置**：profile `ui-chat` 加 `foldedReplies: final`（官方 FOLDED_REPLIES=all|final，默认 all），
+  折叠时只保留最终回答，中间 assistant 回复收进过程组。`transcriptView: compact` 原本已开。
+
+### Added
+- `docs/COMPACTION_AND_ROLES_DIAGNOSIS.md`：五个问题的完整诊断（基于代码+trace+账本）：
+  - 压缩由 dsh 引擎按 token 触发（54K 阈值），harness 只被动监听——"写/读时压缩"是因果倒置。
+  - **验收员触发路径脱节**：依赖 `wait_agent`（trace 0 次），实际用 `spawn_teammate`（73 次）→ 主路径从未命中。
+  - **角色 LLM 大面积静默失败**：audit 10%、corrector 9%、**critic 0%（54/54 空返回）**、planner 100%；
+    失败特征 `ms=0~1 outChars=2`，按小时呈 0%/100% 两极——llama-server 不稳定期静默吞错。
+    最近稳定会话角色成功率 100%/100%/60%，证明设计本身工作。
+  - 审计员只在 `verdict=ISSUE` 才注入，UNCERTAIN/OK 不注入——"看不到角色"部分是设计使然。
+  - 官方折叠规则：compact 模式下只有"最后一步是纯正文回复"才满足折叠边界；无正文的轮次保留全部过程。
+
+### Deferred（诊断已明确，修复待专项）
+- 验收员触发扩展到 `spawn_teammate` 完成检测（中风险，需理解事件语义）。
+- Critic 0% 成功率根因复现（怀疑服务不稳期 + prompt 过长）。
+- 角色 LLM 失败写明确 error 字段，不再静默。
+
+### Note
+- 本版本改了 index.mjs（存档去重）+ profile 配置（折叠），已重启 dsh 验证；115 PASS / 0 FAIL。
+
 ## [2.14.0] - 2026-11-19 01:10（频次审计重设 + 路线图 Now/Next/Later 重排）
 
 ### Changed

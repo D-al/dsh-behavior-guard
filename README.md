@@ -3,7 +3,7 @@
 > **合成心智（Synthetic Mind）**：用一个 35B 本地模型 + 一套确定性脚手架，合成比模型本身可靠得多的心智——**模型权重一个字节没动，变的是它外面的脑区**。
 
 本仓库是 **Single Source of Truth**：插件代码 + 生产配置 + 10 个技能卡 + 23 个分析脚本 + 决策档案 + 一键安装。
-当前 **v2.14.0**（2026-11-19）。仓库名沿用历史名 `dsh-behavior-guard`，npm 包名/插件 id 为 `dsh-agent-harness`。
+当前 **v2.15.0**（2026-11-19）。仓库名沿用历史名 `dsh-behavior-guard`，npm 包名/插件 id 为 `dsh-agent-harness`。
 
 ---
 
@@ -17,6 +17,7 @@
 | **想看脑功能分区对照** | [覆盖度盘点](docs/BRAIN_PARITY.md)（人脑分区 → 我们的机制 → 空白区）|
 | **想看 harness 自进化方案** | [Self-Harness 落地方案](docs/SELF_HARNESS_PLAN.md)（短期①的实现路径）|
 | **窗口一开 GPU 就卡死** | [3D/Copy 争抢诊断与降帧](docs/GPU_ENGINE_GUARD.md)（含守护脚本）|
+| **为什么压缩后重复干活/看不到角色** | [压缩与角色诊断](docs/COMPACTION_AND_ROLES_DIAGNOSIS.md)（含存档去重修复）|
 | **想看历史** | [时间线](docs/history/TIMELINE.md) → [调优决策](docs/history/tuning/DECISIONS.md) |
 
 ---
@@ -74,7 +75,7 @@
 
 ---
 
-## 路线图（Now/Next/Later，重排于 v2.14.0）
+## 路线图（Now/Next/Later，重排于 v2.14.0，维护于 v2.15.0）
 
 > 完整、可验证的目标（每条带完成标准 DoD）见 [ROADMAP.md](ROADMAP.md)。这里只列骨架。
 > **已完成项归档在 ROADMAP §6，不再占用短中长期位置。**
@@ -134,7 +135,7 @@ git clone https://github.com/D-al/dsh-behavior-guard.git && cd dsh-behavior-guar
 | [docs/GPU_ENGINE_GUARD.md](docs/GPU_ENGINE_GUARD.md) | 3D/Copy 引擎争抢诊断 + 主动降帧守护（tools/gpu_engine_guard.py）|
 
 ## 版本历史
-完整版本历史 → [CHANGELOG.md](CHANGELOG.md)。当前 **v2.14.0**（频次审计重设 + 路线图 Now/Next/Later 重排，详见 CHANGELOG）。
+完整版本历史 → [CHANGELOG.md](CHANGELOG.md)。当前 **v2.15.0**（压缩存档去重 + 角色诊断 + 过程折叠，详见 CHANGELOG）。
 
 ## License
 MIT
