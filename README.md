@@ -3,7 +3,7 @@
 > **合成心智（Synthetic Mind）**：用一个 35B 本地模型 + 一套确定性脚手架，合成比模型本身可靠得多的心智——**模型权重一个字节没动，变的是它外面的脑区**。
 
 本仓库是 **Single Source of Truth**：插件代码 + 生产配置 + 10 个技能 + 19 个工具 + 决策档案 + 一键安装。
-当前 **v2.10.0**（2026-11-18）。仓库名沿用历史名 `dsh-behavior-guard`，npm 包名/插件 id 为 `dsh-agent-harness`。
+当前 **v2.11.0**（2026-11-18）。仓库名沿用历史名 `dsh-behavior-guard`，npm 包名/插件 id 为 `dsh-agent-harness`。
 
 ---
 
@@ -102,7 +102,7 @@ git clone https://github.com/D-al/dsh-behavior-guard.git && cd dsh-behavior-guar
 | [docs/MD_SYSTEM_PLAN.md](docs/MD_SYSTEM_PLAN.md) | 文档分层原则（三层体系） |
 
 ## 版本历史
-完整版本历史 → [CHANGELOG.md](CHANGELOG.md)。当前 **v2.10.0**（短期目标全部落地：spec 分类/Critic 去同源/自适应原型/真实回归）。
+完整版本历史 → [CHANGELOG.md](CHANGELOG.md)。当前 **v2.11.0**（长期地基 GWT+FEP 已建，先地基后积累中期）。
 
 ## License
 MIT

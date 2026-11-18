@@ -100,6 +100,9 @@ const DEFAULTS = {
   bdiEnabled: true,              // P1-6：用户意图 BDI 状态卡（控制回合 ⑥）
   sessionTreeEnabled: true,      // P2-8：事件溯源（parent 指针，B 段脚本落地）
   outcomeCaptureEnabled: true,   // 波1：结构化结果反馈捕获（write/edit→_outcome.jsonl）
+  // ② FEP 预期闭环（小脑前向模型，v2.11.0）：写前断言预期→比对观察→偏差驱动学习。
+  // 纯规则零 LLM；偏差写入 pendingLearn 队列供 B 段 watcher 沉淀（复用学习闭环）。
+  fepEnabled: true,              // 偏差只记 trace + pendingLearn，不占运行时注入通道（实测教训见下）
   // 短期③：test-time 自适应原型（DART 2606.23181 / BOSS 2610.26383）——
   // 用两个零成本信号的一致性判难度：MTP draft acceptance（模型自信度）+ 验证工具命中数（evidence）。
   // 两者都高=简单题→注入"直接做，跳过长思考"；任一低=难题→保持展开。纯 prompt+控制流，零额外 LLM。
@@ -426,6 +429,51 @@ function mindStateSignals(s, threshold) {
     doneCount: todos.filter((t) => t?.status === 'completed').length,
     inProgress: todos.find((t) => t?.status === 'in_progress') || null,
   }
+}
+
+// ── ① GWT 共享状态对象（胼胝体，v2.11.0）──
+// 依据：MIND_GAPS_RESEARCH 结构性缺口——todo/critbank/trace/存档/心智状态之间"手动搬运"，
+// 缺一个所有模块共享的黑板。这里提供【唯一只读视图】，各消费者不再各读各的 s 字段。
+// 设计：纯函数、零 LLM、不修改 s（写入仍走原路径，向后兼容）；快照是当次调用的不可变投影。
+// 字段语义稳定后，新增机制只需往这里加一个字段，不用改每个消费者。
+function workspaceSnapshot(s) {
+  const st = s || {}
+  const todos = Array.isArray(st.todos) ? st.todos : []
+  const done = todos.filter((t) => t?.status === 'completed')
+  const cur = todos.find((t) => t?.status === 'in_progress') || null
+  const pending = todos.filter((t) => t?.status === 'pending')
+  const verified = new Set(Array.isArray(st.frame?.evidence) ? st.frame.evidence : [])
+  // 验证证据统一：frame.evidence ∩ verifyRan/wroteThisTurn 三个来源的并集语义
+  if (st.verifyRan) verified.add('verify-agent')
+  const frame = st.frame || {}
+  const bdi = st.bdi || {}
+  return Object.freeze({
+    sid: st.sid || '',
+    step: st.step || 0,
+    // 目标层：初始任务 / 最新指令 / frame 目标 / BDI 意图
+    goal: String(st.initial || ''),
+    latest: String(st.latest || ''),
+    frameGoal: String(frame.goal || ''),
+    bdiGoal: String(bdi.goal || ''),
+    // 计划层
+    todos: Object.freeze(todos.map((t) => Object.freeze({ content: String(t?.content || ''), status: String(t?.status || '') }))),
+    done: done.length,
+    inProgress: cur ? String(cur.content || '') : '',
+    pendingCount: pending.length,
+    hasVerifyItem: todos.some((t) => /\[VERIFY\]/.test(String(t?.content || ''))),
+    // 证据层
+    evidence: Object.freeze([...verified]),
+    verified: !!(st.verifyRan || st.verifiedThisTurn),
+    wrote: !!(st.wroteThisTurn || (st.writeCalls || 0) > 0),
+    product: String(st.lastProduct || ''),
+    // 排除层
+    rejected: Object.freeze((Array.isArray(st.rejectedItems) ? st.rejectedItems : []).slice(-5).map((x) => String(x).slice(0, 80))),
+    // 来源与置信
+    provenance: String(frame.provenance || 'user'),
+    trust: typeof frame.trust === 'number' ? frame.trust : 1.0,
+    // 意图漂移信号（控制回合/审计共用）
+    specAcceptance: (st.specAcceptance === null || st.specAcceptance === undefined) ? null : st.specAcceptance,
+  })
 }
 
 // ── CritBank 经验检索（模块级加载一次）──
@@ -785,6 +833,20 @@ export function apply(ctx, config) {
           }
         }
         s.trail.push({ kind: 'call', name: String(event.data?.name ?? ''), args: fullArgs.slice(0, 200), fullArgs, step: event.data?.step, ts: Date.now() })
+        // ② FEP：写操作前登记"预期"——前向模型断言这一步应产出什么（纯规则，零 LLM）
+        if (cfg.fepEnabled) {
+          const cname = String(event.data?.name ?? '')
+          if (WRITE_TOOLS.has(cname)) {
+            let target = ''
+            try { target = String((JSON.parse(fullArgs || '{}')).file_path || '') } catch { /* ignore */ }
+            const snap = workspaceSnapshot(s)
+            s.fepPending = {
+              step: s.step, tool: cname, target: target.slice(0, 200),
+              expected: { fileExists: !!target, verifiable: /\[VERIFY\]/.test(snap.todos.map((t) => t.content).join(' ')), goal: snap.goal.slice(0, 120) },
+              ts: new Date().toISOString(),
+            }
+          }
+        }
         // P2-7：结构化轨迹事件流——五元组随每次工具调用落到 trace（零 LLM，v2.9 合入）
         if (cfg.frameEnabled) {
           const cname = String(event.data?.name ?? '')
@@ -875,6 +937,42 @@ export function apply(ctx, config) {
                   '\n修复该语法错误后继续（不要跳过——后续步骤都会基于坏文件）。'
                 info(`behavior-guard: verify-on-edit 发现语法错误 ${s.lastProduct}: ${String(syntaxErr).slice(0, 60)}`)
               }
+            }
+            // ② FEP：比对预期 vs 观察 → 偏差驱动学习（纯规则零 LLM）
+            if (cfg.fepEnabled && s.fepPending) {
+              try {
+                const exp = s.fepPending
+                const obs = {
+                  fileExists: !!exp.target && existsSync(exp.target),
+                  verified: !!(s.verifyRan || s.verifiedThisTurn),
+                  status: 'OK',
+                }
+                const deviations = []
+                // 当场可观察的确定性偏差：产物未落盘。verified 是跨步骤状态，
+                // 不能在写完成瞬间判"未验证"（验证本就在后续步骤发生）——延后到 turn-stopping 判。
+                if (exp.expected.fileExists && !obs.fileExists) deviations.push('product-missing')
+                const cycle = {
+                  ts: new Date().toISOString(), sid: s.sid || '', step: s.step,
+                  tool: exp.tool, target: exp.target, expected: exp.expected, observed: obs,
+                  deviation: deviations, converged: deviations.length === 0,
+                }
+                trace({ ...cycle, kind: 'fep_cycle' })
+                // 偏差进 pendingLearn 队列——B 段 watcher 消费，沉淀到 CritBank/技能草稿
+                if (deviations.length && s.appendPendingLearn) {
+                  s.appendPendingLearn({
+                    ts: cycle.ts, sid: s.sid || '', step: s.step,
+                    kind: 'fep_deviation', deviations, target: exp.target,
+                    goal: exp.expected.goal,
+                  })
+                }
+                // FEP 只记 trace + pendingLearn（偏差驱动学习），【不占运行时注入通道】：
+                // 实测教训——FEP 注入会消耗 turnInjections/sharedInjections，挤掉 D5 审计额度，
+                // 造成"连续失败却不审计"。即时纠偏由 verify-on-stop / D2 负责，FEP 专注学习信号。
+                if (deviations.includes('product-missing')) {
+                  info(`behavior-guard: [FEP] 偏差 product-missing step=${s.step}（记入学习，不抢占注入）`)
+                }
+              } catch { /* FEP 失败不阻断 */ }
+              s.fepPending = null
             }
           }
           // wait 连续超时计数（spawn 之后）
@@ -1048,8 +1146,10 @@ ${evidence || '(无证据可用)'}
     // 只读白名单、总超时受 auditTimeoutMs 约束。成本：每轮 +1 次 LLM（5-15s）+ 1 次工具。
     const rounds = cfg.auditEvidenceRounds ?? 2
     const evidLog = []
+    // ① GWT：审计读共享快照的 goal 与证据（与控制回合/Critic 同源）
+    const snap = workspaceSnapshot(s)
     for (let round = 0; round < rounds; round++) {
-      const out = await callLLM(AUDIT_PROMPT(s.initial, trail, evidLog), 600, cfg.auditTimeoutMs, { sid: s.sid || '', tag: 'audit' })
+      const out = await callLLM(AUDIT_PROMPT(snap.goal, trail, evidLog), 600, cfg.auditTimeoutMs, { sid: snap.sid, tag: 'audit' })
       if (!out || out.verdict !== 'NEED_EVIDENCE') return out
       if (round === rounds - 1) {
         // 取证轮次用尽仍要证据 → 视为弃权（不介入，记录）
@@ -1128,7 +1228,9 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
 字段纪律：evidence 必须引用产物里的具体行/段落，不能只给结论；confidence=low 且证据不足时用 UNCERTAIN 而非硬判；error_class 六选一（missing_requirement/incomplete/unusable/inconsistent/over_implementation/none）。`
 
   async function runCritic(s) {
-    const product = s.lastProduct
+    // ① GWT：Critic 从共享快照取 product/goal（与控制回合同源，避免各读各的）
+    const snap = workspaceSnapshot(s)
+    const product = snap.product
     if (!product) return null
     let content = ''
     try {
@@ -1140,8 +1242,8 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
     }
     if (!content.trim()) return null
     // 短期②：异质采样 + 只喂产物/任务/证据，不传 s.trail / 执行者推理链
-    return callLLM(CRITIC_PROMPT(s.initial, product, content), 500, cfg.criticTimeoutMs || 90000, {
-      sid: s.sid || '', tag: 'critic',
+    return callLLM(CRITIC_PROMPT(snap.goal, product, content), 500, cfg.criticTimeoutMs || 90000, {
+      sid: snap.sid, tag: 'critic',
       temperature: cfg.criticTemperature, topK: cfg.criticTopK,
     })
   }
@@ -1556,10 +1658,11 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
       if (cfg.controlEnabled && s.step > 0 && s.step % cfg.controlEverySteps === 0 && (s.controlCount || 0) < cfg.maxControlPerSession) {
         s.controlCount = (s.controlCount || 0) + 1
         try {
-          const todos = Array.isArray(s.todos) ? s.todos : []
-          const done = todos.filter((t) => t?.status === 'completed').slice(-3).map((t) => String(t.content).slice(0, 40))
-          const cur = todos.find((t) => t?.status === 'in_progress')
-          const rej = (Array.isArray(s.rejectedItems) ? s.rejectedItems : []).slice(-3).map((x) => String(x).slice(0, 60))
+          // ① GWT：从共享只读快照取数（不再各读 s.todos / s.rejectedItems 散落字段）
+          const snap = workspaceSnapshot(s)
+          const done = snap.todos.filter((t) => t.status === 'completed').slice(-3).map((t) => t.content.slice(0, 40))
+          const cur = snap.todos.find((t) => t.status === 'in_progress')
+          const rej = snap.rejected.slice(-3).map((x) => String(x).slice(0, 60))
           const parts = ['[harness 控制回合] 你现在处在第 ' + s.step + ' 步。先做一次元决策再继续：']
           parts.push('① 已确立：' + (done.length ? done.join('；') : '(暂无完成项)'))
           if (cur) parts.push('② 当前项：' + String(cur.content).slice(0, 60))
@@ -1597,7 +1700,10 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
           }
           s.lastMindStep = s.step // 心跳：控制回合作为触发式注入的冷却基准，避免同格式刷屏
           info(`behavior-guard: [控制回合] step=${s.step}`)
-          trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'control_turn', step: s.step })
+          // ① GWT：快照随控制回合落 trace，作为"一份共享状态"的可观测凭证
+          trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'control_turn', step: s.step,
+            snapshot: { goal: snap.goal.slice(0, 80), done: snap.done, inProgress: snap.inProgress,
+              verified: snap.verified, wrote: snap.wrote, rejected: snap.rejected.length, bdiGoal: snap.bdiGoal.slice(0, 60) } })
           const msg = createMessage(parts.join('\n'), 'behavior-guard')
           const messages = Array.isArray(decision?.messages) ? [...decision.messages, msg] : [msg]
           return { ...decision, messages }

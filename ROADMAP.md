@@ -22,6 +22,12 @@ CritBank 计数全 0、技能无一来自真实轨迹、spec 阈值拍脑袋、E
 
 **执行铁律**：一波没验收，不开始下一波。
 
+> **短期收口后的顺序调整（2026-11-18，v2.11.0）**：短期四目标全部完成后，先建长期目标里的
+> **结构性地基**（GWT 总线 → FEP 闭环），再在此之上逐步积累中期目标（技能进化/可控遗忘/情景检索/会话树）。
+> 理由：波次表早已写明"GWT 状态总线把散落状态缝成单一认知流；技能提炼才能拿到完整证据"——
+> 总线本就是中期的**前置**；而中期目标多为数据积累型（outcome 已 63 条、trace 3200+，时间站在我们这边），
+> 地基是结构型（越晚建越要返工重接）。独立轨道（autoparser PR / v1.0.0 升级 / 标准化 eval / 工具面裁剪）不插队。
+
 ## 🟢 短期（1-2 周）：收口已知风险
 
 - [x] **【波1】标定 spec 阈值 0.65**（v2.10.0）— 社区典型 acceptance 对话 0.65-0.75 / 代码 0.55-0.70 / 创意 0.45-0.60；全局 0.65 在长尾任务可能误触发
@@ -54,8 +60,11 @@ CritBank 计数全 0、技能无一来自真实轨迹、spec 阈值拍脑袋、E
 
 ## 🔴 长期（季度级）：架构完整性
 
-- [ ] **【波2】GWT 广播总线** — 8 个认知模块共享确定性状态对象，替代手动搬运（心智状态快照是雏形）
-- [ ] **【波2】FEP 预测闭环** — 从"事后验证"升级为"先断言预期结果 → 比对观察 → 偏差驱动学习"
+- [x] **【波2】GWT 广播总线**（v2.11.0）— `workspaceSnapshot(s)` 提供唯一只读状态视图（goal/todo/evidence/bdi/rejected）；控制回合、Critic、审计三消费者同源读取，快照随 trace 落盘作为凭证
+  - 验证：`test_gwt_fep.mjs` 9/9（三消费者字段一致、快照只读不修改原 state）
+- [x] **【波2】FEP 预测闭环**（v2.11.0）— 写前登记 expected（产物路径+验证意图）→ 工具结果后比对观察 → 偏差写 trace `fep_cycle` + pendingLearn 队列供 B 段沉淀
+  - **实测教训**：FEP 若注入 pendingInject 会消耗 turnInjections、挤掉 D5 审计额度（"连续失败却不审计"）→ 改为只记 trace+学习队列，不占运行时注入通道；即时纠偏仍由 verify-on-stop/D2 负责
+  - 验证：`test_gwt_fep.mjs` 7/7（converged / product-missing 偏差 / pendingLearn 落盘）
 - [ ] **【波3】用户意图 BDI 深化** — 状态卡升级为信念-愿望-意图动态推理，参照 [XYBench](https://ainewstodays.com/ai2-xybench-benchmark-8115-misconception-queries-emnlp-2026) 的"识别≠生成"鸿沟解法
 - [ ] **【波3】上游 PR + 撤补丁** — autoparser 两行修复推给 llama.cpp（[#29307](https://github.com/ggml-org/llama.cpp/pull/29307) 合并后撤本地补丁）
 - [ ] **【卡脖子】llama.cpp v1.0.0 升级** — FP8 KV + 非阻塞 MoE cache 破显存墙；需重编+重打补丁+全量回归

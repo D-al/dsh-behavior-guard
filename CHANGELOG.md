@@ -1,3 +1,28 @@
+## [2.11.0] - 2026-11-18 21:20
+
+### Added（长期地基①：GWT 共享状态总线 / 胼胝体）
+- `workspaceSnapshot(s)`：唯一只读快照，聚合 goal/latest/frameGoal/bdiGoal、todo(done/inProgress/pending/hasVerify)、
+  evidence/verified/wrote/product、rejected、provenance/trust、specAcceptance
+- 三个消费者改从快照取数，行为等价但同源：控制回合（todo/rejected/bdi）、
+  Critic（product/goal）、审计（goal）；快照随 `control_turn` trace 落盘作为可观测凭证
+- 零 LLM、不修改原 state（纯函数投影，向后兼容）；验证 `test_gwt_fep.mjs` 9/9
+
+### Added（长期地基②：FEP 预期闭环 / 小脑前向模型）
+- 写操作前登记 `expected`（产物路径 + 验证意图 + goal）→ 工具结果后 stat 比对 →
+  偏差写 `fep_cycle` trace + `pendingLearn` 队列（B 段 watcher 消费，驱动 CritBank/技能沉淀）
+- **实测教训（已写进 ROADMAP）**：FEP 最初走 `pendingInject` 注入，消耗了 turnInjections，
+  导致"D5 连续失败却不审计"（test_new_guards 39/1）→ 改为只记 trace + 学习队列，
+  不占运行时注入通道；即时纠偏仍由 verify-on-stop/D2 负责。收敛后 40/40
+- 验证 `test_gwt_fep.mjs` 7/7（converged / product-missing / pendingLearn 落盘）
+
+### Changed（执行顺序）
+- 短期收口后先建长期地基（GWT→FEP），再积累原中期目标；ROADMAP 波次表后新增说明。
+  独立轨道（上游 PR / v1.0.0 / 标准 eval / 工具面裁剪）不插队。
+
+### Tests
+- `test_gwt_fep.mjs` 16/16；全套：turn_guard 26 + new_guards 40 + mind_state 4 + outcome 6 +
+  short_term_goals 9 + gwt_fep 16 = **101 PASS / 0 FAIL**；回归 30/30；config 全栈一致
+
 ## [2.10.0] - 2026-11-18 20:00
 
 ### Added（ROADMAP 短期①：spec 阈值分类标定）
