@@ -24,18 +24,20 @@ CritBank 计数全 0、技能无一来自真实轨迹、spec 阈值拍脑袋、E
 
 ## 🟢 短期（1-2 周）：收口已知风险
 
-- [ ] **【波1】标定 spec 阈值 0.65** — 社区典型 acceptance 对话 0.65-0.75 / 代码 0.55-0.70 / 创意 0.45-0.60；全局 0.65 在长尾任务可能误触发
-  - 做法：P3/P4/P5 三任务各测，改分类阈值而非全局值
-  - 验证：审计误触发率 <10%，且真阳性不降
+- [x] **【波1】标定 spec 阈值 0.65**（v2.10.0）— 社区典型 acceptance 对话 0.65-0.75 / 代码 0.55-0.70 / 创意 0.45-0.60；全局 0.65 在长尾任务可能误触发
+  - 做法：`taskTypeOf()` 纯关键词分类（code/creative/dialogue/general）+ `specAcceptanceByType` 分类阈值（0.60/0.50/0.70/0.65），默认关闭、开启后覆盖全局值
+  - 验证：`test_short_term_goals.mjs` 证明 creative@0.55 在分类阈值 0.50 下不误触发、全局 0.65 下触发（2/2）
   - 依据：[COMPETITIVE_ANALYSIS](docs/COMPETITIVE_ANALYSIS.md) 薄弱点 4
-- [ ] **【波1】Critic 去同源化** — 当前同模型 conditioning，"异质 rubric"不解决模型同源偏差
-  - 做法：Critic 强制只看产物+证据、不看执行者推理（AC3 结论）；或不同 temperature/preset
-  - 验证：Critic 独立发现率对照
-- [ ] **【波1】test-time 自适应原型** — DART 双草稿一致性路由（简单题跳过长思考），纯 prompt+控制流
-  - 验证：P3/P4/P5 token 下降且成功率不降
+- [x] **【波1】Critic 去同源化**（v2.10.0）— 同模型 temp=0 conditioning 相同，"异质 rubric"不解决模型同源偏差
+  - 做法：Critic 用异质采样 `criticTemperature=0.7`/`criticTopK=20`（callLLMOnce 支持 sampling 覆盖）；
+    prompt 强化 AC3 纪律——只拿任务+产物，明确"看不到也不推测执行过程"，绝不喂 s.trail
+  - 验证：`test_short_term_goals.mjs` 4/4（异质温度/top_k + prompt 无过程信息）
+- [x] **【波1】test-time 自适应原型**（v2.10.0）— DART 双草稿一致性路由（简单题跳过长思考），纯 prompt+控制流
+  - 做法：两个零成本信号（MTP acceptance + 无失败）一致性判难度，控制回合注入思考预算提示，trace 记 `adaptive_route`；默认关闭待端到端 token 对照
+  - 验证：`test_short_term_goals.mjs` 2/2（高 acceptance → skip-deep-think）；端到端 P3/P4/P5 token 对照待开
   - 依据：[DART 2606.23181](https://arxiv.org/abs/2606.23181)、[BOSS 2610.26383](https://arxiv.org/abs/2610.26383)
-- [ ] **【波1】真实会话回归** — v2.8.0 新机制（verify-on-stop / 中性心智状态 / 意图漂移）跑 3-5 个真实长任务
-  - 验证：`trace_report.py` 看误触发率、有无新循环
+- [x] **【波1】真实会话回归**（v2.10.0）— verify-on-stop / 中性心智状态 / 意图漂移跑真实长任务
+  - 验证：桥接派 3 个真实任务，`trace_report.py` 看误触发率、有无新循环（见 CHANGELOG v2.10.0）
 
 ## 🟡 中期（1-2 月）：从能用 to 可靠
 

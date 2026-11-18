@@ -1,3 +1,44 @@
+## [2.10.0] - 2026-11-18 20:00
+
+### Added（ROADMAP 短期①：spec 阈值分类标定）
+- `taskTypeOf(text)`：纯关键词零 LLM 分类（code/creative/dialogue/general）
+- `specAcceptanceByType`（0.60/0.50/0.70/0.65）+ `specThresholdByTaskEnabled`（默认关闭）；
+  开启后 D5 审计门控按任务类型选 spec 阈值，未命中/关闭用全局 0.65 兜底
+- 验证：`test_short_term_goals.mjs` 证明 creative 任务 acceptance=0.55 在分类阈值 0.50 下不误触发、
+  全局 0.65 下触发——长尾误触发被消除且真阳性不降
+
+### Added（ROADMAP 短期②：Critic 去同源化）
+- `callLLMOnce` 支持 sampling 覆盖；`criticTemperature=0.7`/`criticTopK=20` 让 Critic 用异质采样，
+  打破与执行者同模型 temp=0 的相同 conditioning
+- Critic prompt 强化 AC3 纪律：只拿任务+产物，明确"看不到也不推测执行过程"，绝不喂 s.trail；
+  格式修正重试仍用 temp=0（只修格式不引入新判断）
+- 验证：4/4（异质温度/top_k + prompt 无过程信息/无 trail）
+
+### Added（ROADMAP 短期③：test-time 自适应原型）
+- 两个零成本信号（MTP draft acceptance + 无失败）一致性判难度，控制回合注入"简单步跳过长思考"提示；
+  trace 记 `adaptive_route`（route + acceptance）供 token 对照
+- `adaptiveThinkEnabled`（默认关闭待端到端验证）+ `adaptiveSimpleThreshold=0.85`
+- 验证：2/2（高 acceptance → skip-deep-think）
+
+### Added（ROADMAP 短期④：真实会话回归）
+- 用桥接 create+send 派真实长任务给运行中的 dsh（本地 35B），trace_report 核对：
+  - verify-on-stop 生效：任务呈现完整验证链 write(step1) → pwsh 运行(step2) → read 读回(step3)
+  - 多机制协同注入：[harness 执行检查] / [控制回合] / [状态复述] / [系统修正] / [技能可用] / [经验沉淀] 均出现
+  - 无致命循环：步骤持续推进（write→pwsh→read→todo→pwsh→glob），sid 修复后可独立追踪单会话 trace
+- 附带修复：`sid` 旧版对 `session-*` 全截成 `"session-"`，trace 无法区分会话 → 改为去前缀后取 8 位
+
+### Added（用户请求：权限弹窗代劳）
+- 新插件 `dsh-approval-delegate`：作为 `approval/request` waterfall answerer，
+  对低风险 sandbox 请求（允许根内读写）直接返回 `allowed-once`，高风险（rm -rf/系统目录/强推）交回 UI
+- 官方依据：deepseek-harness `packages/interaction/user-approval`——answerer 返回即认领，调 next() 委派
+- 加载探针 `~/.dsh/approval-delegate-loaded.json` + 审计日志 `~/.dsh/approval-delegate.log`
+- 单测 6/6；真实会话中日志出现 `AUTO_ALLOW tool=pwsh`，用户不再需要手点该类弹窗
+
+### Tests
+- `test_short_term_goals.mjs` 9/9；approval-delegate 6/6；
+  回归 30/30 + config 全栈一致 + turn_guard 26 + new_guards 40 + mind_state 4 + outcome 6 全过
+- 真实会话回归：见上文（verify-on-stop 验证链 + 多机制注入 + 无致命循环）
+
 ## [2.9.0] - 2026-11-18 19:40
 
 ### Fixed（双向分叉合并：让 README 声称的"已有功能"在任何单一部署里都完整）

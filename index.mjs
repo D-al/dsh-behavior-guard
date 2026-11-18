@@ -100,6 +100,11 @@ const DEFAULTS = {
   bdiEnabled: true,              // P1-6：用户意图 BDI 状态卡（控制回合 ⑥）
   sessionTreeEnabled: true,      // P2-8：事件溯源（parent 指针，B 段脚本落地）
   outcomeCaptureEnabled: true,   // 波1：结构化结果反馈捕获（write/edit→_outcome.jsonl）
+  // 短期③：test-time 自适应原型（DART 2606.23181 / BOSS 2610.26383）——
+  // 用两个零成本信号的一致性判难度：MTP draft acceptance（模型自信度）+ 验证工具命中数（evidence）。
+  // 两者都高=简单题→注入"直接做，跳过长思考"；任一低=难题→保持展开。纯 prompt+控制流，零额外 LLM。
+  adaptiveThinkEnabled: false,   // 原型默认关闭，验证 token 下降后再开
+  adaptiveSimpleThreshold: 0.85, // draft acceptance ≥ 此值且 evidence 充足视为简单题
   // verify-on-stop：改了文件却没有验证证据就否决退出（Hermes/OpenHands /goal，纯规则 0 LLM）
   // 2026-11-18 实测：抽象措辞被模型忽略 → 保留运行版的命令式 + 二次升级（优于 GitHub 软版）
   verifyOnStopEnabled: true,
@@ -148,12 +153,21 @@ const DEFAULTS = {
   // 阶段 1 只读日志尾部，不触发额外推理；< threshold 时作为审计门控信号之一。
   specLogPath: 'D:/Brain/dsh-data/profiles/desktop/node_modules/dsh-llama-server-autostart/llama-server-run.log',
   specAcceptanceMin: 0.65,
+  // 短期①：spec 阈值分类标定——不同任务的正常 draft acceptance 区间不同，
+  // 全局 0.65 在长尾（尤其低接受率的开放任务）会误触发审计。启用后按任务类型覆盖全局值。
+  // 未配置任务类型 / 关闭时用 specAcceptanceMin 兜底（保持旧测试行为不变）。
+  specThresholdByTaskEnabled: false,
+  specAcceptanceByType: { dialogue: 0.70, code: 0.60, creative: 0.50, general: 0.65 },
   // Agent-as-Judge 定向取证：审计员可请求只读取证的最大轮次（每轮 +1 LLM +1 工具）
   auditEvidenceRounds: 2,
   // P1 Critic：present 前产物质量评审（异质 rubric，每会话 ≤2 次，1 次 LLM 10-20s）
   criticEnabled: true,
   criticTimeoutMs: 90000,
   maxCriticPerSession: 2,
+  // 短期②：Critic 去同源化——同模型 temp=0 会让评审与执行者 conditioning 相同。
+  // 用异质温度(top_k)打破同源；prompt 只看产物+证据、绝不喂执行者推理链（AC3 结论）。
+  criticTemperature: 0.7,
+  criticTopK: 20,
   // P2 Planner 检查：首次 todo 的 [VERIFY] 项是否可验证（1 次 LLM ~11s/任务）
   // verify-on-edit：每次 write/edit 后做确定性语法检查（0 LLM，仅 py/json/yaml）
   verifyOnEditEnabled: true,
@@ -448,6 +462,26 @@ function readSpecAcceptance(logPath) {
   }
 }
 
+// ── 短期①：任务类型分类（纯关键词，零 LLM）──
+// 依据 COMPETITIVE_ANALYSIS 薄弱点4：对话/代码/创意的正常 draft acceptance 区间不同
+// （0.65-0.75 / 0.55-0.70 / 0.45-0.60），单一全局阈值在长尾任务误触发。
+function taskTypeOf(text) {
+  const t = String(text || '')
+  if (/(代码|函数|脚本|class\s|def\s|function\s|import\s|const\s|接口|API|重构|修复bug|改bug|编译|报错|调试|写个?\.?(py|js|ts|mjs)|实现.*模块|\.py\b|\.js\b|\.mjs\b)/i.test(t)) return 'code'
+  if (/(创意|写一篇?文章|故事|小说|诗|文案|润色|风格|标题|取名|头脑风暴|广告语|歌词)/.test(t)) return 'creative'
+  if (/(你好|介绍一下|什么是|为什么|怎么理解|解释一下|翻译|总结一下|聊|请问|帮我查)/.test(t)) return 'dialogue'
+  return 'general'
+}
+
+// 返回该任务类型的 spec 阈值；关闭分类或未命中时用全局值兜底
+function specThresholdFor(cfg, taskText) {
+  if (!cfg.specThresholdByTaskEnabled) return cfg.specAcceptanceMin
+  const type = taskTypeOf(taskText)
+  const byType = cfg.specAcceptanceByType || {}
+  const v = Number(byType[type])
+  return Number.isFinite(v) ? v : cfg.specAcceptanceMin
+}
+
 
 // ── turn-continuation-guard 部分（合并自 dsh-turn-continuation-guard，L0-L3）──
 const DEFAULT_CONFIRM_WORDS = [
@@ -595,7 +629,8 @@ export function apply(ctx, config) {
         // turn-guard L0-L3 状态（合并）
         turn: 0, turnStartedAt: undefined, toolCalls: 0, writeCalls: 0,
         continuations: 0, totalContinuations: 0, last: undefined, sharedInjections: 0,
-        sid: String(id || '').slice(0, 8), injectedSkills: [], skillCards: 0, dangerHits: 0,
+        // sid 取有效短 id：session-xxx → xxx 前 8 位（旧版对 session-* 全截成 "session-"，trace 无法区分会话）
+        sid: String(id || '').replace(/^session-/, '').slice(0, 8), injectedSkills: [], skillCards: 0, dangerHits: 0,
         // continuity 状态（initial 复用上面的字段）
         latest: '', pendingArchive: false, pendingTodoEcho: false, lastTodos: null, todoCalls: 0, sinceLastTodo: 0,
         turnTodoInjections: 0, sessionTodoInjections: 0, remindedNoTodo: false, rejectedItems: [],
@@ -946,16 +981,19 @@ ${evidence || '(无证据可用)'}
 路径规则（2026-11-17 实证）：**路径原样复制证据文本里的那一段**（逐字符），
 证据里没有可用路径时输出 ask_user 或 abandon——你给出的每个路径都应该是证据里出现过的原文。`
 
-  async function callLLMOnce(prompt, maxTokens, timeoutMs) {
+  async function callLLMOnce(prompt, maxTokens, timeoutMs, sampling = {}) {
     const ctrl = new AbortController()
     const timer = setTimeout(() => ctrl.abort(), timeoutMs)
+    // 短期②：Critic 去同源——异质温度/top_k 打破与执行者相同的确定性 conditioning
+    const temperature = sampling.temperature ?? 0.0
+    const topK = sampling.topK ?? 1
     try {
       const resp = await fetch(cfg.endpoint, {
         method: 'POST',
         body: JSON.stringify({
           model: cfg.model,
           messages: [{ role: 'user', content: prompt }],
-          max_tokens: maxTokens, temperature: 0.0, top_k: 1,
+          max_tokens: maxTokens, temperature, top_k: topK,
         }),
         headers: { 'Content-Type': 'application/json' },
         signal: ctrl.signal,
@@ -984,12 +1022,14 @@ ${evidence || '(无证据可用)'}
   // callLLM = callLLMOnce + trace + 一次 JSON 格式重试（社区标准：解析失败附纠正再试一次）
   async function callLLM(prompt, maxTokens, timeoutMs, ctx = {}) {
     const t0 = Date.now()
-    let r = await callLLMOnce(prompt, maxTokens, timeoutMs)
+    const sampling = { temperature: ctx.temperature, topK: ctx.topK }
+    let r = await callLLMOnce(prompt, maxTokens, timeoutMs, sampling)
     let retried = 0
     if ((!r || !r.parsed) && (cfg.jsonRetryTimes || 0) > 0) {
       retried = 1
       const fixPrompt = prompt + '\n\n【格式修正】你上一次的输出无法解析为 JSON。这次只输出一个纯 JSON 对象：不要 markdown 代码块、不要任何解释文字、不要前后缀。'
-      r = await callLLMOnce(fixPrompt, maxTokens, timeoutMs)
+      // 格式修正重试用确定性采样（temp=0）——只修格式，不引入新判断
+      r = await callLLMOnce(fixPrompt, maxTokens, timeoutMs, {})
     }
     const parsed = (r && r.parsed) ? r.parsed : null
     trace({
@@ -1061,7 +1101,12 @@ ${(PLANNER_RUBRIC.rules || []).map((r) => `- ${r.requirement}（反例：${r.bad
   }
 
   // ── P1 Critic：产物质量评审（异质 rubric；只读产物，不看执行过程）──
-  const CRITIC_PROMPT = (task, product, content) => `你是独立的产物评审员（Critic）。你只评审产物本身，不看执行过程，也没有参与制作。
+  const CRITIC_PROMPT = (task, product, content) => `你是独立的产物评审员（Critic）。你没有参与制作，只拿到下面两样东西：任务要求 + 产物内容。
+
+严格纪律（AC3）：
+- 你【看不到】也【不要推测】执行者是怎么想的、试过什么、为什么这么做——任何关于"过程"的猜测都禁止。
+- 只按产物最终状态对照任务要求判定；不要用"它大概已经考虑过"这类理由放宽标准。
+- 你的判断必须与执行者的自我评价相互独立：即使产物看起来"作者很用心"，只要客观不达标就判不达标。
 
 【任务要求】${task || '(未知)'}
 
@@ -1094,7 +1139,11 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
       return null
     }
     if (!content.trim()) return null
-    return callLLM(CRITIC_PROMPT(s.initial, product, content), 500, cfg.criticTimeoutMs || 90000, { sid: s.sid || '', tag: 'critic' })
+    // 短期②：异质采样 + 只喂产物/任务/证据，不传 s.trail / 执行者推理链
+    return callLLM(CRITIC_PROMPT(s.initial, product, content), 500, cfg.criticTimeoutMs || 90000, {
+      sid: s.sid || '', tag: 'critic',
+      temperature: cfg.criticTemperature, topK: cfg.criticTopK,
+    })
   }
 
   async function runCorrector(s) {
@@ -1531,6 +1580,21 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
           if (cfg.bdiEnabled && s.bdi?.goal && s.bdi.goal !== String(s.latest).slice(0, 250)) {
             parts.push('⑥ 用户意图（BDI）：' + String(s.bdi.goal).slice(0, 90) + '（状态卡持续维护，不因上下文压缩丢失）')
           }
+          // ── 短期③：test-time 自适应（DART 双信号一致性路由，纯 prompt 零 LLM）──
+          // 两个独立信号一致判"简单"：MTP draft acceptance 高（模型不犹豫）且本轮无失败。
+          // 简单题直接执行、跳过长思考；否则保持展开。trace 记录路由决策供 token 对照。
+          if (cfg.adaptiveThinkEnabled) {
+            // 自己读 spec 日志（控制回合在 D5 审计门控段之前，不能依赖 s.specAcceptance 已赋值）
+            const acc = cfg.specSignalEnabled ? readSpecAcceptance(cfg.specLogPath) : null
+            const noFail = (s.noProgressSteps || 0) < 2
+            const simple = acc !== null && acc !== undefined && acc >= cfg.adaptiveSimpleThreshold && noFail
+            const route = simple ? 'skip-deep-think' : 'full-think'
+            s.adaptiveRoute = route
+            parts.push(simple
+              ? '⑦ 思考预算：两个独立信号一致显示这是简单步（生成顺畅+无失败）——直接执行下一步，不必展开长链推理。'
+              : '⑦ 思考预算：信号显示当前步不简单——保持完整分析再行动。')
+            trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'adaptive_route', step: s.step, route, acceptance: acc ?? null })
+          }
           s.lastMindStep = s.step // 心跳：控制回合作为触发式注入的冷却基准，避免同格式刷屏
           info(`behavior-guard: [控制回合] step=${s.step}`)
           trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'control_turn', step: s.step })
@@ -1667,9 +1731,13 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
       // MTP 信心信号：读 llama-server 日志尾部最后一条 draft acceptance（零额外推理）
       const specAcc = cfg.specSignalEnabled ? readSpecAcceptance(cfg.specLogPath) : null
       s.specAcceptance = specAcc
+      // 短期①：按任务类型选阈值（默认关闭→全局 0.65，保持向后兼容）
+      const specMin = specThresholdFor(cfg, s.initial || '')
+      s.specThresholdUsed = specMin
+      s.taskType = cfg.specThresholdByTaskEnabled ? taskTypeOf(s.initial || '') : undefined
       let gateReason = ''
       if (badCount >= 2) gateReason = 'repeated-failure'
-      else if (specAcc !== null && specAcc < cfg.specAcceptanceMin) gateReason = 'low-draft-acceptance'
+      else if (specAcc !== null && specAcc < specMin) gateReason = 'low-draft-acceptance'
       else if ((s.noProgressSteps || 0) >= (cfg.noProgressSteps || 6)) gateReason = 'no-progress'
       else if (s.presentCalled === true) gateReason = 'pre-delivery'
       else if (s.justCompacted === true) gateReason = 'post-compaction'
