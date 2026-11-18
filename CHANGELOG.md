@@ -1,3 +1,13 @@
+## [2.5.2] - 2026-11-18 12:35
+
+### Changed（dsh rc.3 升级实测）
+- dsh 已升至 **0.2.2-rc.3**，全量验证通过（26+40+30/30、config_check、探针、服务健康）
+- 记录 rc.3 两个真实变化：① pnpm 路径迁到 `primary-runtime/dependencies/pnpm`；
+  ② virtual store 从 junction 路径变物理路径（pnpm update 报 ERR_PNPM_UNEXPECTED_VIRTUAL_STORE）
+- `setup/install.ps1` 的 pnpm 路径已更新为 rc.3 新路径
+- 实测：AGENTS/env/cordis/junction/插件/会话全部保留；web searxng provider 保留；
+  bundles 少 `dsh-experimental-agent-team-profile`（AgentTeam 改具名，不影响本 harness）
+
 ## [2.5.1] - 2026-11-18 11:45
 
 ### Changed（A2 全栈配置一致性）

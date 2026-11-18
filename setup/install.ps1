@@ -127,7 +127,7 @@ Get-ChildItem (Join-Path $Repo 'docs\*.md') | ForEach-Object {
 if ($LocalRepo) {
     Log "本地插件安装: $LocalRepo（跳过 pnpm；手动 pnpm add 指向该目录）"
 } else {
-    $cmd = "node 'D:\Deepseek Harness\resources\runtime\pnpm\bin\pnpm.cjs' add github:D-al/dsh-behavior-guard"
+    $cmd = "node 'D:\Deepseek Harness\resources\runtime\primary-runtime\dependencies\pnpm\bin\pnpm.cjs' add github:D-al/dsh-behavior-guard"
     Would $cmd
     if (-not $DryRun) {
         Push-Location $ProfileRoot

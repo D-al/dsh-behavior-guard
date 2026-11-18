@@ -65,10 +65,10 @@ Meta 的 [Thinking Before Thinking, arXiv 2609.38147](https://arxiv.org/abs/2609
 
 | 组件 | 本机版本 | 官方最新（11-18） | 状态 / 注意事项 |
 |---|---|---|---|
-| **dsh 本体**（Electron 桌面版）| app.asar **2026-09-29**（约 0.2.0 前期）| **0.2.2-rc.3**（11-13）| ⚠ 落后约 2 个月；更新走 GUI（无 CLI；feed 取不到；缓存 installer 是 0.2.0-rc.2）。升级前读 [dsh 升级注意事项](#dsh-升级注意事项rc2rc3) |
+| **dsh 本体**（Electron 桌面版）| ✅ **已升级 0.2.2-rc.3**（app.asar 11-13 15:30，2026-11-18 12:28 验证）| 0.2.2-rc.3（11-13）| ✓ 已跟进；升级实测见下方「rc.3 升级实测」|
 | **llama.cpp 引擎** | 自编 **b12244** + 2 行 autoparser 补丁 | **b12493**（18 Nov）| 落后 249 builds；**不急着升**——我们要的 MoE cache 收益已吃到，升 v1.0.0 需要重编 + 补丁重打 |
 | **ggml** | 随 b12244 | v1.0.0（11-13）| 语义化版本生效；破坏性变更才升 MAJOR |
-| **node / pnpm**（runtime）| 24.18.1 / 11.7.0 | — | 见 `resources/runtime/versions.json` |
+| **node / pnpm**（runtime）| **rc.3 后：24.21.0 / 11.28.5**（升级前 24.18.1 / 11.7.0）| — | 见 `resources/runtime/versions.json` |
 | **模型** | Qwen3.6-35B-A3B **UD-Q4_K_XL** | — | 21.28 GiB + mmproj-F16；Q3 已删 |
 
 ### 引擎改动（必须随库带走）
@@ -107,7 +107,23 @@ REASONING_BUDGET 4096 / DRY 0.8-1.75-32-512`。
 3. **自定义插件 / SDK 需迁移**——本 harness 插件与 autostart 插件都要验证加载（探针 + 全测）。
 4. **AgentTeam 改用具名子代理、中断工具默认关闭**——我们的验收员/审计员 spawn 流程可能受影响。
 
-升级流程：备份 profile（见 `setup/` 思路）→ GUI 升级 → `pnpm update dsh-agent-harness` → 重启 → 26+40+29 全测 + 探针 → 不过则回滚。
+升级流程：备份 profile → GUI 升级 → 重启 → 26+40+30 全测 + config_check + 探针 → 不过则回滚。
+
+#### rc.3 升级实测（2026-11-18 12:30）
+
+已升到 rc.3 并全量验证通过。**两个升级带来的真实变化**（写在这里避免下次踩）：
+
+1. **pnpm 路径变了**：旧 `resources/runtime/pnpm/bin/pnpm.cjs` → 新
+   `resources/runtime/primary-runtime/dependencies/pnpm/bin/pnpm.cjs`（pnpm 11.7→11.28.5）。
+   用系统 node 跑：`node <新路径> <args>`（rc.3 的 `runtime/bin/` 只有 node  launcher）。
+2. **virtual store 位置变了**：旧 pnpm 通过 `C:\Users\Ad\.dsh`（junction）建的 store，
+   新 pnpm 解析为 `D:\Brain\dsh-data\...`，`pnpm update` 会报 `ERR_PNPM_UNEXPECTED_VIRTUAL_STORE`。
+   解决：要么 `pnpm install` 重装（会动所有插件，谨慎），要么**只同步版本戳**
+   （若 `index.mjs` md5 与库一致，功能无差异，直接改 node_modules 里的 package.json version）。
+
+升级后实测：app.asar 11-13、插件 5 个全在、AGENTS.md/env/cordis/junction 全部保留、
+bundles 少了 `dsh-experimental-agent-team-profile`（rc.2 起 AgentTeam 改具名，不影响我们）、
+web_search 的 searxng provider 保留、26+40+30/30 全过、服务健康、探针正常。
 
 ---
 
