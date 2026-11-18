@@ -1380,11 +1380,13 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
           if (sig.loops.length && gap >= 6) {
             s.mindInjectCount = (s.mindInjectCount || 0) + 1
             s.lastMindStep = s.step
-            // 强制二选一（调研：开放式"换个方法"会被忽略；显式 A/B 才触发真实改航）
-            const msgText = '[harness 心智状态] 检测到重复动作：' + sig.loops.join('；') +
-              '。\n现在必须二选一并立刻执行，不允许第三个选项，也不允许继续当前序列：' +
-              '\n  A. 产物已交付 → 立即结束本轮，不再验证/重写/重复交付。' +
-              '\n  B. 尚未交付 → 换一条从未试过的路径（换工具/换参数/问用户三选一），直接执行。'
+            // 事实陈述 + 退出许可（调研证据：任何"Are you sure / 二选一"式质疑措辞
+            // 与"You are wrong"的 JS 散度仅 0.0186，会让 76.6% 正确答案被推翻——
+            // 所以这里只给中性事实 + 许可，不质疑、不诱导自我怀疑、不给"你还没做完"的暗示）
+            const msgText = '[harness 状态] 观察到重复动作：' + sig.loops.join('；') +
+              '。\n事实：这些动作在此会话中已执行过，结果已在上下文中。' +
+              '\n你可以直接结束本轮（若目标已达成）；或选择一个与此前不同的动作继续。' +
+              '\n无需重复验证已确认过的内容。'
             info(`behavior-guard: [心智状态] step=${s.step} loops=${sig.loops.length}`)
             trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'mind_state', step: s.step, loops: sig.loops })
             const msg = createMessage(msgText, 'behavior-guard')

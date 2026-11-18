@@ -3,7 +3,7 @@
 > **DeepSeek Harness（dsh）的 agent harness 聚合插件** —— 在一个 8GB 显存的笔记本上，用确定性代码和结构化角色，帮 35B 本地模型把长会话任务稳定做完。
 >
 > 本仓库是 **Single Source of Truth**：插件代码 + 全部生产配置 + 10 个技能 + 19 个核心工具 + 决策档案 + 一键安装脚本。
-> 当前版本 **v2.7.1**（2026-11-18）。仓库名沿用历史名 `dsh-behavior-guard`，npm 包名/插件 id 为 `dsh-agent-harness`。
+> 当前版本 **v2.7.2**（2026-11-18）。仓库名沿用历史名 `dsh-behavior-guard`，npm 包名/插件 id 为 `dsh-agent-harness`。
 
 ---
 
@@ -92,6 +92,7 @@ timeline
 | 🟡 待做 | **A3：拆 `index.mjs` 为 6 模块** | 等真实会话稳定后再动（高风险重构）|
 | 🟡 待做 | **给上游开 autoparser PR**（两行空白修复）| 需写最小 repro + 测试 |
 | 🟡 待做 | **G2/G5 校准出真实阈值**（MTP 0.65 / 无进展 6 是经验值）| 等反馈数据 ≥5 条 |
+| 🟢 已完成 | **心智模型缺口广搜**（5 路并行 agent：认知科学/前沿/三缺口/社区/记忆）——[完整调研报告](docs/MIND_GAPS_RESEARCH.md) |
 | 🔴 卡脖子 | **llama.cpp v1.0.0 升级**（FP8 KV 破显存墙）| 需重编 + 重打补丁 + 全量回归 |
 | 🔴 卡脖子 | **dsh 暴露 logits / per-request 预算** | 上游支持，harness 侧无解 |
 
