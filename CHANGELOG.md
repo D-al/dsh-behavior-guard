@@ -1,3 +1,35 @@
+## [2.13.0] - 2026-11-19 00:20（Self-Harness 路线图 + GPU 引擎争抢守护）
+
+### Added
+- `tools/gpu_engine_guard.py`：GPU 3D/Copy 引擎争抢守护。**引擎级判据**（per-pid `Get-Counter`
+  的 `engtype_3d|copy|cuda` + `is_processing`，不用会误导的聚合 util%）：`3D≥85% && Copy≤2%` 连续 3 次 → 动作。
+  三级降帧：L1 **EcoQoS 效率模式**（窗口保持可见、Chromium 自动降帧，已实测 API 可开关）→
+  L2 SW_MINIMIZE 兜底；推理结束自动撤销/还原；`--dry-run` 先验证误报；JSONL 审计。
+  `--selftest` 三项全过（计数器/判据/EcoQoS）。
+- `docs/GPU_ENGINE_GUARD.md`：根因（WDDM 前台高优先级 + MoE 依赖 Copy + 8G 余量放大器）、
+  L0 零成本配置（NVIDIA Max Frame Rate 20-30 / moe-cache 1350→1024 / HAGS A/B）、
+  已证伪清单（Electron `--disable-gpu` 反效果，来源 Electron #50469）。
+- `decisions/0019-gpu-engine-guard.md`：为什么用引擎级签名 + EcoQoS，不动 Electron 启动参数。
+
+### Docs（承接前一条 2.13.0-plan）
+- `docs/SELF_HARNESS_PLAN.md` + `decisions/0018`：Self-Harness 四阶段方案纳入 ROADMAP 短期①实现路径。
+- README 快速入口/文档地图、docs/README、decisions 索引同步。
+
+## [2.13.0-plan] - 2026-11-19 00:10（docs-only：Self-Harness 纳入路线图）
+
+### Added
+- `docs/SELF_HARNESS_PLAN.md`：[Self-Harness（arXiv 2606.09498v3）](https://arxiv.org/abs/2606.09498)
+  落地方案四阶段（P0 白名单+评测台 → P1 弱点挖掘 → P2 最小闭环 → P3 常态化），
+  定位为 ROADMAP 短期①「技能自进化数据闭环」的实现路径，不新增并列目标。
+- `decisions/0018-self-harness-two-stage.md`：两步走（先 Meta-Harness 离线跑通协议 → 再 35B 自己提案）；
+  editable surfaces 白名单；权限/verify/GWT-FEP 安全面禁止改；候选隔离 + 人工确认部署。
+- ROADMAP 短期①挂接方案链接与验证方法；README 快速入口 + 文档地图加入口；decisions 索引补 0018。
+
+### Note
+- 本条只落文档，不改代码；版本标记 `2.13.0-plan` 表示规划进入路线图，**不代表 P0 已实现**。
+- 依据的关键事实：论文 Qwen3.5-35B-A3B 在 Terminal-Bench-2.0 held-in 15.1→36.0 / held-out 23.8→38.1；
+  仓库默认 `route-count=4` / `repeats=2` / 双 split 接受规则（no drop + ≥1 improve）。
+
 ## [2.12.0] - 2026-11-18 22:20（维护性更新：深度审计与修复）
 
 > 范围：代码 / 配置 / 脚本 / 文档四层全审计。两个 Explore agent 并行只读审计 + 主代理逐条核实。

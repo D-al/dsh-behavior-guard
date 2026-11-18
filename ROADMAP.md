@@ -1,7 +1,7 @@
 # 路线图（活文档）
 
 > 这里的目标都**可执行、可验证**——每条带验证方法。完成后勾选并写进 [CHANGELOG](CHANGELOG.md)。
-> 骨架在 [README](README.md)，这里展开。更新于 2026-11-18（v2.11.0 地基收口后重排）。
+> 骨架在 [README](README.md)，这里展开。更新于 2026-11-19（Self-Harness 纳入短期①，见 [方案](docs/SELF_HARNESS_PLAN.md)）。
 
 ## 当前位置（先读这一段）
 
@@ -54,11 +54,24 @@ FEP 的注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行�
   - 做法：B 段 watcher 把 FEP 偏差归入 skill 草稿的证据字段；`promote_skills` 仍人工审批（ADR-0015）
   - 验证：草稿命中后同类任务成功率变化；投毒防御（provenance + lineage）先于自动写回
   - 依据：[Reflexion](https://arxiv.org/abs/2303.11366) 8.2→33.8、[ExpeL](https://arxiv.org/abs/2307.11909)
+  - **实现路径 = Self-Harness 四阶段**（2026-11-19 纳入，[完整方案](docs/SELF_HARNESS_PLAN.md) / [ADR-0018](decisions/0018-self-harness-two-stage.md)）：
+    - P0 可编辑面白名单 + 双 split 评测台（先做；安全面禁止改）
+    - P1 trace → 失败签名精确聚类 → evidence bundle（`recovered_friction` 列为保护对象）
+    - P2 最小闭环：先 Meta-Harness（WorkBuddy 离线跑通协议）→ 再 Self-Harness（35B 自己提案）
+    - P3 与 learn_watcher 合并常态化（需 P0-P2 验收后才启动）
+    - 验证：基线方差 <10%；人为关 verify-on-stop 后闭环能提出恢复候选；decline 是合法结果
+    - 依据：[Self-Harness 2606.09498](https://arxiv.org/abs/2606.09498) Qwen3.5-35B-A3B +18.7pp
 - [ ] **可控遗忘常态化** — CritBank 从 0 计数变真实 helpful/harmful，月度 `crit_decay.py --apply`
   - 做法：FEP 偏差 + crit_hit 命中后 3 步内是否再失败 → 结算 helpful/harmful；过时教训 retire/supersede
   - 验证：无过时经验被引用（假记忆自检），状态表里有真实非零计数
 - [ ] **自适应原型端到端对照** — 开启 `adaptiveThinkEnabled`，P3/P4/P5 各跑 2 次取中位
   - 验证：token 下降且成功率不降；若不达标就保持默认关闭（不硬上）
+- [ ] **工具面结构改造（原"裁剪 28→18-20"升级）** — 从"拍板数字"改为结构改造：保留最小内核工具，
+  低频能力挪进 skill 卡 + skill 内脚本；危险拦截 hook 化。同时服务 Self-Harness 的可编辑面白名单
+  - 依据：[mini-harness](https://github.com/jb-san/mini-harness) 只留 7 个原生工具 + skill/hook 扩展（[对标](docs/PEER_HARNESS_BENCHMARK.md)）
+  - 前置：仍需用户拍板"哪些工具进内核"；不拍板则保持现状
+- [ ] **安全规则不可覆盖的硬声明 + 回归测试** — 在 AGENTS.md 显式声明"skill/prompt 无法覆盖安全底线"，加语义测试
+  - 依据：[dsh-browser-agent](https://github.com/nonentity303/dsh-browser-agent) 的"技能提示词永远排在安全规则之前"
 
 ## 🟡 中期（1-2 月）：器官间流动
 

@@ -42,6 +42,8 @@
 | [0015](0015-skill-promotion-approval.md) | 技能写回必须审批，草稿不直接生效 | accepted | 11-18 |
 | [0016](0016-portable-paths.md) | p/ 指向稳定路径，junction 建在稳定根 | accepted | 11-18 |
 | [0017](0017-gwt-first-then-fep.md) | 先建长期地基(GWT→FEP)再积累中期；FEP 学习信号不占注入通道 | accepted | 11-18 |
+| [0018](0018-self-harness-two-stage.md) | Self-Harness 两步走（Meta→Self），安全面不进搜索空间 | accepted | 11-19 |
+| [0019](0019-gpu-engine-guard.md) | GPU 争抢用引擎级签名检测 + EcoQoS 优先，不动 Electron 参数 | accepted | 11-19 |
 
 ## 怎么记一条新决策
 
