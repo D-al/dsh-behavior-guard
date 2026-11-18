@@ -1,3 +1,21 @@
+## [2.5.0] - 2026-11-18 11:40
+
+### Changed（A1 可移植性改造 + 前 3 项清理）
+
+**A1 可移植性（从"能跑"→"可复制"）**
+- `p/` junction 从带时间戳的 `WorkBuddyWorkSpace/<时间戳>` 改为稳定路径 `D:/Brain/workspace`
+- 新增 `setup/links.ps1`：一键重建 7 个 junction（DryRun 实测 7/7 OK）
+- AGENTS.md 路径约定同步（`p/bench/xxx = D:/Brain/workspace/bench/xxx`）
+- 注：脚本本身早已在唯一真源（WorkBuddyWorkSpace/bench 本就是 junction 指向 Brain/workspace）
+
+**前 3 项零风险清理**
+- 归档 157 个 `_` 临时文件 + 8 个会话转储(45MB) → `bench/archive/`
+- 清 `__pycache__`(1.4M) + 过期 installer.exe(276M) → `_cleanup_20261118/`（可恢复）
+- `trace_report.py` 加"数据不足"提示（避免把机制未触发误判为故障）
+
+### Tests
+- 26 + 40 + 29/29；7 junction 可达；探针 11:37:06（晚于 AGENTS 修改 11:36:32）
+
 ## [2.4.1] - 2026-11-18 11:20
 
 ### Added（版本基线章节）

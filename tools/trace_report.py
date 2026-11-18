@@ -37,6 +37,18 @@ def main():
         print('trace 为空')
         return
 
+    # 数据充足性提示（避免把"机制已装但无数据"误判为坏了）
+    feedback = r'D://Brain//workspace//bench//_audit_feedback.jsonl'
+    import os as _os
+    n_fb = sum(1 for _ in open(feedback, encoding='utf-8')) if _os.path.exists(feedback) else 0
+    n_llm = sum(1 for r in rows if r.get('kind') == 'llm')
+    if n_fb < 5:
+        print(f'[提示] 审计反馈仅 {n_fb} 条（需 >=5 才能用 audit_calibrate.py 校准阈值）——机制已装，'
+              '真实 dsh 会话使用后自然积累，不是故障。')
+    if n_llm == 0:
+        print('[提示] 无 LLM 调用记录（审计/评审未触发）——确定性门控仍在工作，LLM 门控需风险信号才触发。')
+    print()
+
     # 按会话分组
     by_sid = defaultdict(list)
     for r in rows:

@@ -59,7 +59,7 @@ shell 命令的唯一正确工具 id 是 `pwsh`（❌ 不要写成 pswsh/bash/sh
 `bench/agentlab.py`），禁止 70+ 字符绝对路径——实测复述准确率：20 字符 5/5、73 字符 0/5（逐字漂移）。
 
 - 目标不在 junction 覆盖内：先 `glob` 确认工作区内相对路径，不凭空拼绝对路径。
-- 项目文件用 `p/` 前缀：`p/bench/xxx.py` = `D:/WorkBuddyWorkSpace/2026-10-13-20-41-43/bench/xxx.py`。
+- 项目文件用 `p/` 前缀：`p/` → `D:/Brain/workspace/`（**稳定路径，无时间戳**），即 `p/bench/xxx.py` = `D:/Brain/workspace/bench/xxx.py`。换机器/重装跑 `setup/links.ps1` 重建。
 - **写 junction 路径被沙箱拒绝是正确行为**（canonical path 防逃逸）：写文件一律写工作区根目录
   内的非 junction 路径（如 `summary-xxx.md`），或按 CritBank 对策改绝对路径提权。
 - 搜索文件：短名映射 / `es.exe "关键词"`（秒级，禁止 Get-ChildItem 递归全盘）。
