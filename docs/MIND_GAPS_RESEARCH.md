@@ -14,9 +14,9 @@
 | 情景记忆 | P0 存档 + memory 日志 | ✅ |
 | 执行控制 | L0-L3 + D1-D5 + 纠正器 | ✅ |
 | 验证/免疫 | D4 + Critic + 验收员 + verify-on-edit | ✅ |
-| 元认知 | 规则代替感觉 + 心智状态快照 | 🟡 刚起步 |
-| 可塑性 | G1-G7 技能自进化机制 | 🟡 未激活（无数据）|
-| 自我模型 | 弱（错误画像刚加）| 🔴 |
+| 元认知 | 规则代替感觉 + 心智状态快照 + 控制回合 | ✅（v2.10 短期四目标后）|
+| 可塑性 | G1-G7 技能自进化 + outcome/FEP 偏差数据流 | 🟡 数据已够 63 条，写回闭环待做（新短期）|
+| 自我模型 | 弱（错误画像 + bdi 单槽）| 🟡 BDI 三槽深化排中期 |
 
 插件实际开关 15 个、监听 3 类事件（agent/pre-step、agent/turn-stopping、session/event）。
 
@@ -160,7 +160,7 @@ System 3 动机 🟡（可用规则近似）、ToM 用户模型 ✅（显式文�
 
 ## 已落地的改动（调研进行中同步执行）
 
-### 🚨 紧急修复：强制二选一 → 中性事实+退出许可（v2.7.2 待发）
+### 🚨 紧急修复：强制二选一 → 中性事实+退出许可（v2.7.2 已发布，ADR-0014）
 
 调研③的反面证据压倒性（"Are you sure?" ≈ "You are wrong"，JS 散度 0.0186；
 条件性提示让 Llama-3.1-8B -20.4pp / GPT-4o -20.9pp），
@@ -215,3 +215,24 @@ System 3 动机 🟡（可用规则近似）、ToM 用户模型 ✅（显式文�
 [OpenHands 实现综述](https://github.com/BaranziniLab/biorouter/blob/main/docs/research/coding-agent-landscape/openhands.md)、
 [self-improvement 验证报告](https://dz3ai.github.io/allclaws/docs/reports/self-improvement-claims-verification)、
 [Cursor Agent Swarm](https://cursor.com/blog/agent-swarm-model-economics)
+
+---
+
+## 调研结论的兑现追踪（2026-11-18 21:30，v2.11.0）
+
+> 本文件是调研快照，保留原始判断（历史只追加不重写）。下面记录哪些结论已被后续版本兑现——
+> 以 [ROADMAP](../ROADMAP.md) 的勾选状态为准。
+
+| 调研结论 | 兑现版本 | 状态 |
+|---|---|---|
+| GWT 广播总线（结构性缺口，模块间手动搬运）| v2.11.0 | ✅ `workspaceSnapshot` 共享状态对象，三消费者同源 |
+| FEP 预测闭环（从事后验证到先断言→比对→偏差）| v2.11.0 | ✅ 产物存在性级；更深的内容级断言排长期 |
+| 可控遗忘（唯一正在降低正确性的一块）| — | 🟢 新短期：CritBank 真实计数 + 月度 decay |
+| 情景检索（P0 是死档案，检索是价值放大器）| — | 🟡 中期：进控制回合自动 top-3 |
+| 技能写回闭环（社区一致，我们单向注入）| 部分（草稿+审批）| 🟢 新短期：outcome/FEP 偏差喂草稿，`promote_skills` 仍审批 |
+| 意图漂移在线监测 | v2.9 | ✅ 控制回合 ⑤ 信号（关键词覆盖率 <0.25）|
+| BDI 用户意图 | 部分（单槽状态卡）| 🟡 中期：belief/desire/intention 三槽深化 |
+| 安全：记忆/技能投毒防御 | 部分（provenance + 审批）| 🟢 新短期前置：写回闭环前先补 lineage risk |
+
+**脑功能分区视角的补充盘点**见 [BRAIN_PARITY.md](BRAIN_PARITY.md)：胼胝体（GWT）已补，
+杏仁核/眶额（情绪价值）与脑干（内在动机）是最大空白群；社区最先进的 Foundation Agents 蓝图（2504.01990）也承认 L3 未开发。

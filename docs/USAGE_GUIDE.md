@@ -60,4 +60,5 @@ python config_check.py
 ⚠ **单次结果有 ±10% 波动**（模型温度 0.6 单次采样），判断好坏至少 2 次取中位。
 
 ## 五、当前版本
-`dsh-agent-harness v2.2.1`（含 v2.0 合并 / v2.1 控制回合 / v2.2 四项社区缺口）
+`dsh-agent-harness v2.11.1`（v2.9 双向合流 → v2.10 短期四目标 + 权限代劳 → v2.11 长期地基 GWT/FEP）
+版本史见 [CHANGELOG.md](../CHANGELOG.md)，目标状态见 [ROADMAP.md](../ROADMAP.md)。

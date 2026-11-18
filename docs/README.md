@@ -21,6 +21,7 @@
 | 文档 | 类型 | 职责 |
 |---|---|---|
 | [MIND_GAPS_RESEARCH.md](MIND_GAPS_RESEARCH.md) | 解释 | 6 路广搜：心智还缺哪些拼图 |
+| [BRAIN_PARITY.md](BRAIN_PARITY.md) | 解释 | 人脑功能分区覆盖度盘点（胼胝体/杏仁核等对应与空白）|
 | [COMPETITIVE_ANALYSIS.md](COMPETITIVE_ANALYSIS.md) | 解释 | 社区对比：先进 / 落后 / 以为先进其实平凡 |
 | [MD_SYSTEM_PLAN.md](MD_SYSTEM_PLAN.md) | 解释 | 文档分层原则（三层体系：执行细节/知识沉淀/导航入口）|
 | [PERIPHERAL_CAPABILITIES.md](PERIPHERAL_CAPABILITIES.md) | 解释 | MCP 等外围能力调研 |

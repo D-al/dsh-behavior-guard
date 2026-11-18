@@ -2,8 +2,8 @@
 
 > **合成心智（Synthetic Mind）**：用一个 35B 本地模型 + 一套确定性脚手架，合成比模型本身可靠得多的心智——**模型权重一个字节没动，变的是它外面的脑区**。
 
-本仓库是 **Single Source of Truth**：插件代码 + 生产配置 + 10 个技能 + 19 个工具 + 决策档案 + 一键安装。
-当前 **v2.11.0**（2026-11-18）。仓库名沿用历史名 `dsh-behavior-guard`，npm 包名/插件 id 为 `dsh-agent-harness`。
+本仓库是 **Single Source of Truth**：插件代码 + 生产配置 + 10 个技能卡 + 23 个分析脚本 + 决策档案 + 一键安装。
+当前 **v2.11.1**（2026-11-18）。仓库名沿用历史名 `dsh-behavior-guard`，npm 包名/插件 id 为 `dsh-agent-harness`。
 
 ---
 
@@ -13,7 +13,8 @@
 |---|---|
 | **只想用** | [一键开箱](#一键开箱) → [说明书](docs/MANUALS.md) |
 | **想接手开发** | [文档地图](docs/README.md) → [路线图](ROADMAP.md) → [决策档案](decisions/README.md) |
-| **想知道为什么这么做** | [8 条分支](docs/MANUALS.md#8-心智拼图操作手册p0-p2) → [调研汇总](docs/MIND_GAPS_RESEARCH.md) → [社区对比](docs/COMPETITIVE_ANALYSIS.md) |
+| **想知道为什么这么做** | [说明书 §8 心智拼图](docs/MANUALS.md) → [调研汇总](docs/MIND_GAPS_RESEARCH.md) → [社区对比](docs/COMPETITIVE_ANALYSIS.md) |
+| **想看脑功能分区对照** | [覆盖度盘点](docs/BRAIN_PARITY.md)（人脑分区 → 我们的机制 → 空白区）|
 | **想看历史** | [时间线](docs/history/TIMELINE.md) → [调优决策](docs/history/tuning/DECISIONS.md) |
 
 ---
@@ -48,15 +49,19 @@
 
 ---
 
-## 路线图（三阶段）
+## 路线图（重排于 v2.11.1）
 
 > 完整、可验证的目标见 [ROADMAP.md](ROADMAP.md)。这里只列骨架。
+> **已完成的 8 项（含 GWT 总线 / FEP 闭环）归档在 ROADMAP 的"已完成"节，不再占用短中长期位置。**
 
 | 阶段 | 时间 | 主题 | 核心目标（可验证） |
 |---|---|---|---|
-| 🟢 **短期** | 1-2 周 | **收口已知风险** | ① spec 阈值 0.65 用 P3/P4/P5 标定（误触发 <10%）② Critic 去同源（只看产物+证据，不看执行者推理）③ test-time 自适应原型（token 降而成功率不降）④ v2.10.0 新机制跑 3-5 个真实长任务回归 |
-| 🟡 **中期** | 1-2 月 | **从能用到可靠** | ① 每轮结构化成功/失败判定，攒 20-50 条跑技能进化 ② CritBank 月度归档、假记忆自检 ③ 情景检索进主循环（历史经验被主动引用 >0 次）④ 工具面 28→18-20 ⑤ 会话树实时化 |
-| 🔴 **长期** | 季度级 | **架构完整性** | ① GWT 广播总线（共享状态对象）② FEP 预测闭环（先断言→比对→偏差驱动）③ 用户意图 BDI 深化 ④ autoparser PR + v1.0.0 升级 ⑤ 迁到社区标准 benchmark |
+| 🟢 **短期** | 1-2 周 | **把数据变成能力** | ① 技能自进化闭环（outcome+FEP 偏差喂草稿，人工审批写回）② 可控遗忘常态化（CritBank 真实计数 + 假记忆自检）③ 自适应原型端到端 token 对照 |
+| 🟡 **中期** | 1-2 月 | **器官间流动** | ① 情景检索进主循环（历史经验被主动引用 >0 次）② 会话树实时化（parent 指针 + 真 rewind）③ BDI 三槽深化（跨压缩不丢约束）|
+| 🔴 **长期** | 季度级 | **架构完整性与外部效度** | ① FEP 深化到世界模型 ② 标准化 eval（SWE-bench Verified）③ 脑功能分区空白区（眶额价值/脑干稳态）④ 独立轨道：上游 PR / v1.0.0 / 工具面裁剪 |
+
+**执行顺序的根据**：地基（数据底座 + GWT/FEP）已于 v2.11 建完；数据型目标（短期）时间站在我们这边，
+结构型目标（中期）依赖总线已立；长期目标需要世界模型/外部基准，最后做。详见 [ADR-0017](decisions/0017-gwt-first-then-fep.md)。
 
 **明确不做**：多模态/CUA、通用 agent 框架、向量检索代码、模型微调、堆更多 judge。理由见 [ROADMAP §不做](ROADMAP.md#明确不做)。
 
@@ -102,7 +107,7 @@ git clone https://github.com/D-al/dsh-behavior-guard.git && cd dsh-behavior-guar
 | [docs/MD_SYSTEM_PLAN.md](docs/MD_SYSTEM_PLAN.md) | 文档分层原则（三层体系） |
 
 ## 版本历史
-完整版本历史 → [CHANGELOG.md](CHANGELOG.md)。当前 **v2.11.0**（长期地基 GWT+FEP 已建，先地基后积累中期）。
+完整版本历史 → [CHANGELOG.md](CHANGELOG.md)。当前 **v2.11.1**（三阶段目标重排，全仓 md 一致性整理）。
 
 ## License
 MIT
