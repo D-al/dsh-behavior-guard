@@ -1,0 +1,38 @@
+# ── 权限预设：新会话默认 Full access + never approval ──
+# 用途：把这段 insert 合并进 <profile>/cordis.patch.yml 的顶层数组。
+# 效果：新会话不再弹权限审批窗，也不受 workspace-write 沙箱对 D 盘的访问限制。
+#
+# 依据（deepseek-ai/deepseek-harness 官方）：
+#   packages/bundle/base/cordis.patch.yml 里 row id 是 `permission`（不是 permission-presets）；
+#   patch 是【整段替换 config】，所以 presets 表要完整重写。
+#   sandbox-policy.mode / approval.policy 也各自覆盖，保证无 preset 覆盖时也是 full+never。
+#
+# 注意：只影响【新会话】；已存在会话保留自己的 permission/preset 事件。
+#       要切换已有会话，在 dsh 里用 /permission 命令选「完全权限」。
+# 兜底：dsh-approval-delegate 插件仍作为 approval/request answerer 处理任何 ask 场景。
+
+- id: sandbox-policy
+  name: '@deepseek-ai/dsh-sandbox-policy'
+  config:
+    mode: danger-full-access
+    workspaceRoot: !!js process.cwd()
+
+- id: approval
+  name: '@deepseek-ai/dsh-user-approval'
+  config:
+    policy: never
+
+- id: permission
+  name: '@deepseek-ai/dsh-permission-presets'
+  config:
+    presets:
+      read-only:
+        sandbox: read-only
+        approval: ask
+      workspace-write:
+        sandbox: workspace-write
+        approval: ask
+      danger-full-access:
+        sandbox: danger-full-access
+        approval: never
+    defaultPreset: danger-full-access

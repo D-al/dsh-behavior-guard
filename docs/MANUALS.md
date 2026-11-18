@@ -375,3 +375,40 @@ python bench/mind_state.py --session <会话目录>
 - 世界模型 / 因果推理：有模型也"不会主动用"（2606.09032），且 8GB 下推理质量不足。
 - 向量检索代码：Harness Engineering (2609.00006) 解剖 11 个 harness——**无人用**。
 - 通用 agent 框架：同上，全部手写循环 + SKILL.md。
+
+---
+
+## 9. 权限弹窗代劳（2026-11-18，v2.10.0）
+
+**目标**：dsh 的权限审批弹窗不再打断用户，由本地 agent 代为处理。
+
+### 9.1 两层方案
+
+| 层 | 机制 | 效果 |
+|---|---|---|
+| **根治（新会话）** | profile `cordis.patch.yml` 覆盖 `sandbox-policy` / `approval` / `permission` 三个 row | 新会话默认 `danger-full-access` + `never`——**既不弹窗，也不被沙箱拦 D 盘命令** |
+| **兜底（任何 ask 场景）** | `dsh-approval-delegate` 插件（approval/request answerer） | 低风险 sandbox 请求自动 `allowed-once`；高风险（rm -rf/系统目录）交回 UI |
+
+配置片段见 [`config/permission-preset-full-access.yml`](../config/permission-preset-full-access.yml)。
+
+### 9.2 官方依据
+
+- `deepseek-ai/deepseek-harness` 的 `packages/bundle/base/cordis.patch.yml`：
+  row id 是 `permission`；patch **整段替换 config**（不是 merge）。
+- `packages/interaction/user-approval/README.md`：
+  `approval/request` 是 waterfall 事件——answerer 返回 outcome 即认领，调 `next()` 委派给下一层（UI）。
+- `docs/subsystems/permission-presets.md`：
+  preset `danger-full-access` = `sandbox:danger-full-access` + `approval:never`。
+
+### 9.3 验证
+
+- 新会话事件：
+  `permission/preset=danger-full-access`、`sandbox/mode=danger-full-access`、`approval/policy=never`
+- 真实任务（read + python -c）：0 次 `approval/asked`，命令正常执行输出 `check-ok`
+- `dsh-approval-delegate/test.mjs` 7/7；加载探针 `~/.dsh/approval-delegate-loaded.json`
+
+### 9.4 安全边界与恢复
+
+- 高风险动作仍被 harness 的 `[harness 危险操作]` 分级提示拦一层（模型侧意识）。
+- 想恢复弹窗：删除 patch 里那三个 row 覆盖，或在 dsh 用 `/permission` 切到「工作区内修改」。
+- 已有会话保留自己的 preset 事件，不受新默认影响——用 `/permission` 切换当前会话。
