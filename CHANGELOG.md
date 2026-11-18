@@ -1,3 +1,14 @@
+## [2.4.1] - 2026-11-18 11:20
+
+### Added（版本基线章节）
+- README 新增「版本基线」：dsh app.asar(9-29) vs 官方 rc.3(11-13)、llama.cpp b12244 vs b12493、
+  autoparser 补丁、生产参数、#29307/#29949/v1.0.0 跟进状态、dsh 升级四个坑
+- 修正头部过期版本号（v2.2.1 → v2.4.0）
+
+### 升级状态
+- dsh 升级到 rc.3 **阻塞**：Electron 桌面版只能 GUI 更新（无 CLI / feed 取不到 / 缓存 installer 是
+  旧的 0.2.0-rc.2）。已完成 profile 备份 `_backup-before-rc3-20261118-1112/`，等用户手动升级后跑全测。
+
 # Changelog
 
 所有迭代以本地时间记录（UTC+8）。

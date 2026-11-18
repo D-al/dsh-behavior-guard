@@ -3,7 +3,7 @@
 > **DeepSeek Harness（dsh）的 agent harness 聚合插件**——用确定性代码和结构化角色，为一个本地 8GB 显存上的 35B MoE 模型分担负担、拓展能力边界。
 >
 > 仓库名沿用历史名 `dsh-behavior-guard`；npm 包名与插件 id 为 `dsh-agent-harness`（v2.0.0 起）。
-> 当前版本 **v2.2.1**（2026-11-18）。
+> 当前版本 **v2.4.0**（2026-11-18；本仓库即 Single Source of Truth）。
 
 ---
 
@@ -52,6 +52,60 @@ Meta 的 [Thinking Before Thinking, arXiv 2609.38147](https://arxiv.org/abs/2609
 我们做的是把"能由系统可靠完成的事"从模型肩上卸下来，让它只专注决策。
 
 **目标函数**：**一次做对 > 快速但反复修改**。三次顺序迭代 ≈ 单次生成，返工才是真成本。
+
+---
+
+## 版本基线（2026-11-18 核查）
+
+一键开箱不只复制配置，还要对齐**版本**——下面是本仓库假设的软件栈与实测过的组合。
+
+### 软件栈版本
+
+| 组件 | 本机版本 | 官方最新（11-18） | 状态 / 注意事项 |
+|---|---|---|---|
+| **dsh 本体**（Electron 桌面版）| app.asar **2026-09-29**（约 0.2.0 前期）| **0.2.2-rc.3**（11-13）| ⚠ 落后约 2 个月；更新走 GUI（无 CLI；feed 取不到；缓存 installer 是 0.2.0-rc.2）。升级前读 [dsh 升级注意事项](#dsh-升级注意事项rc2rc3) |
+| **llama.cpp 引擎** | 自编 **b12244** + 2 行 autoparser 补丁 | **b12493**（18 Nov）| 落后 249 builds；**不急着升**——我们要的 MoE cache 收益已吃到，升 v1.0.0 需要重编 + 补丁重打 |
+| **ggml** | 随 b12244 | v1.0.0（11-13）| 语义化版本生效；破坏性变更才升 MAJOR |
+| **node / pnpm**（runtime）| 24.18.1 / 11.7.0 | — | 见 `resources/runtime/versions.json` |
+| **模型** | Qwen3.6-35B-A3B **UD-Q4_K_XL** | — | 21.28 GiB + mmproj-F16；Q3 已删 |
+
+### 引擎改动（必须随库带走）
+
+| 改动 | 文件 | 说明 |
+|---|---|---|
+| **autoparser 空白 bug 补丁** | `config/patches/autoparser-fix.patch` | `src/common/chat-auto-parser-generator.cpp` 两行（444/473）——上游 **#29307 至今未合并**，每次升级/重编都要重打 |
+| 自编编译脚本 | `tools/build_b12244.py` | 三坑：① `-DGGML_CUDA_FA_QUANTS=...`；② cmd.exe 被拦→手工注入 MSVC 环境；③ `common/` 在源码根 |
+
+### 生产参数（`.env.llama`，随库 `config/env.llama`）
+
+`CTX 98304 / NGL 99 / NCMOE 40 / MOE_CACHE_CPU_SHARE 0 / MOE_CACHE_MIB 1350 /
+UBATCH 1536 / THREADS 6 / BATCH 4096 / CTK q8_0 / CTV q4_0 / MMPROJ_OFFLOAD 1 /
+SPEC_TYPE draft-mtp / NMAX 5 / CTX_CHECKPOINTS 2 / TEMP 留空 / TOP_P 0.95 /
+REASONING_BUDGET 4096 / DRY 0.8-1.75-32-512`。
+
+- **`.env` 覆盖 INI**——`tools/config_check.py` 比对 23 个重叠键（曾抓到 2 处真不一致）。
+- **`CTX_CHECKPOINTS=2` 是承重墙**，降到 1 每步全量重预填 +23%。
+- `MOE_CACHE_CPU_SHARE=0` 是血泪教训：1.0 让 decode +37% 但端到端**慢 2.4 倍**。
+
+### 待跟进的上游（不要误判为"已解决"）
+
+| 上游 | 状态 | 对我们的影响 |
+|---|---|---|
+| [#29307 token-aware parsing](https://github.com/ggml-org/llama.cpp/pull/29307) | 未合并（62 commits）| 本地补丁继续保留；合并后可撤。新数据：grammar 替代 regex 使 64K 逐 token 开销 **4250µs→10µs**、decode +4~11% |
+| [#29949 GPU-resident MoE LRU](https://github.com/ggml-org/llama.cpp/issues/29949) | 是 issue 非 PR（作者有实现未开）| 24GB 卡 9.7→37-50 t/s；但同方向 [#29887](https://github.com/ggml-org/llama.cpp/pull/29887) **已合并 = 我们正在用的 `--moe-cache-mib`** |
+| llama.cpp v1.0.0 | 已发布（11-13）| FP8 KV cache + 非阻塞 MoE cache 可破显存墙；重编时机待定 |
+| **Qwen3.8-Flash-Next** | 最小量化 **66.4GB** > 本机 64GB RAM | ❌ 本机仍不可行（GPU LRU 解决的是 VRAM 不是 RAM）|
+
+### dsh 升级注意事项（rc.2/rc.3）
+
+从旧版升到 0.2.2-rc.x 有四个**会咬到我们**的默认行为变化：
+
+1. **归档会话默认清理 Git 工作树**（保留分支/提交，删未提交内容）——`D:/Brain/workspace` 是 git 仓库，升级前先确认该项关闭或已提交。
+2. **网页搜索默认改用 DeepSeek Search API**——我们用本地 SearXNG（`web_search`），需确认自定义 provider 是否保留。
+3. **自定义插件 / SDK 需迁移**——本 harness 插件与 autostart 插件都要验证加载（探针 + 全测）。
+4. **AgentTeam 改用具名子代理、中断工具默认关闭**——我们的验收员/审计员 spawn 流程可能受影响。
+
+升级流程：备份 profile（见 `setup/` 思路）→ GUI 升级 → `pnpm update dsh-agent-harness` → 重启 → 26+40+29 全测 + 探针 → 不过则回滚。
 
 ---
 
