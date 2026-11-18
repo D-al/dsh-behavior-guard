@@ -3,7 +3,7 @@
 > **合成心智（Synthetic Mind）**：用一个 35B 本地模型 + 一套确定性脚手架，合成比模型本身可靠得多的心智——**模型权重一个字节没动，变的是它外面的脑区**。
 
 本仓库是 **Single Source of Truth**：插件代码 + 生产配置 + 10 个技能卡 + 23 个分析脚本 + 决策档案 + 一键安装。
-当前 **v2.15.0**（2026-11-19）。仓库名沿用历史名 `dsh-behavior-guard`，npm 包名/插件 id 为 `dsh-agent-harness`。
+当前 **v2.16.0**（2026-11-19）。仓库名沿用历史名 `dsh-behavior-guard`，npm 包名/插件 id 为 `dsh-agent-harness`。
 
 ---
 
@@ -30,9 +30,9 @@
    它在模型**外部**注入确定性规则（L0-L3 早收尾、D1-D5 风险门控、todo 闹钟、控制回合、Critic/审计、verify-on-stop、学习回注），
    **不改模型权重**。目标是让一个 8G 显存上的 35B MoE 模型 behave 得像一个可靠 agent。
 2. **看现状**：[ROADMAP §1 当前位置](ROADMAP.md#1-当前位置30-秒读懂) —— 已完成什么、现在在哪一波、为什么是这个顺序。
-3. **看边界**：[ROADMAP §7 明确不做](ROADMAP.md#7-明确不做防止新人重造轮子--走回头路) + 下面「硬约束」—— 别做与权重零改冲突、或已被证伪的事。
+3. **看边界**：[ROADMAP §8 明确不做](ROADMAP.md#8-明确不做防止新人重造轮子--走回头路) + 下面「硬约束」—— 别做与权重零改冲突、或已被证伪的事。
 4. **验证环境没坏**：`node --check index.mjs` → `python tools/regression_check.py`（期望 30/30）→ `python tools/config_check.py`（期望全栈一致）。
-5. **领活**：[ROADMAP §2 短期](ROADMAP.md#2--短期now1-2-周把积累的数据变成能力) 取一条 `[ ]`，先读它挂的方案/ADR 链接，再动手。**任何改动都要跑第 4 步的门禁。**
+5. **领活**：[ROADMAP §3 短期](ROADMAP.md#3--短期now1-2-周把积累的数据变成能力) 取一条 `[ ]`，先读它挂的方案/ADR 链接，再动手。**任何改动都要跑第 4 步的门禁。**
 
 **关键约定（违反会出事）**：
 - 学习信号只进 `_trace.jsonl` / 学习队列，**不占运行时注入通道**（ADR-0017）。
@@ -75,10 +75,11 @@
 
 ---
 
-## 路线图（Now/Next/Later，重排于 v2.14.0，维护于 v2.15.0）
+## 路线图（Now/Next/Later，重排于 v2.14.0，维护于 v2.16.0）
 
-> 完整、可验证的目标（每条带完成标准 DoD）见 [ROADMAP.md](ROADMAP.md)。这里只列骨架。
-> **已完成项归档在 ROADMAP §6，不再占用短中长期位置。**
+> 完整、可验证的目标（每条带完成标准 DoD + 性价比）见 [ROADMAP.md](ROADMAP.md)。这里只列骨架。
+> **先做哪个？看 [ROADMAP §2 性价比速查](ROADMAP.md#2-性价比速查先做哪个)**（收益/成本/解锁排序）。
+> **已完成项归档在 ROADMAP §7，不再占用短中长期位置。**
 
 | 阶段 | 时间 | 主题 | 核心目标（可验证） |
 |---|---|---|---|
@@ -86,11 +87,11 @@
 | 🟡 **Next 中期** | 1-2 月 | **器官间流动** | M1 情景检索进主循环 · M2 会话树实时化 · M3 BDI 三槽 · M4 注入预算 token 化 · M5 工具面结构改造 · M6 安全规则不可覆盖 |
 | 🔴 **Later 长期** | 季度级 | **架构完整性与外部效度** | L1 FEP→世界模型 · L2 标准化 eval · L3 脑分区空白区 · L4 独立轨道（上游 PR / v1.0.0）|
 
-**执行顺序的根据**：结构性地基越晚越贵（已完成）→ 数据型目标时间站在我们这边 → 需要世界模型/外部基准的最后做。详见 [ADR-0017](decisions/0017-gwt-first-then-fep.md) 和 [ROADMAP §5 四波次依赖逻辑](ROADMAP.md#5-四波次依赖逻辑稳定不变判断新工作先问属于哪波)。
+**执行顺序的根据**：结构性地基越晚越贵（已完成）→ 数据型目标时间站在我们这边 → 需要世界模型/外部基准的最后做。详见 [ADR-0017](decisions/0017-gwt-first-then-fep.md) 和 [ROADMAP §6 四波次依赖逻辑](ROADMAP.md#6-四波次依赖逻辑稳定不变判断新工作先问属于哪波)。
 
 **近期焦点**：频次审计（[CADENCE_AUDIT](docs/CADENCE_AUDIT.md)）证明大部分自动化频次经实测校准合理，
 真问题只有 learn_watcher 过密（已改）和注入预算按次数不按 token（列 M4）——**不要无差别调频次**。
-**明确不做**：多模态/CUA、通用 agent 框架、向量检索、训练微调、堆 judge、改 Electron 参数降 3D。理由见 [ROADMAP §7](ROADMAP.md#7-明确不做防止新人重造轮子--走回头路)。
+**明确不做**：多模态/CUA、通用 agent 框架、向量检索、训练微调、堆 judge、改 Electron 参数降 3D。理由见 [ROADMAP §8](ROADMAP.md#8-明确不做防止新人重造轮子--走回头路)。
 
 ---
 
@@ -135,7 +136,7 @@ git clone https://github.com/D-al/dsh-behavior-guard.git && cd dsh-behavior-guar
 | [docs/GPU_ENGINE_GUARD.md](docs/GPU_ENGINE_GUARD.md) | 3D/Copy 引擎争抢诊断 + 主动降帧守护（tools/gpu_engine_guard.py）|
 
 ## 版本历史
-完整版本历史 → [CHANGELOG.md](CHANGELOG.md)。当前 **v2.15.0**（压缩存档去重 + 角色诊断 + 过程折叠，详见 CHANGELOG）。
+完整版本历史 → [CHANGELOG.md](CHANGELOG.md)。当前 **v2.16.0**（S5 角色修复 + 路线图性价比排序，详见 CHANGELOG）。
 
 ## License
 MIT

@@ -63,6 +63,8 @@ const DEFAULTS = {
   pythonPath: 'D:/Python/python.exe',
   verifyTimeoutMs: 120000,
   verifyMinWaits: 2,
+  // S5-③：新版 dsh 的 spawn 是异步回注（无 wait_agent）→ spawn 后 N 步无验收结论则主动代验收
+  verifySpawnSteps: 3,
   // 共享每轮注入预算（audit 注入 + D4 steer 合计，防叠加刷屏）
   sharedMaxPerTurn: 3,
   // D4 present-gate（verify-gated completion）：present 声明交付时，本轮若无独立验收痕迹
@@ -166,6 +168,7 @@ const DEFAULTS = {
   // P1 Critic：present 前产物质量评审（异质 rubric，每会话 ≤2 次，1 次 LLM 10-20s）
   criticEnabled: true,
   criticTimeoutMs: 90000,
+  criticMaxTokens: 1200,         // S5：thinking 模型思维链会吃 token，500 太小导致 content 空（实测）
   maxCriticPerSession: 2,
   // 短期②：Critic 去同源化——同模型 temp=0 会让评审与执行者 conditioning 相同。
   // 用异质温度(top_k)打破同源；prompt 只看产物+证据、绝不喂执行者推理链（AC3 结论）。
@@ -872,7 +875,8 @@ export function apply(ctx, config) {
         if (event.data?.name === 'spawn_teammate') {
           let a = {}
           try { a = JSON.parse(fullArgs || '{}') } catch { /* ignore */ }
-          s.verifyContext = { criteria: String(a.prompt || a.description || '').slice(0, 500), waitBad: 0, product: s.lastProduct }
+          s.verifyContext = { criteria: String(a.prompt || a.description || '').slice(0, 500), waitBad: 0,
+            product: s.lastProduct, stepsAfterSpawn: 0, fired: false }
           info(`audit-loop: spawn 收到，验收上下文 product=${s.verifyContext.product || '(无)'}`)
         }
         return
@@ -993,7 +997,23 @@ export function apply(ctx, config) {
             if (s.verifyContext.waitBad >= cfg.verifyMinWaits && s.verifyContext.product && !s.pendingVerify) {
               s.pendingVerify = { product: s.verifyContext.product, criteria: s.verifyContext.criteria }
               s.verifyContext.waitBad = 0
+              s.verifyContext.fired = true
+              trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'verify_triggered', source: 'wait-timeout',
+                waitBad: cfg.verifyMinWaits, product: s.pendingVerify.product, step: s.step })
               info(`audit-loop: v3.2 spawn 验收 wait 连续 ${cfg.verifyMinWaits} 次超时 → 触发代验收 (${s.pendingVerify.product})`)
+            }
+          }
+          // S5-③：新版 dsh 的 spawn 是异步回注，没有 wait_agent 工具（实测 77 spawn / 0 wait）。
+          // 通用触发：spawn 后每步 +1，超过 verifySpawnSteps 仍未验收且产物已落盘 → 主动代验收。
+          // 这样无论 teammate 用何种方式回注（tool 结果/异步消息）都能覆盖。
+          if (s.verifyContext && !s.verifyContext.fired && !s.pendingVerify) {
+            s.verifyContext.stepsAfterSpawn = (s.verifyContext.stepsAfterSpawn || 0) + 1
+            if (s.verifyContext.stepsAfterSpawn >= (cfg.verifySpawnSteps ?? 3) && s.verifyContext.product) {
+              s.verifyContext.fired = true
+              s.pendingVerify = { product: s.verifyContext.product, criteria: s.verifyContext.criteria }
+              trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'verify_triggered', source: 'spawn-no-wait',
+                stepsAfterSpawn: s.verifyContext.stepsAfterSpawn, product: s.pendingVerify.product, step: s.step })
+              info(`audit-loop: S5 spawn 后 ${s.verifyContext.stepsAfterSpawn} 步无 wait → 主动代验收 (${s.pendingVerify.product})`)
             }
           }
           // v3.1 确定性信号（代码判定，不等审计窗口）：
@@ -1108,22 +1128,41 @@ ${evidence || '(无证据可用)'}
       })
       clearTimeout(timer)
       const data = await resp.json()
-      let out = (data?.choices?.[0]?.message?.content || '').trim()
+      const choice = data?.choices?.[0]
+      const finish = choice?.finish_reason || ''
+      let out = (choice?.message?.content || '').trim()
+      let reasoning = (choice?.message?.reasoning_content || '').trim()
+      // S5-②：Qwen thinking 模型可能把 token 全花在 reasoning_content，content 为空。
+      // 实测：max_tokens=100 时 finish_reason=length、content=''、reasoning 有内容。
+      // 兜底：content 空时从 reasoning 尾部抽 JSON；并记录诊断字段。
+      let reasoningUsed = false
+      if (!out && reasoning) {
+        const ri = reasoning.lastIndexOf('{')
+        const rj = reasoning.lastIndexOf('}')
+        if (ri >= 0 && rj > ri) {
+          out = reasoning.slice(ri, rj + 1)
+          reasoningUsed = true
+        }
+      }
       if (out.startsWith('```')) {
         out = out.replace(/^```(?:json)?/, '').replace(/```$/, '').trim()
       }
       const i = out.indexOf('{')
       const j = out.lastIndexOf('}')
-      if (i < 0 || j <= i) return { parsed: null, raw: out }
+      if (i < 0 || j <= i) {
+        return { parsed: null, raw: out, error: 'no-json', finish, emptyContent: !choice?.message?.content, reasoningUsed, reasoningChars: reasoning.length }
+      }
       try {
-        return { parsed: JSON.parse(out.slice(i, j + 1)), raw: out }
+        return { parsed: JSON.parse(out.slice(i, j + 1)), raw: out, finish, emptyContent: !choice?.message?.content, reasoningUsed, reasoningChars: reasoning.length }
       } catch {
-        return { parsed: null, raw: out }
+        return { parsed: null, raw: out, error: 'json-invalid', finish, emptyContent: !choice?.message?.content, reasoningUsed, reasoningChars: reasoning.length }
       }
     } catch (error) {
       clearTimeout(timer)
-      warn(`audit-loop: LLM 调用失败 ${String(error)}`)
-      return null
+      const msg = String(error?.message || error)
+      const err = ctrl.signal.aborted ? 'timeout' : (msg.includes('fetch failed') ? 'fetch-failed' : 'exception')
+      warn(`audit-loop: LLM 调用失败 [${err}] ${msg.slice(0, 120)}`)
+      return { parsed: null, raw: '', error: err, finish: '', emptyContent: true, reasoningUsed: false, reasoningChars: 0 }
     }
   }
 
@@ -1140,9 +1179,14 @@ ${evidence || '(无证据可用)'}
       r = await callLLMOnce(fixPrompt, maxTokens, timeoutMs, {})
     }
     const parsed = (r && r.parsed) ? r.parsed : null
+    // S5-①：失败不再静默——trace 记明确 error 字段，区分服务不稳 vs 机制失效
     trace({
       ts: new Date().toISOString(), sid: ctx.sid || '', kind: 'llm', tag: ctx.tag || 'llm',
       ms: Date.now() - t0, inChars: prompt.length, outChars: ((r && r.raw) || '').length, ok: !!parsed, retry: retried,
+      // S5：reasoning 兜底是诊断信息，成功/失败都记
+      emptyContent: !!(r && r.emptyContent), reasoningChars: (r && r.reasoningChars) || 0,
+      reasoningUsed: !!(r && r.reasoningUsed),
+      ...(parsed ? {} : { error: (r && r.error) || 'unknown', finish: (r && r.finish) || '' }),
     })
     return parsed
   }
@@ -1252,7 +1296,9 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
     }
     if (!content.trim()) return null
     // 短期②：异质采样 + 只喂产物/任务/证据，不传 s.trail / 执行者推理链
-    return callLLM(CRITIC_PROMPT(snap.goal, product, content), 500, cfg.criticTimeoutMs || 90000, {
+    // S5-②：Qwen thinking 模型把 token 花在 reasoning_content，500 会被吃光导致 content 空。
+    // 实测 max_tokens=100 时 finish=length/content=''，提到 1200 给思维链+JSON 留空间。
+    return callLLM(CRITIC_PROMPT(snap.goal, product, content), cfg.criticMaxTokens ?? 1200, cfg.criticTimeoutMs || 90000, {
       sid: snap.sid, tag: 'critic',
       temperature: cfg.criticTemperature, topK: cfg.criticTopK,
     })

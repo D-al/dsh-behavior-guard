@@ -1,3 +1,23 @@
+## [2.16.0] - 2026-11-19 01:45（S5 角色修复 + 路线图性价比排序）
+
+### Fixed（S5 角色失效三项，单测 6/6）
+- **S5-① 角色 LLM 不再静默失败**：`callLLMOnce` 的 catch 从返回 null 改为带结构化 error 字段
+  （timeout / fetch-failed / no-json / json-invalid），trace 记 error+finish+emptyContent+reasoningChars。
+- **S5-② Critic 0% 成功率根因与修复**：实测确认 Qwen thinking 模型把 token 全花在 `reasoning_content`，
+  `content=''`、`finish_reason=length`（用 max_tokens=100 复现）。修复：① content 空时从 reasoning 尾部
+  抽 JSON 兜底；② `criticMaxTokens` 新增配置，默认 500→1200 给思维链留空间。trace 记 reasoningUsed。
+- **S5-③ 验收员触发路径脱节**：新版 dsh 的 spawn 是异步回注（实测 77 spawn / 0 wait_agent），
+  原触发只认 `wait_agent` 从未命中。新增通用触发：spawn 后 N 步（默认 3）无验收且产物已落盘 → 主动代验收；
+  两条触发路径都写 `verify_triggered` trace（source=wait-timeout / spawn-no-wait）。
+
+### Changed
+- `ROADMAP.md`：新增 §2 **性价比速查表**（收益/成本/解锁排序 15 项，辅助决策先做哪个）；
+  每条短中长期目标加"性价比"列；S5 标 ✅ 完成；章节重编号（短期 §3 / 中期 §4 / 长期 §5 / 依赖 §6 / 完成 §7 / 不做 §8）。
+- `README.md`：路线骨架加速查表入口；修正全部 ROADMAP 交叉引用锚点。
+
+### Note
+- 全部代码改动已部署运行版并重启验证；121 PASS / 0 FAIL、回归 30/30。
+
 ## [2.15.0] - 2026-11-19 01:25（压缩存档去重 + 角色失效诊断 + 过程折叠配置）
 
 ### Fixed
