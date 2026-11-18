@@ -350,6 +350,8 @@ python bench/mind_state.py --session <会话目录>
 | **P1-4 意图漂移信号** | `driftSignalEnabled` | 控制回合里检测初始 vs 最新指令覆盖率 <0.25 → 提示以最新为准 |
 | **P1-6 用户意图 BDI** | `bdiEnabled` | 用户消息更新 `bdi.goal`，控制回合注入状态卡 |
 
+| **波1 结果反馈捕获** | `outcomeCaptureEnabled` | write/edit 后自动记 `{status,target,goal,provenance}` 到 `_outcome.jsonl`，喂 CritBank/技能进化 |
+
 ### 8.2 离线工具（零 LLM）
 
 | 脚本 | 用途 | 用法 |

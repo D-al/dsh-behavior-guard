@@ -1,3 +1,12 @@
+## [2.8.3] - 2026-11-18 15:20
+
+### Added（波1 第一块基础设施：结果反馈捕获）
+- 按三波次路线图，波1「回填期」需要先有数据底座——现在系统**一条真实反馈都没有**（CritBank 计数全 0）
+- `outcomeCaptureEnabled`：每次 write/edit 后自动把 `{status, target, goal, provenance, evidence_ref}`
+  写入 `_outcome.jsonl`——完全复用已有 status 判定，零 LLM、零新逻辑
+- 新增 `test_outcome.mjs`（6/6：成功/失败/路径/goal/provenance）
+- 执行铁律确立：一波没验收不开始下一波
+
 ## [2.8.2] - 2026-11-18 15:05
 
 ### Changed（历史叙事按五层涌现依赖链重组）

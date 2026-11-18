@@ -105,6 +105,8 @@ const DEFAULTS = {
   episodicSearchEnabled: true,     // P1-5：情景记忆主动检索（es.exe）
   bdiEnabled: true,                // P1-6：用户意图 BDI 状态卡
   sessionTreeEnabled: true,        // P2-8：事件溯源（parent 指针）
+  outcomeCaptureEnabled: true,     // 波1：结构化结果反馈捕获（喂 CritBank/技能进化）
+  outcomePath: 'D:/Brain/workspace/bench/_outcome.jsonl',
   // ── Observability（2026-11-18）：per-step trace（零 LLM，追加写 jsonl）──
   // 社区共识（Keyhole/Praison/ZOOZ）：没有 trace 就无法度量，没有度量就无法优化。
   traceEnabled: true,
@@ -753,6 +755,23 @@ export function apply(ctx, config) {
             ts: new Date().toISOString(), sid: s.sid || '', kind: 'tool_result', name: c.name,
             status, ms: c.ts ? Date.now() - c.ts : null, outChars: String(txt || '').length, step: s.step,
           })
+          // ── 波1：结构化结果反馈捕获（确定性，0 LLM）──
+          // 只记 write/edit——它们是"任务是否真的推进"的锚点。
+          // 字段复用已有 status 判定，不引入新判断逻辑。
+          if (cfg.outcomeCaptureEnabled && c && WRITE_TOOLS.has(c.name)) {
+            try {
+              let target = ''
+              try { target = String((JSON.parse(c.fullArgs || c.args || '{}')).file_path || '') } catch { /* ignore */ }
+              const rec = {
+                ts: new Date().toISOString(), sid: s.sid || '', step: s.step,
+                tool: c.name, target: target.slice(0, 160), status,
+                evidence_ref: String(txt || '').slice(0, 100).replace(/\s+/g, ' '),
+                goal: String(s.frame?.goal || '').slice(0, 120),
+                provenance: s.frame?.provenance || 'user',
+              }
+              appendFileSync(cfg.outcomePath, JSON.stringify(rec) + '\n')
+            } catch { /* ignore */ }
+          }
           // v2：证据类工具的成功结果保留全文（纠正器的定位依据）
           const isEvidence = cfg.evidenceTools.includes(c.name) && status === 'OK'
           c.result = txt.slice(0, isEvidence ? cfg.evidenceMaxChars : 80).replace(/\s+/g, ' ')
