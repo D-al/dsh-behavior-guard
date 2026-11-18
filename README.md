@@ -14,9 +14,10 @@
 | 你是谁 | 建议读法 |
 |---|---|
 | **只想用** | 跳到 [Part 5：现状与成本](#part-5现状与运行期成本) + [Part 6：配置](#part-6配置与注意事项) |
-| **想借鉴方法** | 读 [Part 1 时间线](#part-1主干时间线) → [Part 2 五条分支线](#part-2五条分支线) |
+| **想借鉴方法** | 读 [Part 1 时间线](#part-1主干时间线) → [Part 2 已完成分支线](#part-2五条已完成分支线) |
 | **想继续研究** | 重点读 [Part 3 论文索引](#part-3论文索引完整带链接) + [Part 4 失败清单](#part-4失败与放弃负面资产) + [Part 7 给后来者](#part-7给后来者人或-ai的探索指南) |
 | **AI 接手** | 从头读，尤其注意每个决策节点的"为什么"和 [Part 4](#part-4失败与放弃负面资产)——**别重试已证伪的路** |
+| **想知道下一步** | 直接看 [Part 8 远景规划](#part-8远景规划2026-11-18-扩展)——三层分类 + 六条新分支 + 17 篇新论文 |
 
 **核心命题**：*模型不是瓶颈，harness 是。* 同一模型换 scaffold 实测 +15.6pp（SWE-bench Hard）、+26pp（9B）；
 Meta 的 [Thinking Before Thinking, arXiv 2609.38147](https://arxiv.org/abs/2609.38147) 在 ProgramBench 上 +13.5pp。
@@ -103,7 +104,7 @@ Meta 的 [Thinking Before Thinking, arXiv 2609.38147](https://arxiv.org/abs/2609
 
 ---
 
-## Part 2：五条分支线
+## Part 2：五条已完成分支线
 
 主干时间线按"何时做"组织，这里按"解决什么问题"重组——五条线相互独立又互相喂养。
 
@@ -350,6 +351,109 @@ apply_patch 切换 / 工具结果去重 / 多审计员 / 自验证 / MCP / 向�
 
 ---
 
+## Part 8：远景规划（2026-11-18 扩展）
+
+> 本节是**前瞻**，与前面七节的"已做/已证伪"明确分开。
+> 方法：以当前 harness 的五个已完成分支（A-E）为锚，向社区与论文搜索"下一步能做什么"，
+> 覆盖 7 个方向：**技能自进化 / 记忆巩固 / 工具发现 / 认证验证 / 失败归因 / 算力路由 / 引擎升级**。
+> 搜索于 2026-11-18，新论文均已在 [Part 8.4 论文索引](#84-新论文索引17-篇已核实) 列出并核实编号。
+
+### 8.0 三层分类框架（先给结论）
+
+| 层 | 定义 | 判据 | 数量 |
+|---|---|---|---|
+| **🟢 现在能做** | dsh/llama.cpp 现有接口即可实现，0 或极低运行期成本，**不碰模型权重** | 纯插件代码 + 已有 trace/critbank/rubrics 基础设施 | **7 项** |
+| **🟡 前沿探索** | 方向被论文强支持，但需新机制（结构化反馈闭环 / 双向验证 / 难度路由），本机可实现但有风险或成本 | 需要新的数据流或每任务多次 LLM 调用 | **6 项** |
+| **🔴 卡脖子** | 本质需要引擎/宿主/硬件支持，harness 侧无解或需等上游 | 依赖 dsh 不暴露的能力、llama.cpp 未合并 PR、或显存硬限 | **5 项** |
+
+一句话总览：**"从静态 harness → 会自我修订的 harness"是唯一的主线**——
+所有绿色项都在补同一个缺口：*当前系统只进不出（forward-only），经验写进去就再不复审*（[ReHarness, arXiv 2610.12668](https://arxiv.org/abs/2610.12668) 的核心批评）。
+
+---
+
+### 8.1 🟢 现在能做（按 ROI 排序）
+
+| # | 方向 | 论文依据 | 为什么现在能做 | 预期收益 / 成本 |
+|---|---|---|---|---|
+| **G1** | **技能自进化**（trace → skill 草稿） | [Trace2Skill, arXiv 2603.25158](https://arxiv.org/abs/2603.25158) · [SkillCAT, arXiv 2606.13317](https://arxiv.org/abs/2606.13317) · [SkillComposer, arXiv 2606.06079](https://arxiv.org/abs/2606.06079) | 我们已有 `_trace.jsonl`（539 条）+ 7 个手工 skill——缺的只是"从轨迹归纳草稿"这一步。用成功/失败轨迹对照 → 生成 skill patch → **人工确认后**入库 | Trace2Skill：35B 演化的技能让 122B +57.65pp；SkillCAT 免训练 +40.40%。成本：每批轨迹 1 次 LLM，仅在新会话离线跑 |
+| **G2** | **记忆反向修订** | [ReHarness, arXiv 2610.12668](https://arxiv.org/abs/2610.12668) | CritBank 现在是 append-only——错误教训会永久留着误导。加"下次被引用后回来修订"的回收通道（每条经验带下次复用反馈），9 backbone×benchmark 中 8 个第一 | 专治我们已观察到的"纠正器猜错路径那次注入反而有害"——让有害教训自我降级 |
+| **G3** | **失败时间线分析**（t_err/t_lock/t_obs） | *Failure as a Process* (UCL+NJU, 2026-07) · [AgentRx, arXiv 2602.02475](https://arxiv.org/abs/2602.02475) | trace 已记录每步事件——加三个时间戳标注即可。关键实证：**决定性错误中位在 step 7、step 8 锁定，但 step 16 才可见**；我们现有 D5 门控（连续失败≥2/无进展≥6）平均滞后约 9 步 | 把门控从"行为信号（事后）"提前到"认知错误（事前）"的**唯一低成本路径** |
+| **G4** | **结构化可审计的验收输出** | [SEVA, arXiv 2606.29713](https://arxiv.org/abs/2606.29713) · [AgentV-RL, arXiv 2604.16004](https://arxiv.org/abs/2604.16004) | Critic 现在只输出 ACCEPT/REJECT + 四维理由——扩成"证据对齐 / 逐步推理 / 校准置信 / 六类错误诊断 + 可执行修复" | SEVA-3B ≈ GPT-4o-mini（F1 69.0 vs 69.8）；**审计输出更可追溯**；零额外模型调用（只改 prompt schema） |
+| **G5** | **审计员概率校准**（取代布尔门控） | [SAG](Part 3) · [SU, arXiv 2609.05274](https://arxiv.org/abs/2609.05274) · Proxy Confidence (AUROC 0.825) | `_audit_feedback.jsonl` 已记干预 + 3 步后有效性——用这批数据离线做 ROC，把 MTP 0.65 / 无进展 6 从经验值变成校准阈值 | Part 7.2 的第一个开放项；**纯离线分析，0 运行期成本** |
+| **G6** | **双向验证**（forward + backward） | [AgentV-RL, arXiv 2604.16004](https://arxiv.org/abs/2604.16004)（4B 超 SOTA ORM 25.2%） | present 前让 Critic 做两遍不同方向：正向"从需求推产物"、反向"从产物回溯需求"——发现遗漏与过度实现 |  ablation 证双向 > 单向；成本：present 前 +1 次 LLM（13-20s），可只在交付级任务开 |
+| **G7** | **工具描述去歧义 + 拓扑分组** | [Cartograph, arXiv 2609.30293](https://arxiv.org/abs/2609.30293)（3 proxy tools 替 374 定义，475 vs 42,450 token）· SkillCAT 的拓扑路由 | 工具面 28 个无法动态开关，但可以在 AGENTS.md 里给**语义边界表**（"glob 找路径 / grep 找内容 / es.exe 找文件名"），并用 skill 拓扑按需加载 | 减少"挑错工具/填错参数"——BFCL 显示这是主要失败模式；成本：一篇 md |
+
+---
+
+### 8.2 🟡 前沿探索（需要新机制，本机可行但有风险）
+
+| # | 方向 | 论文依据 | 卡在哪 / 需要什么 | 判断 |
+|---|---|---|---|---|
+| **Y1** | **递归经验-工作记忆耦合** | **Recuris** ([GitHub](https://github.com/Gen-Verse/Recuris)，长任务最高 +32.2pp，常见失败 -80%) | 工作记忆跟踪进度并**引导经验检索**（而非按相似度盲取）；失败定位到具体记忆组件；元 agent 做局部化、验证门控的更新 | 与我们的 P1.5 + P0 + CritBank 高度同构——**最值得研究的单个方向**，但要设计"工作记忆→检索"的接口 |
+| **Y2** | **Harness-模型协作的持续学习** | [HaMo, arXiv 2610.34724](https://arxiv.org/abs/2610.34724) | 快通道（experience cards，我们已有）+ 慢通道（LoRA 适配器）——**慢通道本机不可训练**，只能做快通道 | 论文证明 harness-only 会平台期——我们已到平台期附近；慢通道需等 🔴R2 |
+| **Y3** | **技能的四功能分化** | [CDSE, arXiv 2610.23599](https://arxiv.org/abs/2610.23599) | 500 个技能包中 96.8% 跨 ≥2 功能角色；拆成 Meta/Experience/Tool/Script 四组件分别更新，+7.6pp | 我们 7 个 skill 是"一整篇 md"——可升级为 frontmatter 四段式，配合 G1 自动进化 |
+| **Y4** | **自适应算力分配**（难度路由） | [ODAR, arXiv 2602.23681](https://arxiv.org/abs/2602.23681)（23 基准，成本 -82%）· [ICML 2026 自适应 TTC](https://proceedings.mlr.press/v306/bilal26a.html)（PRM 引导剪枝）· [Learning When to Think, arXiv 2608.20256](https://arxiv.org/abs/2608.20256)（三模式自路由，token -41%） | dsh 不支持 per-request 预算（🔴R1），但可用**任务类型路由**近似：短任务关 Critic/控制回合，交付级全开 | 与我们"以任务模式查表"的设计一致——缺的是把路由显式化、数据化（用 G3 的时间线） |
+| **Y5** | **进阶验证器**（双向 + 工具） | [AgentV-RL, arXiv 2604.16004](https://arxiv.org/abs/2604.16004) · [AutoResearchEval/ARFT, arXiv 2608.14905](https://arxiv.org/abs/2608.14905)（45 类失败模式，判据 κ=0.75 vs 单次 judge 0.53） | 验证器要能调工具（跑代码验证），harness 的审计员目前只读+steer | 给出"验证器也能写临时代码验证"的受限通道（只读沙箱），风险=误判 |
+| **Y6** | **工具发现的 progressive disclosure** | [Cartograph, arXiv 2609.30293](https://arxiv.org/abs/2609.30293) · [Cold-Start Tool Blindness](https://huggingface.co/datasets/thaki-AI/daily-paper-2026-08-03-deferred-tool-schema-discovery-cost)（**反面证据**：88.5% 工具在词汇不对齐时永不进 top5） | 收益（token -98%）与风险（冷启动失明）并存——dsh 又不支持动态工具面 | 只适用于 MCP 场景（我们没接）；**记录为"将来接 MCP 时的必读前置研究"** |
+
+---
+
+### 8.3 🔴 被外部因素卡脖子（harness 侧无解）
+
+| # | 卡点 | 为什么无解 | 解锁条件 |
+|---|---|---|---|
+| **R1** | **per-request 思考预算** | llama.cpp 服务端**其实支持** `reasoning_budget_tokens`（藏在 server-schema.cpp，不在 README），但 **dsh 的 provider 不透传**；我们只能设全局 4096 | dsh 上游支持该字段；或改 dsh provider（不是插件能做的事） |
+| **R2** | **模型权重的慢通道适应**（LoRA/RL） | 本机 8GB 显存 + 无训练栈；FlyBy/AdaSearch 类需 RL 训练 | 外部算力/云训练，或模型支持在线适配——**与"纯本地"目标冲突** |
+| **R3** | **logits / 隐状态可访问性** | SU 的原始方法需 draft cross-likelihood；SAG/SU/Proxy Confidence 的概率校准需 logprobs——**dsh 不暴露** | 我们用 draft acceptance 聚合信号（已有）替代；真要做概率校准需引擎暴露 logprobs |
+| **R4** | **工具面动态开关** | dsh 工具面由插件注册，只能**静态** disable（`cordis.patch.yml` 逐条）；不能按对话/按任务加载 | dsh 支持 per-session tool mask，或我们接一个代理层（≈ Cartograph 的做法，但 dsh 无 MCP） |
+| **R5** | **显存与 KV cache** | 长任务时余量掉到 107~113 MiB（<450 安全线、186 必卡）；KV q8_0 试过不够 | llama.cpp **v1.0.0（2026-11-13）已出 OCP FP8 KV cache + 非阻塞 MoE cache**（PR #28392/#30966）——等自编 b12244 升级到该基线后重测，**这是最接近解锁的一条** |
+
+---
+
+### 8.4 新论文索引（17 篇，已核实）
+
+| 方向 | 论文 | 关键数字 / 我们拿什么 |
+|---|---|---|
+| 技能自进化 | [Trace2Skill, arXiv 2603.25158](https://arxiv.org/abs/2603.25158) | 轨迹→可迁移技能；35B 演化技能让 122B 在 WikiTableQuestions +57.65pp → G1 |
+| 技能自进化 | [SkillCAT, arXiv 2606.13317](https://arxiv.org/abs/2606.13317) | 对比评估 + 拓扑感知执行，免训练最高 +40.40% → G1/G7 |
+| 技能自进化 | [SkillComposer, arXiv 2606.06079](https://arxiv.org/abs/2606.06079) | Create/Merge/Improve 三动作 + offline/online/hybrid 三模式 → G1 |
+| 技能自进化 | [SkillEarth, arXiv 2611.15481](https://arxiv.org/abs/2611.15481) | 观测落地 + dual-judge 的组件级修订 → G2 |
+| 技能分化 | [CDSE, arXiv 2610.23599](https://arxiv.org/abs/2610.23599) | Meta/Experience/Tool/Script 四功能，+7.6pp → Y3 |
+| 记忆修订 | [ReHarness, arXiv 2610.12668](https://arxiv.org/abs/2610.12668) | 反向修订通道；9/10 组合第一；**指出 forward-only 是结构性缺陷** → G2 |
+| 持续学习 | [HaMo, arXiv 2610.34724](https://arxiv.org/abs/2610.34724) | harness 快通道 + 模型慢通道；harness-only 会平台期 → Y2/R2 |
+| 递归记忆 | **Recuris** ([GitHub](https://github.com/Gen-Verse/Recuris)) | 工作记忆引导技能选择，长任务 +32.2pp、常见失败 -80% → Y1 |
+| 工具发现 | [Cartograph, arXiv 2609.30293](https://arxiv.org/abs/2609.30293) | 3 proxy tools 替 374 定义，475 vs 42,450 token，网关 +5ms → G7/Y6 |
+| 工具发现（反面） | [Cold-Start Tool Blindness (ThakiCloud, 2026-08)](https://huggingface.co/datasets/thaki-AI/daily-paper-2026-08-03-deferred-tool-schema-discovery-cost) | 词汇不对齐时 88.5% 工具永不进 top5 → Y6 的风险锚 |
+| 验证 | [AgentV-RL, arXiv 2604.16004](https://arxiv.org/abs/2604.16004) | forward+backward 双向验证，4B 超 ORM 25.2% → G4/G6/Y5 |
+| 验证 | [SEVA, arXiv 2606.29713](https://arxiv.org/abs/2606.29713) (USC+Michigan, 2026-06) | 结构化验证 + 过程奖励；3B ≈ GPT-4o-mini；**每轮出"基准专家"而非通用**（HaluEval +15pp / TruthfulQA -10~14pp）→ G4 的警告 |
+| 失败归因 | [AutoResearchEval/ARFT, arXiv 2608.14905](https://arxiv.org/abs/2608.14905) | 45 类失败模式；human-calibrated judge κ=0.75 vs 单次 0.53；**根因=缺元认知闭环** → G3/G5 |
+| 失败归因 | [AgentRx, arXiv 2602.02475](https://arxiv.org/abs/2602.02475) | 170 轨迹 + 关键失败步标注；诊断 step localization +75% → G3 |
+| 失败归因 | *Failure as a Process* (UCL+NJU, 2026-07) | 1,794 轨迹：t_err 中位 step 7、t_lock step 8、t_obs step 16；epistemic 错误 57.9% → **G3 的直接动机** |
+| 算力路由 | [ODAR, arXiv 2602.23681](https://arxiv.org/abs/2602.23681) | active inference 难度估计 + 快慢路由，23 基准、成本 -82% → Y4 |
+| 算力路由 | [Learning When to Think, arXiv 2608.20256](https://arxiv.org/abs/2608.20256) | 三模式自路由，token -41%（GSM8K -76%）→ Y4 |
+| 算力路由 | [ICML 2026: What If We Allocate TTC Adaptively?](https://proceedings.mlr.press/v306/bilal26a.html) | PRM 引导在线剪枝 > 事后重排；MATH-500 43.8%→65.4% → Y4/Y5 |
+| 引擎 | [llama.cpp v1.0.0 (2026-11-13)](https://github.com/ggml-org/llama.cpp/releases) | OCP FP8 KV cache（PR #28392）+ 非阻塞 MoE cache（#30966/#31233/#31888）；NextN 投机 API 转正 → 🔴R5 |
+| 引擎 | [DFlash2 (PR #27342, 未合并)](https://github.com/ggml-org/llama.cpp/pull/27342) | 分组动态深度卷积 + candidate selector；**未合并，方向信号** → 🔴R5 观察 |
+
+---
+
+### 8.5 路线图建议（如果继续做）
+
+```
+第 1 步（零风险，1 天）：G3 失败时间线 → 用现有 539 条 trace 标注 t_err/t_lock/t_obs
+         ↓ 数据会告诉你"门控应该提前到哪一步"
+第 2 步（低风险，2 天）：G5 审计概率校准 + G4 结构化验收输出
+         ↓ 把 0.65 / 6 步从经验值变成数据值
+第 3 步（中风险，3-5 天）：G1 技能草稿生成 + G2 记忆反向修订（都需人工确认门）
+         ↓ 从"静态 harness"变成"会自我修订的 harness"
+第 4 步（中风险，按需）：Y1 Recuris 式工作记忆引导检索 / Y4 难度路由
+         ↓
+第 5 步（等上游）：🔴R5 升级到 llama.cpp v1.0.0 基线，重测 96K 下的显存墙
+```
+
+**最重要的判断**：G1+G2 合起来才解决"经验只进不出"——**只做 G1（生成新技能）而不做 G2（修订旧技能）会让错误经验加速积累**，比不做还糟。这两项必须成对上。
+
+
 ## 版本历史
 
 | 版本 | 日期 | 关键变更 |
@@ -359,6 +463,7 @@ apply_patch 切换 / 工具结果去重 / 多审计员 / 自验证 / MCP / 向�
 | **v2.1.0** | 11-18 01:35 | 控制回合（meta-reasoning controller） |
 | **v2.2.0** | 11-18 02:25 | 四项社区缺口：trace / JSON 重试 / Skills / 危险操作分级 |
 | **v2.2.1** | 11-18 03:35 | planner rubric 外置接入 |
+| **docs 2.3** | 11-18 08:30 | 远景规划：三层分类（现在能做/前沿/卡脖子）+ 6 条新分支 + 17 篇新论文（含失败归因时间线、技能自进化、反向记忆修订）|
 
 ## License
 MIT
