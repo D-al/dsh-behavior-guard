@@ -333,3 +333,43 @@ python bench/mind_state.py --session <会话目录>
   → 我们只比较工具签名，符合此原则
 - 强制决策 > 开放式建议（metacognitive prompting 社区共识）
 - 语义指纹 + 进展豁免（IBM 轨迹聚类 F1 0.72 vs 朴素 0.08；OpenHands #6277 教训）
+
+
+---
+
+## 8. 心智拼图操作手册（P0-P2，2026-11-18）
+
+> 完整调研依据见 [MIND_GAPS_RESEARCH.md](MIND_GAPS_RESEARCH.md)（5 路广搜，全部带链接）。
+
+### 8.1 已接入插件的机制（index.mjs）
+
+| 拼图 | 配置开关 | 作用 |
+|---|---|---|
+| **P2-7 结构化轨迹事件流** | `frameEnabled` | 每次工具调用在 trace 写五元组 `{role, goal, evidence, provenance, trust}` |
+| **P0-1 外层验证循环** | `verifyOnStopEnabled` | 改了文件但无验证证据 → 否决退出，要求先验证（每轮 1 次）|
+| **P1-4 意图漂移信号** | `driftSignalEnabled` | 控制回合里检测初始 vs 最新指令覆盖率 <0.25 → 提示以最新为准 |
+| **P1-6 用户意图 BDI** | `bdiEnabled` | 用户消息更新 `bdi.goal`，控制回合注入状态卡 |
+
+### 8.2 离线工具（零 LLM）
+
+| 脚本 | 用途 | 用法 |
+|---|---|---|
+| `intent_drift.py` | 意图漂移时间线（P1-4 的离线版）| `python intent_drift.py [--threshold 0.25]` |
+| `crit_decay.py` | CritBank 可控遗忘（P0-2）| `python crit_decay.py [--hit C-001 --ok/--bad] [--apply] [--supersede OLD NEW]` |
+| `promote_skills.py` | 技能写回审批门（P0-3）| `python promote_skills.py [--stage f.md] [--promote f.md] [--reject f.md] [--stale]` |
+| `episodic_search.py` | 情景记忆主动检索（P1-5）| `python episodic_search.py "关键词" [--inject]` / `--index` 建 EVENTS.md |
+| `session_tree.py` | 事件溯源会话树（P2-8）| `python session_tree.py --build [--query --kind X] [--forget N "注"] [--rewind N]` |
+
+### 8.3 关键设计决策（调研驱动的"不做什么"）
+
+- **撤销了"强制二选一"**：Are you sure ≈ You are wrong（JS 散度 0.0186，
+  2605.01403）；改为中性事实陈述 + 退出许可。
+- **verify-on-stop 在深检之后**：避免抢占已有的 present 深检路径（实测回归后调整）。
+- **状态侧表而非改原文件**：CritBank 保持 9 条不动，衰减状态放 `_critbank_state.json`（向后兼容）。
+- **技能必须审批入库**：草稿先进 `_skill_drafts/pending/`，`--promote` 才生效（防 skill drift/投毒）。
+
+### 8.4 未做的方向（有证据支持暂缓）
+
+- 世界模型 / 因果推理：有模型也"不会主动用"（2606.09032），且 8GB 下推理质量不足。
+- 向量检索代码：Harness Engineering (2609.00006) 解剖 11 个 harness——**无人用**。
+- 通用 agent 框架：同上，全部手写循环 + SKILL.md。

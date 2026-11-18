@@ -1,3 +1,16 @@
+## [2.8.0] - 2026-11-18 14:30
+
+### Added（心智拼图 P0-P2 全部落地）
+- **底座 P2-7**：结构化轨迹事件流——每次工具调用在 trace 写 `{role,goal,evidence,provenance,trust}`
+- **P0-1** 外层验证循环：改文件无验证证据→否决退出（在深检之后，避免抢占）
+- **P0-2** 可控遗忘：`crit_decay.py` + 状态侧表 `_critbank_state.json`（supersede/retire，原 CritBank 不动）
+- **P0-3** 写回闭环：`promote_skills.py` 审批门（草稿→pending→审批→入库，防 skill drift/投毒）
+- **P1-4** 意图漂移在线信号（控制回合）+ `intent_drift.py` 离线时间线
+- **P1-5** `episodic_search.py`：情景记忆主动检索（EVENTS.md 260 条事件 + 来源指针）
+- **P1-6** BDI 伙伴状态卡（用户消息更新，控制回合注入）
+- **P2-8** `session_tree.py`：事件溯源树（2331 节点 parent 指针 + forget 标记 + rewind）
+- 新增 MANUALS §8 操作手册；全测 26+40+4/4+30/30+config 一致
+
 ## [2.7.2] - 2026-11-18 14:12
 
 ### Fixed（紧急）+ Added（心智拼图广搜）

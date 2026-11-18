@@ -96,6 +96,15 @@ const DEFAULTS = {
   mindStateEnabled: true,
   mindStateLoopThreshold: 3,       // trail 内同工具+同目标 ≥3 次 → 警告
   maxMindStateInjections: 6,       // 触发式注入上限（防刷屏）
+  // ── 心智拼图（P0-P2，2026-11-18 广搜后落地）──
+  frameEnabled: true,              // P2-7：结构化轨迹事件流 (role,goal,evidence,provenance,trust)
+  verifyOnStopEnabled: true,       // P0-1：外层验证循环（改文件无证据→否决退出）
+  critbankDecayEnabled: true,       // P0-2：CritBank 可控遗忘（supersede/retire）
+  writebackEnabled: true,          // P0-3：技能/记忆写回闭环（pending 审批）
+  driftSignalEnabled: true,        // P1-4：意图漂移在线信号
+  episodicSearchEnabled: true,     // P1-5：情景记忆主动检索（es.exe）
+  bdiEnabled: true,                // P1-6：用户意图 BDI 状态卡
+  sessionTreeEnabled: true,        // P2-8：事件溯源（parent 指针）
   // ── Observability（2026-11-18）：per-step trace（零 LLM，追加写 jsonl）──
   // 社区共识（Keyhole/Praison/ZOOZ）：没有 trace 就无法度量，没有度量就无法优化。
   traceEnabled: true,
@@ -205,6 +214,9 @@ function loadSkills(dir) {
 }
 
 // ── Observability：trace 记录（追加 jsonl，失败静默；超过 maxTraceBytes 轮转一次）──
+const WRITE_TOOLS = new Set(['write', 'edit', 'apply_patch', 'multi_edit', 'create_file', 'str_replace', 'write_file', 'notebook_edit'])
+const VERIFY_TOOLS = new Set(['pwsh', 'bash', 'verify_agent', 'regression_check', 'config_check', 'read'])
+
 function makeTracer(cfg) {
   let bytes = 0
   try { bytes = statSync(cfg.tracePath).size } catch { bytes = 0 }
@@ -564,7 +576,11 @@ export function apply(ctx, config) {
         latest: '', pendingArchive: false, pendingTodoEcho: false, lastTodos: null, todoCalls: 0, sinceLastTodo: 0,
         turnTodoInjections: 0, sessionTodoInjections: 0, remindedNoTodo: false, rejectedItems: [],
         // 心智状态层
-        mindInjectCount: 0, lastMindStep: 0 }
+        mindInjectCount: 0, lastMindStep: 0,
+        // 心智拼图状态
+        frame: { role: 'executor', goal: '', evidence: [], provenance: 'user', trust: 1.0 },
+        wroteThisTurn: false, verifiedThisTurn: false, lastFrameParent: null,
+        bdi: { goal: '', belief: '', preference: '', updatedAt: 0 } }
       states.set(id, s)
     }
     return s
@@ -577,6 +593,8 @@ export function apply(ctx, config) {
       if (event.type === 'turn/start') {
         s.turnInjections = 0
         s.trail = []
+        if (cfg.frameEnabled) { s.frame.evidence = []; s.frame.provenance = 'user'; s.frame.trust = 1.0 }
+        s.wroteThisTurn = false; s.verifiedThisTurn = false; s.verifyOnStopWarned = false
         s.lastTodoSig = null
         s.todoRedundant = 0
         // turn-guard：本轮重置（合并）
@@ -617,6 +635,8 @@ export function apply(ctx, config) {
         if (t && !t.startsWith('<system-reminder>')) {
           if (!s.initial) s.initial = t.slice(0, 400)
           s.latest = t.slice(0, 1000)
+          if (cfg.frameEnabled) s.frame.goal = t.slice(0, 300)
+          if (cfg.bdiEnabled) { s.bdi.goal = t.slice(0, 250); s.bdi.updatedAt = Date.now() }
         }
         return
       }
@@ -692,7 +712,16 @@ export function apply(ctx, config) {
           }
         }
         s.trail.push({ kind: 'call', name: String(event.data?.name ?? ''), args: fullArgs.slice(0, 200), fullArgs, step: event.data?.step, ts: Date.now() })
-        trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'tool_call', name: String(event.data?.name ?? ''), argsChars: fullArgs.length, step: s.step })
+        // P2-7：结构化轨迹事件流——五元组随每次工具调用落到 trace（零 LLM）
+        if (cfg.frameEnabled) {
+          const cname = String(event.data?.name ?? '')
+          s.frame.role = cname === 'spawn_teammate' ? 'coordinator' : (WRITE_TOOLS.has(cname) ? 'executor' : s.frame.role)
+          if (VERIFY_TOOLS.has(cname)) { s.frame.evidence.push(cname); s.verifiedThisTurn = true }
+          if (WRITE_TOOLS.has(cname)) s.wroteThisTurn = true
+          if (cname === 'web_search' || cname === 'web_fetch') s.frame.provenance = 'external'
+        }
+        trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'tool_call', name: String(event.data?.name ?? ''), argsChars: fullArgs.length, step: s.step,
+          frame: cfg.frameEnabled ? { role: s.frame.role, goal: s.frame.goal.slice(0, 120), evidence: s.frame.evidence.slice(-5), provenance: s.frame.provenance, trust: s.frame.trust } : undefined })
         if (s.trail.length > 40) s.trail.shift()
         // v3.2 代验收：记录 spawn_teammate 携带的验收标准（prompt/description），并继承最近产物
         if (event.data?.name === 'spawn_teammate') {
@@ -1201,6 +1230,23 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
         } catch { /* 深检失败不阻断 */ }
       }
 
+      // ── P0-1 外层验证循环（verify-on-stop）──
+      // 依据：Hermes verify-on-stop / OpenHands /goal——把验证从"循环内一步"移到"停止条件"；
+      // agent 自己不能宣布完成，改了文件却没有验证证据就否决退出（纯规则，0 LLM）。
+      if (cfg.verifyOnStopEnabled && state.wroteThisTurn && !state.verifiedThisTurn && !state.verifyOnStopWarned) {
+        state.verifyOnStopWarned = true
+        state.continuations += 1; state.totalContinuations += 1
+        state.sharedInjections += 1
+        info('behavior-guard: [verify-on-stop] 改文件无验证证据，否决退出')
+        trace({ ts: new Date().toISOString(), sid: sessionId || '', kind: 'verify_on_stop', step: state.step })
+        agent.steer(createSteeringMessage(
+          '[harness 停止条件] 本轮已修改文件，但尚无验证证据（测试/检查/读回确认）。' +
+          '不能直接结束：先运行一次验证工具（如回归检查/读取刚写的文件确认内容），再收尾。',
+          'behavior-guard'
+        ))
+        return
+      }
+
       // ── P1 Critic：present 前的产物质量评审（异质 rubric，与过程审计不同视角）──
       // 依据：四角色标准（Planner/Executor/Critic/Verifier）中 Critic 是"对照意图评产物质量"；
       // Apple 2026：异质 rubric 才能产生独立信号（同 rubric 重复=伪多样性）。
@@ -1409,6 +1455,21 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
           if (cur) parts.push('② 当前项：' + String(cur.content).slice(0, 60))
           if (rej.length) parts.push('③ 已排除：' + rej.join('｜'))
           parts.push('④ 下一步：在思考里列出 2-3 个候选动作，评估哪个对完成目标收益最高，再选一个执行。')
+          // ── P1-4 意图漂移在线信号 ──
+          // 初始任务 vs 最新指令关键词覆盖率 < 0.25 → 提示"以最新指令为准"（治现场 16 次旧存档锚定）
+          if (cfg.driftSignalEnabled && s.initial && s.latest && s.latest !== s.initial) {
+            try {
+              const stop = new Set(['帮我', '请你', '一个', '这个', '一下', '什么', '怎么', '可以', '是否', '给个', '展示'])
+              const kws = (t) => new Set((String(t).match(/[\u4e00-\u9fa5]{2,}/g) || []).filter((w) => !stop.has(w)))
+              const ik = kws(s.initial), lk = kws(s.latest)
+              const overlap = ik.size ? [...ik].filter((w) => lk.has(w)).length / ik.size : 1
+              if (overlap < 0.25) parts.push('⑤ 意图漂移：最新用户指令已偏离初始任务，以【最新指令】为准：' + String(s.latest).slice(0, 90))
+            } catch { /* ignore */ }
+          }
+          // ── P1-6 用户意图 BDI（伙伴状态卡）──
+          if (cfg.bdiEnabled && s.bdi?.goal && s.bdi.goal !== String(s.latest).slice(0, 250)) {
+            parts.push('⑥ 用户意图（BDI）：' + String(s.bdi.goal).slice(0, 90) + '（状态卡持续维护，不因上下文压缩丢失）')
+          }
           // 心跳：控制回合只更新 lastMindStep（作为触发式注入的冷却基准），
           // 不追加全文快照——避免"固定格式干扰物"造成 context poisoning（调研：同格式重复注入降准确率）
           info(`behavior-guard: [控制回合] step=${s.step}`)
