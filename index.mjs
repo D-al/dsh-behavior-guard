@@ -89,8 +89,13 @@ const DEFAULTS = {
   // 控制回合（meta-reasoning controller，零 LLM）：每 controlEverySteps 步注入一次控制器摘要，
   // 含 已确立/已排除/当前项/已用步数 + "列 2-3 个候选再选一个"——模拟 Meta Controller 的四个动作。
   controlEverySteps: 8,
-  maxControlPerSession: 6,
+  maxControlPerSession: 24,        // 提升（原 6 只覆盖前 48 步 → 现场 140+ 事件空窗）
   controlEnabled: true,
+  // ── 心智状态快照（合成心智状态层，2026-11-18）──
+  // 复用控制回合注入链，不新增频率；分布式重复触发式注入补空窗。
+  mindStateEnabled: true,
+  mindStateLoopThreshold: 3,       // trail 内同工具+同目标 ≥3 次 → 警告
+  maxMindStateInjections: 6,       // 触发式注入上限（防刷屏）
   // ── Observability（2026-11-18）：per-step trace（零 LLM，追加写 jsonl）──
   // 社区共识（Keyhole/Praison/ZOOZ）：没有 trace 就无法度量，没有度量就无法优化。
   traceEnabled: true,
@@ -354,6 +359,33 @@ function checkSyntax(filePath) {
   return null
 }
 
+// ── 心智状态快照（合成心智状态层，2026-11-18）──
+// 依据：现场诊断——长会话后段 140+ 事件注入空窗 + 分布式重复（read→列目录→write→再read）
+// 与原型的 Python 版 mind_state.py 同构；JS 内联实现以避免 spawn 进程的延迟。
+function mindStateSignals(s, threshold) {
+  const trail = Array.isArray(s?.trail) ? s.trail : []
+  if (!trail.length) return { loops: [], doneCount: 0, inProgress: null, signalStep: s?.lastMindStep || 0 }
+  // 1. 分布式重复：同工具+同目标在 trail 内 ≥ threshold 次（不要求连续——D1 只查连续，查不到这个）
+  const calls = new Map()
+  for (const x of trail) {
+    if (x?.kind !== 'call') continue
+    const name = String(x.name || '?')
+    const args = String(x.args || x.fullArgs || '')
+    const m = args.match(/([\w\\/.-]+\.(?:html|py|md|json|js|yml|ts))/i)
+    const target = m ? m[1] : ''
+    const key = name + ' ' + (target || '(无目标)')
+    calls.set(key, (calls.get(key) || 0) + 1)
+  }
+  const loops = [...calls.entries()].filter(([, c]) => c >= threshold)
+    .sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, c]) => `${k} ×${c}`)
+  // 2. 任务完成信号（防"已交付又重做"）
+  const todos = Array.isArray(s?.todos) ? s.todos : []
+  const doneCount = todos.filter((t) => t?.status === 'completed').length
+  const inProgress = todos.find((t) => t?.status === 'in_progress')
+  return { loops, doneCount, inProgress, signalStep: s?.lastMindStep || 0 }
+}
+
+
 // ── CritBank 经验检索（模块级加载一次）──
 let CRITBANK = []
 try {
@@ -530,7 +562,9 @@ export function apply(ctx, config) {
         sid: String(id || '').slice(0, 8), injectedSkills: [], skillCards: 0, dangerHits: 0,
         // continuity 状态（initial 复用上面的字段）
         latest: '', pendingArchive: false, pendingTodoEcho: false, lastTodos: null, todoCalls: 0, sinceLastTodo: 0,
-        turnTodoInjections: 0, sessionTodoInjections: 0, remindedNoTodo: false, rejectedItems: [] }
+        turnTodoInjections: 0, sessionTodoInjections: 0, remindedNoTodo: false, rejectedItems: [],
+        // 心智状态层
+        mindInjectCount: 0, lastMindStep: 0 }
       states.set(id, s)
     }
     return s
@@ -1337,6 +1371,29 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
         } catch { /* ignore */ }
       }
 
+      // ── 心智状态触发式注入（分布式重复 → 立即干预，补 8 步控制回合的空窗）──
+      if (cfg.mindStateEnabled && (s.mindInjectCount || 0) < cfg.maxMindStateInjections) {
+        try {
+          const sig = mindStateSignals(s, cfg.mindStateLoopThreshold)
+          // 距上次心智/控制注入 ≥6 步 且 检出重复 → 触发（避免与控制回合同步重复注入）
+          const gap = s.step - (s.lastMindStep || 0)
+          if (sig.loops.length && gap >= 6) {
+            s.mindInjectCount = (s.mindInjectCount || 0) + 1
+            s.lastMindStep = s.step
+            // 强制二选一（调研：开放式"换个方法"会被忽略；显式 A/B 才触发真实改航）
+            const msgText = '[harness 心智状态] 检测到重复动作：' + sig.loops.join('；') +
+              '。\n现在必须二选一并立刻执行，不允许第三个选项，也不允许继续当前序列：' +
+              '\n  A. 产物已交付 → 立即结束本轮，不再验证/重写/重复交付。' +
+              '\n  B. 尚未交付 → 换一条从未试过的路径（换工具/换参数/问用户三选一），直接执行。'
+            info(`behavior-guard: [心智状态] step=${s.step} loops=${sig.loops.length}`)
+            trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'mind_state', step: s.step, loops: sig.loops })
+            const msg = createMessage(msgText, 'behavior-guard')
+            const messages = Array.isArray(decision?.messages) ? [...decision.messages, msg] : [msg]
+            return { ...decision, messages }
+          }
+        } catch { /* ignore */ }
+      }
+
       // ── 控制回合（meta-reasoning controller，每 N 步一次，零 LLM）──
       if (cfg.controlEnabled && s.step > 0 && s.step % cfg.controlEverySteps === 0 && (s.controlCount || 0) < cfg.maxControlPerSession) {
         s.controlCount = (s.controlCount || 0) + 1
@@ -1350,6 +1407,8 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
           if (cur) parts.push('② 当前项：' + String(cur.content).slice(0, 60))
           if (rej.length) parts.push('③ 已排除：' + rej.join('｜'))
           parts.push('④ 下一步：在思考里列出 2-3 个候选动作，评估哪个对完成目标收益最高，再选一个执行。')
+          // 心跳：控制回合只更新 lastMindStep（作为触发式注入的冷却基准），
+          // 不追加全文快照——避免"固定格式干扰物"造成 context poisoning（调研：同格式重复注入降准确率）
           info(`behavior-guard: [控制回合] step=${s.step}`)
           trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'control_turn', step: s.step })
           const msg = createMessage(parts.join('\n'), 'behavior-guard')
