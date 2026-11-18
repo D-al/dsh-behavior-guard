@@ -1,3 +1,15 @@
+## [2.5.3] - 2026-11-18 12:42
+
+### Fixed（rc.3 破坏性变更：{{cwd}} 变量）
+- **症状**：dsh 报 `unknown prompt variable "{{cwd}}" in section "deployment:persona-suffix";
+  registered variables: provider, model` → 本轮运行失败
+- **根因**：rc.3 收紧 prompt 变量白名单（只剩 provider/model），我们的 cordis.patch.yml
+  persona suffix 里 `Your working directory is {{cwd}}.` 不再合法
+- **修复**：改为静态文本 `Your working directory is the dsh workspace root (see AGENTS.md for path mapping).`
+  ——AGENTS.md 第 57 行已有完整工作区路径，这行本就冗余
+- **附带修复**：库里的 cordis.patch.yml 之前只有 59 行（仅 harness 挂载），
+  现同步为运行副本完整版 505 行（含 persona/web/model provider）——真正实现一键开箱
+
 ## [2.5.2] - 2026-11-18 12:35
 
 ### Changed（dsh rc.3 升级实测）
