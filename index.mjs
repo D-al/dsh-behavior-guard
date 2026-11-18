@@ -228,7 +228,7 @@ function loadRubric(name, fallback) {
     return fallback
   }
 }
-const CRITIC_RUBRIC = loadRubric('critic_v1.json', {
+const CRITIC_RUBRIC = (() => { const v2 = loadRubric('critic_v2.json', null); return v2 || loadRubric('critic_v1.json', {
   version: 'critic-builtin',
   dimensions: [
     { id: 1, name: '达标性', question: '是否覆盖任务要求的每一项？' },
@@ -236,7 +236,7 @@ const CRITIC_RUBRIC = loadRubric('critic_v1.json', {
     { id: 3, name: '可用性', question: '能直接用/跑通吗？' },
     { id: 4, name: '一致性', question: '内部有无矛盾？' },
   ],
-})
+}) })()
 const AUDIT_RUBRIC = loadRubric('audit_v1.json', { version: 'audit-builtin', checks: [], gates: [] })
 const PLANNER_RUBRIC = loadRubric('planner_v1.json', {
   version: 'planner-builtin',
@@ -952,11 +952,13 @@ ${content}
 ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question}${d.fail_example ? '（反例：' + d.fail_example + '）' : ''}`).join('\n')}
 
 只输出 JSON（无其他文字）：
-{"verdict":"ACCEPT","reasons":["1 达标","2 达标","3 达标","4 达标"]}
+{"verdict":"ACCEPT","reasons":["1 达标: 引用产物第X行",...],"evidence":["需求A→产物Y行"],"confidence":"high|medium|low","error_class":"none"}
 或
-{"verdict":"REJECT","reasons":["3 不达标: 缺少 main 入口"],"fix":"一句最关键的修正动作"}
+{"verdict":"REJECT","reasons":["3 不达标: 缺少 main 入口"],"evidence":["产物只定义了函数，无入口"],"confidence":"high","error_class":"unusable","fix":"一句最关键的修正动作"}
 或
-{"verdict":"UNCERTAIN","reasons":["无法判断: 产物内容为空"]}`
+{"verdict":"UNCERTAIN","reasons":["证据不足"],"confidence":"low","error_class":"none"}
+
+字段纪律：evidence 必须引用产物里的具体行/段落，不能只给结论；confidence=low 且证据不足时用 UNCERTAIN 而非硬判；error_class 六选一（missing_requirement/incomplete/unusable/inconsistent/over_implementation/none）。`
 
   async function runCritic(s) {
     const product = s.lastProduct
@@ -1177,7 +1179,12 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
       ) {
         state.criticCount = (state.criticCount || 0) + 1
         try {
-          const critic = await runCritic(state)
+          let critic = await runCritic(state)
+          // G4：低置信 + 有 UNCERTAIN 通道 → 不硬判，回退到验收闸门
+          if (critic && critic.verdict === 'REJECT' && critic.confidence === 'low') {
+            critic = { ...critic, verdict: 'UNCERTAIN' }
+            info(`behavior-guard: [Critic] REJECT→UNCERTAIN（confidence=low, ${critic.error_class || '?'})`)
+          }
           if (critic && critic.verdict === 'ACCEPT') {
             state.criticAccepted = true
             info(`behavior-guard: [Critic] ACCEPT session=${sessionId}`)
@@ -1507,7 +1514,15 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
           // 而是在信号命中时按轨迹特征检索最相关的 1~2 条注入。
           try {
             const lessons = matchCritbank(s)
-            if (lessons.length) text = (text || '') + '\n' + lessons.join('\n')
+            if (lessons.length) {
+              text = (text || '') + '\n' + lessons.join('\n')
+              // G2（ReHarness, arXiv 2610.12668）：记录教训命中，供反向修订通道结算
+              // 命中后若仍重复同类失败 → 该教训无效/有害，离线脚本会生成降级建议
+              for (const l of lessons) {
+                const m = String(l).match(/【相关教训 (C-\d+)】/)
+                if (m) trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'crit_hit', id: m[1], step: s.step })
+              }
+            }
           } catch { /* ignore */ }
         }
       } finally {

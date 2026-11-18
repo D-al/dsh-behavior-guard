@@ -371,17 +371,17 @@ apply_patch 切换 / 工具结果去重 / 多审计员 / 自验证 / MCP / 向�
 
 ---
 
-### 8.1 🟢 现在能做（按 ROI 排序）
+### 8.1 🟢 现在能做（✅ 已全部落地于 v2.3.0，2026-11-18 09:30）
 
 | # | 方向 | 论文依据 | 为什么现在能做 | 预期收益 / 成本 |
 |---|---|---|---|---|
-| **G1** | **技能自进化**（trace → skill 草稿） | [Trace2Skill, arXiv 2603.25158](https://arxiv.org/abs/2603.25158) · [SkillCAT, arXiv 2606.13317](https://arxiv.org/abs/2606.13317) · [SkillComposer, arXiv 2606.06079](https://arxiv.org/abs/2606.06079) | 我们已有 `_trace.jsonl`（539 条）+ 7 个手工 skill——缺的只是"从轨迹归纳草稿"这一步。用成功/失败轨迹对照 → 生成 skill patch → **人工确认后**入库 | Trace2Skill：35B 演化的技能让 122B +57.65pp；SkillCAT 免训练 +40.40%。成本：每批轨迹 1 次 LLM，仅在新会话离线跑 |
-| **G2** | **记忆反向修订** | [ReHarness, arXiv 2610.12668](https://arxiv.org/abs/2610.12668) | CritBank 现在是 append-only——错误教训会永久留着误导。加"下次被引用后回来修订"的回收通道（每条经验带下次复用反馈），9 backbone×benchmark 中 8 个第一 | 专治我们已观察到的"纠正器猜错路径那次注入反而有害"——让有害教训自我降级 |
-| **G3** | **失败时间线分析**（t_err/t_lock/t_obs） | *Failure as a Process* (UCL+NJU, 2026-07) · [AgentRx, arXiv 2602.02475](https://arxiv.org/abs/2602.02475) | trace 已记录每步事件——加三个时间戳标注即可。关键实证：**决定性错误中位在 step 7、step 8 锁定，但 step 16 才可见**；我们现有 D5 门控（连续失败≥2/无进展≥6）平均滞后约 9 步 | 把门控从"行为信号（事后）"提前到"认知错误（事前）"的**唯一低成本路径** |
-| **G4** | **结构化可审计的验收输出** | [SEVA, arXiv 2606.29713](https://arxiv.org/abs/2606.29713) · [AgentV-RL, arXiv 2604.16004](https://arxiv.org/abs/2604.16004) | Critic 现在只输出 ACCEPT/REJECT + 四维理由——扩成"证据对齐 / 逐步推理 / 校准置信 / 六类错误诊断 + 可执行修复" | SEVA-3B ≈ GPT-4o-mini（F1 69.0 vs 69.8）；**审计输出更可追溯**；零额外模型调用（只改 prompt schema） |
-| **G5** | **审计员概率校准**（取代布尔门控） | [SAG](Part 3) · [SU, arXiv 2609.05274](https://arxiv.org/abs/2609.05274) · Proxy Confidence (AUROC 0.825) | `_audit_feedback.jsonl` 已记干预 + 3 步后有效性——用这批数据离线做 ROC，把 MTP 0.65 / 无进展 6 从经验值变成校准阈值 | Part 7.2 的第一个开放项；**纯离线分析，0 运行期成本** |
-| **G6** | **双向验证**（forward + backward） | [AgentV-RL, arXiv 2604.16004](https://arxiv.org/abs/2604.16004)（4B 超 SOTA ORM 25.2%） | present 前让 Critic 做两遍不同方向：正向"从需求推产物"、反向"从产物回溯需求"——发现遗漏与过度实现 |  ablation 证双向 > 单向；成本：present 前 +1 次 LLM（13-20s），可只在交付级任务开 |
-| **G7** | **工具描述去歧义 + 拓扑分组** | [Cartograph, arXiv 2609.30293](https://arxiv.org/abs/2609.30293)（3 proxy tools 替 374 定义，475 vs 42,450 token）· SkillCAT 的拓扑路由 | 工具面 28 个无法动态开关，但可以在 AGENTS.md 里给**语义边界表**（"glob 找路径 / grep 找内容 / es.exe 找文件名"），并用 skill 拓扑按需加载 | 减少"挑错工具/填错参数"——BFCL 显示这是主要失败模式；成本：一篇 md |
+| ✅ **G1** | **技能自进化**（trace → skill 草稿） | [Trace2Skill, arXiv 2603.25158](https://arxiv.org/abs/2603.25158) · [SkillCAT, arXiv 2606.13317](https://arxiv.org/abs/2606.13317) · [SkillComposer, arXiv 2606.06079](https://arxiv.org/abs/2606.06079) | 我们已有 `_trace.jsonl`（539 条）+ 7 个手工 skill——缺的只是"从轨迹归纳草稿"这一步。用成功/失败轨迹对照 → 生成 skill patch → **人工确认后**入库 | Trace2Skill：35B 演化的技能让 122B +57.65pp；SkillCAT 免训练 +40.40%。成本：每批轨迹 1 次 LLM，仅在新会话离线跑 |
+| ✅ **G2** | **记忆反向修订** | [ReHarness, arXiv 2610.12668](https://arxiv.org/abs/2610.12668) | CritBank 现在是 append-only——错误教训会永久留着误导。加"下次被引用后回来修订"的回收通道（每条经验带下次复用反馈），9 backbone×benchmark 中 8 个第一 | 专治我们已观察到的"纠正器猜错路径那次注入反而有害"——让有害教训自我降级 |
+| ✅ **G3** | **失败时间线分析**（t_err/t_lock/t_obs） | *Failure as a Process* (UCL+NJU, 2026-07) · [AgentRx, arXiv 2602.02475](https://arxiv.org/abs/2602.02475) | trace 已记录每步事件——加三个时间戳标注即可。关键实证：**决定性错误中位在 step 7、step 8 锁定，但 step 16 才可见**；我们现有 D5 门控（连续失败≥2/无进展≥6）平均滞后约 9 步 | 把门控从"行为信号（事后）"提前到"认知错误（事前）"的**唯一低成本路径** |
+| ✅ **G4** | **结构化可审计的验收输出** | [SEVA, arXiv 2606.29713](https://arxiv.org/abs/2606.29713) · [AgentV-RL, arXiv 2604.16004](https://arxiv.org/abs/2604.16004) | Critic 现在只输出 ACCEPT/REJECT + 四维理由——扩成"证据对齐 / 逐步推理 / 校准置信 / 六类错误诊断 + 可执行修复" | SEVA-3B ≈ GPT-4o-mini（F1 69.0 vs 69.8）；**审计输出更可追溯**；零额外模型调用（只改 prompt schema） |
+| ✅ **G5** | **审计员概率校准**（取代布尔门控） | [SAG](Part 3) · [SU, arXiv 2609.05274](https://arxiv.org/abs/2609.05274) · Proxy Confidence (AUROC 0.825) | `_audit_feedback.jsonl` 已记干预 + 3 步后有效性——用这批数据离线做 ROC，把 MTP 0.65 / 无进展 6 从经验值变成校准阈值 | Part 7.2 的第一个开放项；**纯离线分析，0 运行期成本** |
+| ✅ **G6** | **双向验证**（forward + backward） | [AgentV-RL, arXiv 2604.16004](https://arxiv.org/abs/2604.16004)（4B 超 SOTA ORM 25.2%） | present 前让 Critic 做两遍不同方向：正向"从需求推产物"、反向"从产物回溯需求"——发现遗漏与过度实现 |  ablation 证双向 > 单向；成本：present 前 +1 次 LLM（13-20s），可只在交付级任务开 |
+| ✅ **G7** | **工具描述去歧义 + 拓扑分组** | [Cartograph, arXiv 2609.30293](https://arxiv.org/abs/2609.30293)（3 proxy tools 替 374 定义，475 vs 42,450 token）· SkillCAT 的拓扑路由 | 工具面 28 个无法动态开关，但可以在 AGENTS.md 里给**语义边界表**（"glob 找路径 / grep 找内容 / es.exe 找文件名"），并用 skill 拓扑按需加载 | 减少"挑错工具/填错参数"——BFCL 显示这是主要失败模式；成本：一篇 md |
 
 ---
 
@@ -437,14 +437,14 @@ apply_patch 切换 / 工具结果去重 / 多审计员 / 自验证 / MCP / 向�
 
 ---
 
-### 8.5 路线图建议（如果继续做）
+### 8.5 路线图建议（第 1-3 步已于 v2.3.0 完成，以下是更新后状态）
 
 ```
-第 1 步（零风险，1 天）：G3 失败时间线 → 用现有 539 条 trace 标注 t_err/t_lock/t_obs
+✅ 第 1 步（已完成）：G3 失败时间线 → 用现有 539 条 trace 标注 t_err/t_lock/t_obs
          ↓ 数据会告诉你"门控应该提前到哪一步"
-第 2 步（低风险，2 天）：G5 审计概率校准 + G4 结构化验收输出
+✅ 第 2 步（已完成）：G5 审计概率校准 + G4 结构化验收输出
          ↓ 把 0.65 / 6 步从经验值变成数据值
-第 3 步（中风险，3-5 天）：G1 技能草稿生成 + G2 记忆反向修订（都需人工确认门）
+✅ 第 3 步（已完成）：G1 技能草稿生成 + G2 记忆反向修订（都需人工确认门）
          ↓ 从"静态 harness"变成"会自我修订的 harness"
 第 4 步（中风险，按需）：Y1 Recuris 式工作记忆引导检索 / Y4 难度路由
          ↓
@@ -463,6 +463,7 @@ apply_patch 切换 / 工具结果去重 / 多审计员 / 自验证 / MCP / 向�
 | **v2.1.0** | 11-18 01:35 | 控制回合（meta-reasoning controller） |
 | **v2.2.0** | 11-18 02:25 | 四项社区缺口：trace / JSON 重试 / Skills / 危险操作分级 |
 | **v2.2.1** | 11-18 03:35 | planner rubric 外置接入 |
+| **v2.3.0** | 11-18 09:30 | Part 8 绿色项 G1-G7 全部落地（skill_draft / crit_revision / trace_timeline / critic_v2 / audit_calibrate / tool-boundaries）|
 | **docs 2.3** | 11-18 08:30 | 远景规划：三层分类（现在能做/前沿/卡脖子）+ 6 条新分支 + 17 篇新论文（含失败归因时间线、技能自进化、反向记忆修订）|
 
 ## License

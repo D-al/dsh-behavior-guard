@@ -1,0 +1,52 @@
+{
+  "_note": "Critic rubric v2（Part 8 G4+G6）。v1 的四维度保留；新增：G4 结构化可审计输出（证据对齐/置信度/六类错误诊断/可执行修复，依据 SEVA arXiv 2606.29713）；G6 双向验证（正向需求→产物 + 反向产物→需求，依据 AgentV-RL arXiv 2604.16004）。字段全部可选——老结果无这些字段时走原逻辑。",
+  "version": "critic-v2",
+  "name": "产物质量评审（结构化 + 双向）",
+  "dimensions": [
+    {
+      "id": 1,
+      "name": "达标性",
+      "question": "产物是否覆盖任务要求的每一项？（正向：从需求逐条查产物里的对应实现）",
+      "fail_example": "任务要求 CPU 每核利用率，产物只有总利用率"
+    },
+    {
+      "id": 2,
+      "name": "完整性",
+      "question": "是否有空缺、占位符、未实现部分、明显截断？",
+      "fail_example": "函数体是 pass/TODO，或文件在句中截断"
+    },
+    {
+      "id": 3,
+      "name": "可用性",
+      "question": "按任务要求能直接用、直接跑通吗？",
+      "fail_example": "缺 main 入口、缺依赖声明、路径写死本机绝对路径"
+    },
+    {
+      "id": 4,
+      "name": "一致性",
+      "question": "内部有无自相矛盾（同一事实两处不同说法）？",
+      "fail_example": "前面说输出 JSON、后面示例是 YAML"
+    },
+    {
+      "id": 5,
+      "name": "反向覆盖",
+      "question": "反向检查：产物里的每个主要部分，是否都能在任务要求里找到依据？有没有多做的、跑偏的、为凑数加的？",
+      "fail_example": "任务要求修一个 bug，产物顺手重构了三个无关模块"
+    }
+  ],
+  "structured_output": {
+    "enabled": true,
+    "fields": {
+      "evidence": "证据对齐：每个判定引用产物里的具体行/段落（不允许只给结论）",
+      "confidence": "校准置信度：high|medium|low（低置信时倾向 UNCERTAIN 而非硬判）",
+      "error_class": "错误分类（六选一）：missing_requirement | incomplete | unusable | inconsistent | over_implementation | none",
+      "fix": "可执行修复动作（动词开头，一个动作）"
+    },
+    "note": "SEVA 警告：结构化输出训练会出'基准专家'（某基准 +15pp 但另一基准 -10~14pp）——我们的四维度是通用的，不针对特定 benchmark 优化"
+  },
+  "verdict_rules": {
+    "accept": "五维全达标，且无 over_implementation",
+    "reject": "任一维度不达标；error_class 与 fix 必填",
+    "uncertain": "产物为空/无法读取，或 confidence=low 且证据不足"
+  }
+}

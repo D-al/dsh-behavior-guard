@@ -1,6 +1,6 @@
 {
   "name": "dsh-agent-harness",
-  "version": "2.2.1",
+  "version": "2.3.0",
   "description": "DeepSeek Harness agent harness：行为治理（L0-L3/D1-D5/审计/评审/验收）+ 任务连续性（P0 存档/P1.5 回灌/P1 闹钟）——为小模型分担负担、扩展能力边界",
   "type": "module",
   "main": "index.mjs",

@@ -2,6 +2,26 @@
 
 所有迭代以本地时间记录（UTC+8）。
 
+## [2.3.0] - 2026-11-18 09:30
+
+### Added（Part 8 绿色项 G1-G7 全部落地）
+
+| 项 | 实现 | 依据 |
+|---|---|---|
+| **G1 技能自进化** | `bench/skill_draft.py`：从 trace 的成功/失败轨迹生成 skill 草稿 → `_skill_drafts/`（**人工确认后入库**） | Trace2Skill 2603.25158 / SkillCAT 2606.13317 / SkillComposer 2606.06079 |
+| **G2 记忆反向修订** | 插件记 `crit_hit` trace；`bench/crit_revision.py` 检测"命中教训后仍失败"→ 生成降级建议（**不自动改 critbank**） | ReHarness 2610.12668 |
+| **G3 失败时间线** | `bench/trace_timeline.py`：t_err/t_lock/t_obs 三时间点 + lag 统计 | Failure as a Process (UCL+NJU) / AgentRx 2602.02475 |
+| **G4 结构化验收** | `critic_v2.json` 加 evidence/confidence/error_class/fix；confidence=low → UNCERTAIN 回退（不硬拒） | SEVA 2606.29713 / AgentV-RL 2604.16004 |
+| **G5 概率校准** | `bench/audit_calibrate.py`：按门控统计有效率 → 阈值调整建议（人工确认） | SAG / SU 2609.05274 |
+| **G6 双向验证** | rubric v2 加第 5 维"反向覆盖"（产物→需求），正向维度 1 也强化 | AgentV-RL 2604.16004 |
+| **G7 工具语义边界** | `bench/skills/tool-boundaries.md`（8 个 skill 了）；AGENTS.md 加一行索引（3959 token，4K 内） | BFCL 43%→2% / RAG-MCP 2505.03275 |
+
+**关键纪律**：G1+G2 成对——只生成新技能不修订旧技能会让错误经验加速积累；
+所有降级/入库都需要人工确认，脚本只生成建议不自动生效。
+
+### Tests
+- 26（turn-guard）+ 40（new_guards，新增 G4/G6 两项）+ 门禁 29/29
+
 ## [2.2.1] - 2026-11-18 03:35
 
 ### Changed
