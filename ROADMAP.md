@@ -1,110 +1,133 @@
 # 路线图（活文档）
 
-> 这里的目标都**可执行、可验证**——每条带验证方法。完成后勾选并写进 [CHANGELOG](CHANGELOG.md)。
-> 骨架在 [README](README.md)，这里展开。更新于 2026-11-19（Self-Harness 纳入短期①，见 [方案](docs/SELF_HARNESS_PLAN.md)）。
-
-## 当前位置（先读这一段）
-
-短期四目标（spec 分类 / Critic 去同源 / 自适应原型 / 真实回归）与长期地基①②（GWT 总线 / FEP 闭环）
-**均已完成**。系统现在处于「**骨架已立、血肉待长**」阶段：数据底座（outcome 63+/trace 3200+/CritBank 真实命中）
-与共享状态总线都已就位，接下来是从结构涌现进入功能涌现。
-
-**执行顺序已调整**（ADR-0017）：先建结构性地基（已完成）→ 再积累数据型目标（新短期）→
-最后做需要世界模型/外部基准的目标（新长期）。独立轨道（上游 PR / v1.0.0 / 工具面裁剪）不插队。
-
-## 四波次逻辑（依赖方向，不随时间变）
-
-> 短/中/长期是**执行节奏**（会随进度重排）；这四波是**依赖逻辑**（稳定不变）。判断新工作先问"它属于哪波"。
-
-| 波次 | 主题 | 依赖逻辑 | 状态 |
-|---|---|---|---|
-| **0 地基期** | 数据底座 + 共享总线 | 没 outcome 无从比对、没 GWT 只能手动搬运状态——是所有后续机制的前提 | ✅ 已完成（v2.8~v2.11）|
-| **1 回填期** | 把积累的数据变成能力 | FEP 偏差流 + outcome 已攒够，现在能喂技能进化与遗忘 | 🟢 当前短期 |
-| **2 连接期** | 器官间流动（第 4 层深化）| GWT 已立，情景检索/会话树可以进主循环；BDI 有状态卡可依 | 🟡 中期 |
-| **3 进化期** | 心智从经验变聪明（第 5 层延展）| **投毒防御必须先于写回闭环**——SkillJack：80% 攻击删源后仍存活 | 🔴 长期 |
-
-**双向迭代**：依赖链不只向上——第 4 层的审计需求曾反向复用第 1 层的 spec 日志信号；
-FEP 的注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时注入通道"的边界（ADR-0017）。
-判断新工作时多问：它属于哪波？是否需要回头改下层？
-
-**执行铁律**：一波没验收，不开始下一波。
+> **给第一次来的 AI / 接手者**：这个文件回答三个问题——项目现在在哪（§1）、接下来做什么（§2-4）、
+> 为什么是这个顺序（§5）。每条目标都带**完成标准（DoD）**，做完打勾并写进 [CHANGELOG](CHANGELOG.md)。
+> 入口在 [README](README.md)；细节在 [docs/](docs/README.md)；"为什么这么决定"在 [decisions/](decisions/README.md)。
+> 更新于 2026-11-19（v2.14.0：频次重设 + Now/Next/Later 重排）。
 
 ---
 
-## ✅ 已完成（归档，不再占用短中长期位置）
+## 1. 当前位置（30 秒读懂）
+
+**项目是什么**：给 dsh（DeepSeek Harness）的一个 cordis 插件，通过**模型外部**的确定性脚手架
+（规则注入 + 门控 + 旁路学习），让一个 8G 显存上的 35B MoE 模型表现得像可靠 agent。**模型权重一个字节没动。**
+
+**做到哪了**：地基全部完成，处于「**骨架已立、血肉待长**」——数据底座（trace 5500+ / outcome 63+ /
+CritBank 真实命中）、共享状态总线（GWT）、预期闭环（FEP）、权限代劳都已在线。
+现在的瓶颈不是"缺结构"，是"**积累的数据还没变成能力**"。
+
+**为什么是这个顺序**（[ADR-0017](decisions/0017-gwt-first-then-fep.md)）：
+结构性地基越晚做越贵 → 先做；数据型目标时间站在我们这边 → 中间做；需要世界模型/外部基准的 → 最后做。
+一句话：**先建总线，再往上接器官。**
+
+**怎么判断一条新工作该放哪**：问它属于下面哪一波（§5），是否依赖未完成项。一波没验收，不开始下一波。
+
+---
+
+## 2. 🟢 短期（Now，1-2 周）：把积累的数据变成能力
+
+> 共同特征：数据已经够了（outcome 63+ / trace 5500+ / 技能草稿已产出），只差接成闭环。
+> 全部**权重零改 + 纯文本/规则**，不改引擎。
+
+| # | 目标 | 为什么现在做 | 完成标准（DoD） | 状态 |
+|---|---|---|---|---|
+| S1 | **技能自进化闭环** | 数据已 ≥20 条，草稿已产出；这是短期①的核心 | outcome+FEP 偏差喂 `skill_draft`；草稿命中同类任务成功率上升；`promote_skills` 仍人工审批（ADR-0015）；投毒防御先于自动写回 | [ ] |
+| S2 | **可控遗忘常态化** | CritBank 目前 0 计数，假记忆会自我强化 | 真实 helpful/harmful 计数非零；`crit_decay.py --apply` 月度跑；无过时经验被引用（假记忆自检） | [ ] |
+| S3 | **频次重设收尾** | 审计发现 learn_watcher 每 30s 全量巩固是空转（已改）；还剩两项小改 | ① trace 加 `turn`/`controlTotal` 字段；② `docs/CADENCE_REDESIGN.md` 三条结论落地；心跳日志验证 `[deep]` 每 10 分钟一次 | [ ]（部分完成：watcher 已改）|
+| S4 | **自适应原型端到端对照** | 机制已有（`adaptiveThinkEnabled`），默认关，缺证据 | P3/P4/P5 各跑 2 次取中位；token 降且成功率不降才开，否则保持关闭 | [ ] |
+
+**S1 的实现路径 = Self-Harness 四阶段**（[完整方案](docs/SELF_HARNESS_PLAN.md) / [ADR-0018](decisions/0018-self-harness-two-stage.md)）：
+- P0 可编辑面白名单 + 双 split 评测台（安全面禁改；基线方差 <10%）
+- P1 trace → 失败签名精确聚类 → evidence bundle（`recovered_friction` 列为保护对象）
+- P2 先 Meta-Harness（WorkBuddy 离线跑通协议）→ 再 Self-Harness（35B 自己提案）
+- P3 与 learn_watcher 合并常态化（需 P0-P2 验收后才启动）
+- 依据：[Self-Harness 2606.09498](https://arxiv.org/abs/2606.09498) Qwen3.5-35B-A3B +18.7pp
+
+**频次依据**：[CADENCE_AUDIT](docs/CADENCE_AUDIT.md)（数据底稿）+ [CADENCE_REDESIGN](docs/CADENCE_REDESIGN.md)（结论）。
+核心发现：大部分频次经实测校准**不该动**（control 8 步、critic ≤2 次、压缩 0.55 均合理）；
+真问题只有 learn_watcher 过密（已改）+ 注入预算按次数不按 token（列中期）。
+
+---
+
+## 3. 🟡 中期（Next，1-2 月）：器官间流动
+
+> 共同特征：结构已在（GWT 总线已立），缺的是把离线脚本接进主循环。
+> 依赖：S1 的 evidence bundle 是情景检索的检索对象。
+
+| # | 目标 | 依赖 | 完成标准（DoD） | 状态 |
+|---|---|---|---|---|
+| M1 | **情景检索进主循环** | GWT（已完成）+ S1 evidence bundle | `es.exe` 从离线脚本接入控制回合自动 top-3 注入；长任务中历史经验被主动引用 >0 次；结果写回 GWT 的 evidence 字段 | [ ] |
+| M2 | **会话树实时化** | GWT 加 `parentId` | `session_tree.py` 从事后分析变实时写 parent 指针；能从任一节点 fork 且不改写历史、不付 KV 后缀税（ADR-0013） | [ ] |
+| M3 | **用户意图 BDI 深化** | GWT 的 bdiGoal + FEP 偏差 | `s.bdi` 单槽升级 belief/desire/intention 三槽；用户约束跨压缩不丢；意图漂移检测有状态可依 | [ ] |
+| M4 | **注入预算 token 化** | 频次审计结论 | `workspaceSnapshot` 加 `injectionTokensUsed`；预算按 token 而非次数；端到端验证不误挡安全注入 | [ ] |
+| M5 | **工具面结构改造** | 用户拍板"哪些进内核" | 28 个工具收敛到最小内核（read/write/edit/search/shell/bridge）；低频能力进 10 个 skill 卡 + skill 内脚本；危险拦截 hook 化；不动则保持现状 | [ ] |
+| M6 | **安全规则不可覆盖的硬声明 + 测试** | 无 | AGENTS.md 显式声明"skill/prompt 无法覆盖安全底线"；加语义回归测试 | [ ] |
+
+依据：[mini-harness](https://github.com/jb-san/mini-harness)（7 工具 + skill/hook）、
+[dsh-browser-agent](https://github.com/nonentity303/dsh-browser-agent)（安全规则优先级）、
+[PEER_HARNESS_BENCHMARK](docs/PEER_HARNESS_BENCHMARK.md)。
+
+---
+
+## 4. 🔴 长期（Later，季度级）：架构完整性与外部效度
+
+> 共同特征：需要更强的评测、更完整的世界模型，或与脑结构无关但耗时长的独立轨道。
+
+| # | 目标 | 完成标准（DoD） | 状态 |
+|---|---|---|---|
+| L1 | **FEP 深化：偏差 → 世界模型** | 现有只判"产物是否存在"，升级为断言"产物内容满足 what"；预期断言精度/召回可测；误报不侵占注入通道（ADR-0017） | [ ] |
+| L2 | **标准化 eval** | 自建 P3/P4/P5 迁移到 SWE-bench Verified 子集；与社区同基准可比；借鉴 `swe-agent-lite` 的 harness | [ ] |
+| L3 | **脑功能分区空白区** | 按 [BRAIN_PARITY](docs/BRAIN_PARITY.md) 补眶额价值 / 脑干稳态；调研已完成，待决定是否落 ADR | [ ] |
+| L4 | **独立轨道（不插队）** | autoparser 上游 PR（[#29307](https://github.com/ggml-org/llama.cpp/pull/29307)）+ 撤本地补丁；llama.cpp v1.0.0 升级（FP8 KV + 非阻塞 MoE cache）；dsh rc 升级 | [ ] |
+
+---
+
+## 5. 四波次依赖逻辑（稳定不变，判断新工作先问属于哪波）
+
+> 短/中/长期是**执行节奏**（会随进度重排）；这四波是**依赖逻辑**（稳定不变）。
+
+| 波次 | 主题 | 依赖逻辑 | 状态 |
+|---|---|---|---|
+| **0 地基期** | 数据底座 + 共享总线 | 没 outcome 无从比对、没 GWT 只能手动搬运状态——所有后续机制的前提 | ✅ 完成（v2.8~v2.12）|
+| **1 回填期** | 把数据变成能力 | FEP 偏差 + outcome 已攒够，现在能喂技能进化与遗忘 | 🟢 短期 S1-S4 |
+| **2 连接期** | 器官间流动 | GWT 已立，情景检索/会话树可进主循环；BDI 有状态卡可依 | 🟡 中期 M1-M6 |
+| **3 进化期** | 从经验变聪明 | **投毒防御必须先于写回闭环**——SkillJack：80% 攻击删源后仍存活 | 🔴 长期 L1-L4 |
+
+**双向迭代**：依赖链不只向上——第 4 层审计需求曾反向复用第 1 层 spec 日志信号；
+FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时注入通道"（ADR-0017）。
+判断新工作时多问：属于哪波？是否要回头改下层？
+
+---
+
+## 6. ✅ 已完成（归档，不再占用短中长期位置）
 
 | 目标 | 版本 | 验证 |
 |---|---|---|
 | spec 阈值分类标定 | v2.10.0 | `test_short_term_goals.mjs` 2/2 |
 | Critic 去同源化（异质采样 + AC3）| v2.10.0 | 同上 4/4 |
-| test-time 自适应原型 | v2.10.0 | 同上 2/2（端到端 token 对照待开）|
+| test-time 自适应原型（机制，非端到端）| v2.10.0 | 同上 2/2 |
 | 真实会话回归 | v2.10.0 | 桥接派真实任务，verify-on-stop 验证链成立 |
 | 权限弹窗代劳（full-access 预设 + answerer）| v2.10.1 | 新会话 0 次 `approval/asked` |
 | **GWT 共享状态总线**（胼胝体）| v2.11.0 | `test_gwt_fep.mjs` 9/9 |
-| **FEP 预期闭环**（小脑）| v2.11.0 | 同上 7/7；真实 dsh trace 出现 `fep_cycle` |
-| 结果反馈捕获 / 各类确定性门控 / 三角色 / P0-P2 心智拼图 | v2.0~v2.9 | 见 CHANGELOG 全文 |
+| **FEP 预期闭环**（小脑）| v2.11.0 | 同上 7/7；真实 trace 出现 `fep_cycle` |
+| 深度维护审计（8 P0 + 9 P1 修复）| v2.12.0 | 106 PASS / 0 FAIL |
+| Self-Harness 纳入路线图 + GPU 引擎守护 + 同族对标 | v2.13.0 | 106 PASS / 0 FAIL；GPU 自检过 |
+| learn_watcher 频次三层改造 | v2.14.0 | 语法 OK；心跳 `[deep]` 每 10 分钟 |
+| 结果反馈捕获 / 确定性门控 / 三角色 / P0-P2 心智拼图 | v2.0~v2.9 | 见 CHANGELOG 全文 |
 
 完整历史见 [CHANGELOG](CHANGELOG.md) 与 [时间线](docs/history/TIMELINE.md)——**历史只追加，不重写**。
 
 ---
 
-## 🟢 短期（1-2 周）：把数据变成能力
-
-- [ ] **技能自进化数据闭环** — 消费 `_outcome.jsonl` + `fep_cycle` 偏差喂 skill_draft，数据已 ≥20 条
-  - 做法：B 段 watcher 把 FEP 偏差归入 skill 草稿的证据字段；`promote_skills` 仍人工审批（ADR-0015）
-  - 验证：草稿命中后同类任务成功率变化；投毒防御（provenance + lineage）先于自动写回
-  - 依据：[Reflexion](https://arxiv.org/abs/2303.11366) 8.2→33.8、[ExpeL](https://arxiv.org/abs/2307.11909)
-  - **实现路径 = Self-Harness 四阶段**（2026-11-19 纳入，[完整方案](docs/SELF_HARNESS_PLAN.md) / [ADR-0018](decisions/0018-self-harness-two-stage.md)）：
-    - P0 可编辑面白名单 + 双 split 评测台（先做；安全面禁止改）
-    - P1 trace → 失败签名精确聚类 → evidence bundle（`recovered_friction` 列为保护对象）
-    - P2 最小闭环：先 Meta-Harness（WorkBuddy 离线跑通协议）→ 再 Self-Harness（35B 自己提案）
-    - P3 与 learn_watcher 合并常态化（需 P0-P2 验收后才启动）
-    - 验证：基线方差 <10%；人为关 verify-on-stop 后闭环能提出恢复候选；decline 是合法结果
-    - 依据：[Self-Harness 2606.09498](https://arxiv.org/abs/2606.09498) Qwen3.5-35B-A3B +18.7pp
-- [ ] **可控遗忘常态化** — CritBank 从 0 计数变真实 helpful/harmful，月度 `crit_decay.py --apply`
-  - 做法：FEP 偏差 + crit_hit 命中后 3 步内是否再失败 → 结算 helpful/harmful；过时教训 retire/supersede
-  - 验证：无过时经验被引用（假记忆自检），状态表里有真实非零计数
-- [ ] **自适应原型端到端对照** — 开启 `adaptiveThinkEnabled`，P3/P4/P5 各跑 2 次取中位
-  - 验证：token 下降且成功率不降；若不达标就保持默认关闭（不硬上）
-- [ ] **工具面结构改造（原"裁剪 28→18-20"升级）** — 从"拍板数字"改为结构改造：保留最小内核工具，
-  低频能力挪进 skill 卡 + skill 内脚本；危险拦截 hook 化。同时服务 Self-Harness 的可编辑面白名单
-  - 依据：[mini-harness](https://github.com/jb-san/mini-harness) 只留 7 个原生工具 + skill/hook 扩展（[对标](docs/PEER_HARNESS_BENCHMARK.md)）
-  - 前置：仍需用户拍板"哪些工具进内核"；不拍板则保持现状
-- [ ] **安全规则不可覆盖的硬声明 + 回归测试** — 在 AGENTS.md 显式声明"skill/prompt 无法覆盖安全底线"，加语义测试
-  - 依据：[dsh-browser-agent](https://github.com/nonentity303/dsh-browser-agent) 的"技能提示词永远排在安全规则之前"
-
-## 🟡 中期（1-2 月）：器官间流动
-
-- [ ] **情景检索进主循环** — EVENTS.md + es.exe 从离线脚本接入控制回合自动 top-3 注入
-  - 依赖：GWT 快照提供 goal/todo/evidence，检索结果写回快照的 evidence 字段
-  - 验证：长任务中历史经验被主动引用次数 >0
-- [ ] **会话树实时化** — session_tree.py 从事后分析变 harness 实时写 parent 指针，支持真 rewind
-  - 依赖：GWT 快照加 `parentId`；写入 append-only（ADR-0013）
-  - 验证：能从任一节点 fork 且不改写历史、不付 KV 后缀税
-- [ ] **用户意图 BDI 深化** — 现有 `s.bdi` 单槽升级为 belief/desire/intention 三槽动态推理
-  - 依赖：GWT 快照已有 bdiGoal；FEP 偏差可作为 belief 修正信号
-  - 验证：用户约束跨压缩不丢，意图漂移检测有状态可依
-  - 依据：[XYBench](https://ainewstodays.com/ai2-xybench-benchmark-8115-misconception-queries-emnlp-2026) 的"识别≠生成"鸿沟
-
-## 🔴 长期（季度级）：架构完整性与外部效度
-
-- [ ] **FEP 深化：从偏差检测到世界模型** — 现有 FEP 只判"产物是否存在"，下一步断言"产物内容应满足 what"
-  - 依赖：情景检索（提供历史模式）+ BDI（提供意图）
-  - 验证：预期断言的精度与召回；误报不侵占注入通道（ADR-0017 红线）
-- [ ] **标准化 eval** — 自建 P3/P4/P5 迁移到 SWE-bench Verified 子集，提升外部效度
-  - 验证：与社区同基准可比，不再只靠自建短任务
-- [ ] **统一脑功能分区对照** — 按人脑分区盘点覆盖度，优先补空白区（眶额价值/脑干稳态）
-  - 依据：Foundation Agents 综述（2504.01990）七模块蓝图；Karpathy 指出杏仁核/海马"几乎缺失"
-  - 状态：调研已完成（2026-11-18），待决定是否落 ADR
-- [ ] **独立轨道（不插队，与脑结构无关）**：autoparser 上游 PR + 撤补丁（[#29307](https://github.com/ggml-org/llama.cpp/pull/29307)）；llama.cpp v1.0.0 升级（FP8 KV + 非阻塞 MoE cache 破显存墙）；工具面 28→18-20（**前置：用户拍板**）
-
-## 明确不做
+## 7. 明确不做（防止新人重造轮子 / 走回头路）
 
 | 不做 | 理由 |
 |---|---|
 | 多模态 / CUA | 与纯文本 8GB 环境不匹配，社区主战场但非我们场景 |
 | 通用 agent 框架 / 向量检索代码 | [Harness Engineering 2609.00006](https://arxiv.org/abs/2609.00006)：11 个主流 harness 全用确定性循环，无人用 |
-| 训练 / 微调模型 | 与"权重零改"的合成路线冲突 |
+| 训练 / 微调模型（含 RL 优化 harness）| 与"权重零改"路线冲突；agent-lightning 等 RL 路线只作技术雷达 |
 | 堆更多 judge | [Apple: 9 judge≈2 票](docs/MIND_GAPS_RESEARCH.md)；信号源多样性 >> judge 数量 |
-| 强制二选一 / 质疑式干预 | "Are you sure"≈"You are wrong"（JS 散度 0.0186），会让 76.6% 正确答案被推翻（见 [ADR-0014](decisions/0014-reject-forced-choice-injection.md)）|
-| FEP 偏差走运行时注入通道 | 实测会挤掉 D5 审计额度（ADR-0017）——学习信号只进 trace/学习队列 |
+| 强制二选一 / 质疑式干预 | "Are you sure"≈"You are wrong"，会让 76.6% 正确答案被推翻（[ADR-0014](decisions/0014-reject-forced-choice-injection.md)）|
+| FEP 偏差走运行时注入通道 | 实测挤掉 D5 审计额度（ADR-0017）——学习信号只进 trace/学习队列 |
+| 改 Electron 启动参数降 3D | `--disable-gpu` 等已证伪反效果（[Electron #50469](https://github.com/electron/electron/issues/50469)）；见 [GPU 守护](docs/GPU_ENGINE_GUARD.md) |
+| 无差别提高自动化频次 | 频次审计证明大部分参数经实测校准合理；只按证据调（[CADENCE_REDESIGN](docs/CADENCE_REDESIGN.md)）|

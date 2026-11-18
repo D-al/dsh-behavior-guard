@@ -3,7 +3,7 @@
 > **合成心智（Synthetic Mind）**：用一个 35B 本地模型 + 一套确定性脚手架，合成比模型本身可靠得多的心智——**模型权重一个字节没动，变的是它外面的脑区**。
 
 本仓库是 **Single Source of Truth**：插件代码 + 生产配置 + 10 个技能卡 + 23 个分析脚本 + 决策档案 + 一键安装。
-当前 **v2.13.0**（2026-11-19）。仓库名沿用历史名 `dsh-behavior-guard`，npm 包名/插件 id 为 `dsh-agent-harness`。
+当前 **v2.14.0**（2026-11-19）。仓库名沿用历史名 `dsh-behavior-guard`，npm 包名/插件 id 为 `dsh-agent-harness`。
 
 ---
 
@@ -18,6 +18,29 @@
 | **想看 harness 自进化方案** | [Self-Harness 落地方案](docs/SELF_HARNESS_PLAN.md)（短期①的实现路径）|
 | **窗口一开 GPU 就卡死** | [3D/Copy 争抢诊断与降帧](docs/GPU_ENGINE_GUARD.md)（含守护脚本）|
 | **想看历史** | [时间线](docs/history/TIMELINE.md) → [调优决策](docs/history/tuning/DECISIONS.md) |
+
+---
+
+## 给 AI / 新接手者的 10 分钟上手卡
+
+> **第一次来？只读这一节就够动手。** 按顺序做完 5 步，你就知道这个项目在干什么、代码在哪、下一步做什么。
+
+1. **一句话定位**：这是 dsh（DeepSeek Harness）的一个 cordis 插件，入口是根目录 `index.mjs` 的 `apply(ctx, config)`。
+   它在模型**外部**注入确定性规则（L0-L3 早收尾、D1-D5 风险门控、todo 闹钟、控制回合、Critic/审计、verify-on-stop、学习回注），
+   **不改模型权重**。目标是让一个 8G 显存上的 35B MoE 模型 behave 得像一个可靠 agent。
+2. **看现状**：[ROADMAP §1 当前位置](ROADMAP.md#1-当前位置30-秒读懂) —— 已完成什么、现在在哪一波、为什么是这个顺序。
+3. **看边界**：[ROADMAP §7 明确不做](ROADMAP.md#7-明确不做防止新人重造轮子--走回头路) + 下面「硬约束」—— 别做与权重零改冲突、或已被证伪的事。
+4. **验证环境没坏**：`node --check index.mjs` → `python tools/regression_check.py`（期望 30/30）→ `python tools/config_check.py`（期望全栈一致）。
+5. **领活**：[ROADMAP §2 短期](ROADMAP.md#2--短期now1-2-周把积累的数据变成能力) 取一条 `[ ]`，先读它挂的方案/ADR 链接，再动手。**任何改动都要跑第 4 步的门禁。**
+
+**关键约定（违反会出事）**：
+- 学习信号只进 `_trace.jsonl` / 学习队列，**不占运行时注入通道**（ADR-0017）。
+- 改写历史思维链有 KV 后缀税 → 一律 **append-only 注入**（ADR-0013）。
+- 技能写回必须人工审批（ADR-0015）；安全规则不可被 skill/prompt 覆盖。
+- 版本号会骗人：判断功能是否在线看 `index.mjs` 的 flag + trace 实证，不看 package.json 版本。
+
+> 这套结构刻意做成"**README 只给入口和约定，ROADMAP 给目标和验证，docs/ 给细节，decisions/ 给为什么**"。
+> 想知道任何一条规则的原因，顺着 ADR 链接读，不用猜。
 
 ---
 
@@ -51,21 +74,22 @@
 
 ---
 
-## 路线图（重排于 v2.11.1，维护更新于 v2.13.0）
+## 路线图（Now/Next/Later，重排于 v2.14.0）
 
-> 完整、可验证的目标见 [ROADMAP.md](ROADMAP.md)。这里只列骨架。
-> **已完成的 8 项（含 GWT 总线 / FEP 闭环）归档在 ROADMAP 的"已完成"节，不再占用短中长期位置。**
+> 完整、可验证的目标（每条带完成标准 DoD）见 [ROADMAP.md](ROADMAP.md)。这里只列骨架。
+> **已完成项归档在 ROADMAP §6，不再占用短中长期位置。**
 
 | 阶段 | 时间 | 主题 | 核心目标（可验证） |
 |---|---|---|---|
-| 🟢 **短期** | 1-2 周 | **把数据变成能力** | ① 技能自进化闭环（outcome+FEP 偏差喂草稿，人工审批写回；**实现路径=Self-Harness 四阶段**，见[方案](docs/SELF_HARNESS_PLAN.md)）② 可控遗忘常态化（CritBank 真实计数 + 假记忆自检）③ 自适应原型端到端 token 对照 |
-| 🟡 **中期** | 1-2 月 | **器官间流动** | ① 情景检索进主循环（历史经验被主动引用 >0 次）② 会话树实时化（parent 指针 + 真 rewind）③ BDI 三槽深化（跨压缩不丢约束）|
-| 🔴 **长期** | 季度级 | **架构完整性与外部效度** | ① FEP 深化到世界模型 ② 标准化 eval（SWE-bench Verified）③ 脑功能分区空白区（眶额价值/脑干稳态）④ 独立轨道：上游 PR / v1.0.0 / 工具面裁剪 |
+| 🟢 **Now 短期** | 1-2 周 | **把数据变成能力** | S1 技能自进化（=Self-Harness 四阶段）· S2 可控遗忘 · S3 频次重设收尾 · S4 自适应端到端对照 |
+| 🟡 **Next 中期** | 1-2 月 | **器官间流动** | M1 情景检索进主循环 · M2 会话树实时化 · M3 BDI 三槽 · M4 注入预算 token 化 · M5 工具面结构改造 · M6 安全规则不可覆盖 |
+| 🔴 **Later 长期** | 季度级 | **架构完整性与外部效度** | L1 FEP→世界模型 · L2 标准化 eval · L3 脑分区空白区 · L4 独立轨道（上游 PR / v1.0.0）|
 
-**执行顺序的根据**：地基（数据底座 + GWT/FEP）已于 v2.11 建完；数据型目标（短期）时间站在我们这边，
-结构型目标（中期）依赖总线已立；长期目标需要世界模型/外部基准，最后做。详见 [ADR-0017](decisions/0017-gwt-first-then-fep.md)。
+**执行顺序的根据**：结构性地基越晚越贵（已完成）→ 数据型目标时间站在我们这边 → 需要世界模型/外部基准的最后做。详见 [ADR-0017](decisions/0017-gwt-first-then-fep.md) 和 [ROADMAP §5 四波次依赖逻辑](ROADMAP.md#5-四波次依赖逻辑稳定不变判断新工作先问属于哪波)。
 
-**明确不做**：多模态/CUA、通用 agent 框架、向量检索代码、模型微调、堆更多 judge。理由见 [ROADMAP §不做](ROADMAP.md#明确不做)。
+**近期焦点**：频次审计（[CADENCE_AUDIT](docs/CADENCE_AUDIT.md)）证明大部分自动化频次经实测校准合理，
+真问题只有 learn_watcher 过密（已改）和注入预算按次数不按 token（列 M4）——**不要无差别调频次**。
+**明确不做**：多模态/CUA、通用 agent 框架、向量检索、训练微调、堆 judge、改 Electron 参数降 3D。理由见 [ROADMAP §7](ROADMAP.md#7-明确不做防止新人重造轮子--走回头路)。
 
 ---
 
@@ -110,7 +134,7 @@ git clone https://github.com/D-al/dsh-behavior-guard.git && cd dsh-behavior-guar
 | [docs/GPU_ENGINE_GUARD.md](docs/GPU_ENGINE_GUARD.md) | 3D/Copy 引擎争抢诊断 + 主动降帧守护（tools/gpu_engine_guard.py）|
 
 ## 版本历史
-完整版本历史 → [CHANGELOG.md](CHANGELOG.md)。当前 **v2.13.0**（Self-Harness 路线图 + GPU 引擎争抢守护，详见 CHANGELOG）。
+完整版本历史 → [CHANGELOG.md](CHANGELOG.md)。当前 **v2.14.0**（频次审计重设 + 路线图 Now/Next/Later 重排，详见 CHANGELOG）。
 
 ## License
 MIT

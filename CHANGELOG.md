@@ -1,3 +1,29 @@
+## [2.14.0] - 2026-11-19 01:10（频次审计重设 + 路线图 Now/Next/Later 重排）
+
+### Changed
+- `tools/../learn_watcher.py`（运行版 bench）：**巩固频次三层化**。原先每 30s 跑全部 8 个脚本，
+  心跳日志常见 `new_hits=0 new_outcomes=0`（空转）→ 改为心跳层 30s 只查 offset /
+  事件驱动层有新数据才跑 skill_draft+crit_revision+trace_timeline /
+  巩固层每 20 轮≈10 分钟跑 session_tree+episodic_index+intent_drift+mind_state。
+  新增 `CONSOLIDATE_EVERY=20`。
+- `ROADMAP.md`：**全文重排为 Now/Next/Later + 完成标准（DoD）结构**，让陌生 AI 只看 README+ROADMAP
+  就能理解要干什么。新增 §1 当前位置（30 秒读懂）/ §5 四波次依赖逻辑 / §7 明确不做（含频次与 GPU 避坑）。
+  短中长期目标重新分组：短期 S1-S4 / 中期 M1-M6（新增注入预算 token 化、工具面结构改造、安全规则测试）/
+  长期 L1-L4。每条带 DoD 和状态勾选框。
+- `README.md`：新增「给 AI / 新接手者的 10 分钟上手卡」（5 步动手路径 + 4 条关键约定）；路线骨架对齐 Now/Next/Later。
+
+### Added
+- `docs/CADENCE_AUDIT.md`：频次数据底稿——代码全部频次参数 + 5538 行 trace 的真实触发数
+  （fep 325 / control 139 / mind 43 / verify_stop 21 / LLM 调用 212 次按用途拆分）。
+  核实并排除了"控制回合被上限掐断"的误判（step 每轮重置，126 次是跨轮累计）。
+- `docs/CADENCE_REDESIGN.md`：频次结论——大部分参数经实测校准**不该动**（control 8 步 / critic ≤2 /
+  压缩 0.55 均合理）；只 3 项该改（watcher 已改、注入预算 token 化列中期、trace 补 turn 字段列短期）。
+- 依据社区"事件驱动巩固 + 低频周期性反思"共识（Generative Agents / Reflexion / Letta），
+  纠正"每 30s 全量重跑"的空转。
+
+### Note
+- 本版本**不改 index.mjs**（频次参数全部保持不变），只改旁路 watcher + 文档；代码测试全绿。
+
 ## [2.13.0] - 2026-11-19 00:20（Self-Harness 路线图 + GPU 引擎争抢守护）
 
 ### Added
