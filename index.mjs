@@ -89,29 +89,39 @@ const DEFAULTS = {
   // 控制回合（meta-reasoning controller，零 LLM）：每 controlEverySteps 步注入一次控制器摘要，
   // 含 已确立/已排除/当前项/已用步数 + "列 2-3 个候选再选一个"——模拟 Meta Controller 的四个动作。
   controlEverySteps: 8,
-  maxControlPerSession: 24,        // 提升（原 6 只覆盖前 48 步 → 现场 140+ 事件空窗）
+  maxControlPerSession: 24,     // 6 只覆盖前 48 步 → 现场 140+ 事件空窗；与 GitHub v2.8 对齐
   controlEnabled: true,
-  // ── 心智状态快照（合成心智状态层，2026-11-18）──
-  // 复用控制回合注入链，不新增频率；分布式重复触发式注入补空窗。
+  // ── 心智拼图（P0-P2，2026-11-18 广搜后落地；v2.9 合并：GitHub 版 ⊕ 运行版）──
+  frameEnabled: true,            // P2-7：结构化轨迹事件流 (role,goal,evidence,provenance,trust)
+  critbankDecayEnabled: true,    // P0-2：CritBank 可控遗忘（supersede/retire，B 段脚本落地）
+  writebackEnabled: true,        // P0-3：技能/记忆写回闭环（pending 审批）
+  driftSignalEnabled: true,      // P1-4：意图漂移在线信号（控制回合 ⑤）
+  episodicSearchEnabled: true,   // P1-5：情景记忆主动检索（es.exe，B 段脚本落地）
+  bdiEnabled: true,              // P1-6：用户意图 BDI 状态卡（控制回合 ⑥）
+  sessionTreeEnabled: true,      // P2-8：事件溯源（parent 指针，B 段脚本落地）
+  outcomeCaptureEnabled: true,   // 波1：结构化结果反馈捕获（write/edit→_outcome.jsonl）
+  // verify-on-stop：改了文件却没有验证证据就否决退出（Hermes/OpenHands /goal，纯规则 0 LLM）
+  // 2026-11-18 实测：抽象措辞被模型忽略 → 保留运行版的命令式 + 二次升级（优于 GitHub 软版）
+  verifyOnStopEnabled: true,
+  maxVerifyOnStopSteers: 2,   // 命令式 steer 最多 2 次（第 2 次升级措辞），防死循环
+  // mind_state：跨步重复动作的中性事实注入（调研：质疑式措辞会让 76.6% 正确答案被推翻）
   mindStateEnabled: true,
-  mindStateLoopThreshold: 3,       // trail 内同工具+同目标 ≥3 次 → 警告
-  maxMindStateInjections: 6,       // 触发式注入上限（防刷屏）
-  // ── 心智拼图（P0-P2，2026-11-18 广搜后落地）──
-  frameEnabled: true,              // P2-7：结构化轨迹事件流 (role,goal,evidence,provenance,trust)
-  verifyOnStopEnabled: true,       // P0-1：外层验证循环（改文件无证据→否决退出）
-  critbankDecayEnabled: true,       // P0-2：CritBank 可控遗忘（supersede/retire）
-  writebackEnabled: true,          // P0-3：技能/记忆写回闭环（pending 审批）
-  driftSignalEnabled: true,        // P1-4：意图漂移在线信号
-  episodicSearchEnabled: true,     // P1-5：情景记忆主动检索（es.exe）
-  bdiEnabled: true,                // P1-6：用户意图 BDI 状态卡
-  sessionTreeEnabled: true,        // P2-8：事件溯源（parent 指针）
-  outcomeCaptureEnabled: true,     // 波1：结构化结果反馈捕获（喂 CritBank/技能进化）
-  outcomePath: 'D:/Brain/workspace/bench/_outcome.jsonl',
+  mindStateLoopThreshold: 3,
+  maxMindStateInjections: 6,     // 与 GitHub v2.8 对齐：覆盖长会话 140+ 事件空窗
   // ── Observability（2026-11-18）：per-step trace（零 LLM，追加写 jsonl）──
   // 社区共识（Keyhole/Praison/ZOOZ）：没有 trace 就无法度量，没有度量就无法优化。
   traceEnabled: true,
   tracePath: 'D:/Brain/workspace/bench/_trace.jsonl',
   maxTraceBytes: 8000000,
+  // ── 学习闭环集成（2026-11-18 18:40）：把 bench/ 里的 .py 机制真正接进运行路径 ──
+  // A 段（本文件）：write/edit 结果追加 outcome；crit_hit 记入待结算队列；旁路 watcher（B 段）
+  // 消费这两类事件跑 crit_decay/skill_draft/crit_revision/trace_timeline，并写入回注队列。
+  // 本文件在 pre-step 读回注队列，把"沉淀结论"注入下一轮——形成 轨迹→沉淀→回注 闭环。
+  learningEnabled: true,
+  outcomePath: 'D:/Brain/workspace/bench/_outcome.jsonl',
+  pendingLearnPath: 'D:/Brain/workspace/bench/_pending_learn.jsonl',
+  feedbackQueuePath: 'D:/Brain/workspace/bench/_learn_feedback.jsonl',
+  feedbackMaxInjectPerSession: 2,
   // JSON 解析失败时的重试次数（社区标准：解析失败 → 附格式纠正重试一次）
   jsonRetryTimes: 1,
   // ── Skills（渐进披露，2026-11-18）──
@@ -234,6 +244,13 @@ function makeTracer(cfg) {
       appendFileSync(cfg.tracePath, line)
       bytes += Buffer.byteLength(line)
     } catch { /* ignore */ }
+  }
+}
+
+// ── 学习闭环：轻量追加写入（同步、失败静默，绝不影响推理循环）──
+function makeAppender(path) {
+  return function append(rec) {
+    try { appendFileSync(path, JSON.stringify(rec) + '\n') } catch { /* ignore */ }
   }
 }
 
@@ -373,32 +390,29 @@ function checkSyntax(filePath) {
   return null
 }
 
-// ── 心智状态快照（合成心智状态层，2026-11-18）──
-// 依据：现场诊断——长会话后段 140+ 事件注入空窗 + 分布式重复（read→列目录→write→再read）
-// 与原型的 Python 版 mind_state.py 同构；JS 内联实现以避免 spawn 进程的延迟。
+// ── 心智状态信号（合并补漏：behavior-guard 15:17 版，JS 内联避免 spawn 延迟）──
+// 与 mind_state.py 同构：跨步重复检测（D1 只查连续，这里查长窗口聚合）
 function mindStateSignals(s, threshold) {
   const trail = Array.isArray(s?.trail) ? s.trail : []
-  if (!trail.length) return { loops: [], doneCount: 0, inProgress: null, signalStep: s?.lastMindStep || 0 }
-  // 1. 分布式重复：同工具+同目标在 trail 内 ≥ threshold 次（不要求连续——D1 只查连续，查不到这个）
+  if (!trail.length) return { loops: [], doneCount: 0, inProgress: null }
   const calls = new Map()
   for (const x of trail) {
     if (x?.kind !== 'call') continue
     const name = String(x.name || '?')
     const args = String(x.args || x.fullArgs || '')
     const m = args.match(/([\w\\/.-]+\.(?:html|py|md|json|js|yml|ts))/i)
-    const target = m ? m[1] : ''
-    const key = name + ' ' + (target || '(无目标)')
+    const key = name + ' ' + (m ? m[1] : '(无目标)')
     calls.set(key, (calls.get(key) || 0) + 1)
   }
   const loops = [...calls.entries()].filter(([, c]) => c >= threshold)
     .sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, c]) => `${k} ×${c}`)
-  // 2. 任务完成信号（防"已交付又重做"）
   const todos = Array.isArray(s?.todos) ? s.todos : []
-  const doneCount = todos.filter((t) => t?.status === 'completed').length
-  const inProgress = todos.find((t) => t?.status === 'in_progress')
-  return { loops, doneCount, inProgress, signalStep: s?.lastMindStep || 0 }
+  return {
+    loops,
+    doneCount: todos.filter((t) => t?.status === 'completed').length,
+    inProgress: todos.find((t) => t?.status === 'in_progress') || null,
+  }
 }
-
 
 // ── CritBank 经验检索（模块级加载一次）──
 let CRITBANK = []
@@ -554,6 +568,13 @@ export function apply(ctx, config) {
   }
   if (!cfg.enabled) return
 
+  // 学习闭环 appenders（cfg 合并后创建，路径以 preset 为准）
+  // outcomeCaptureEnabled 是 GitHub v2.8 的开关名；learningEnabled 是运行版学习闭环总开关。
+  // 两者任一为真即启用 outcome 捕获（兼容两版配置，避免"声明了开关却没接线"）。
+  const captureOn = !!(cfg.learningEnabled || cfg.outcomeCaptureEnabled)
+  const appendOutcome = captureOn ? makeAppender(cfg.outcomePath) : null
+  const appendPendingLearn = cfg.learningEnabled ? makeAppender(cfg.pendingLearnPath) : null
+
   const info = (t) => { try { ctx.logger?.info?.(t) } catch { /* ignore */ } }
   const warn = (t) => { try { ctx.logger?.warn?.(t) } catch { /* ignore */ } }
   info(`audit-loop v2: 已加载（每 ${cfg.auditEverySteps} 步审计 + 纠正角色实时化）`)
@@ -564,6 +585,7 @@ export function apply(ctx, config) {
   }
 
   const states = new Map()
+  const consumedFeedback = new Set() // 学习回注：进程内已消费的 feedback 行（避免重复注入）
   let sessionInjections = 0
 
   function stateOf(id) {
@@ -577,9 +599,10 @@ export function apply(ctx, config) {
         // continuity 状态（initial 复用上面的字段）
         latest: '', pendingArchive: false, pendingTodoEcho: false, lastTodos: null, todoCalls: 0, sinceLastTodo: 0,
         turnTodoInjections: 0, sessionTodoInjections: 0, remindedNoTodo: false, rejectedItems: [],
-        // 心智状态层
+        // 学习闭环 A 段：appenders + 本会话已注入的沉淀反馈计数
+        appendOutcome, appendPendingLearn, learnedInjected: 0,
+        // 心智状态层 + 心智拼图（v2.9 从 GitHub 版合入）
         mindInjectCount: 0, lastMindStep: 0,
-        // 心智拼图状态
         frame: { role: 'executor', goal: '', evidence: [], provenance: 'user', trust: 1.0 },
         wroteThisTurn: false, verifiedThisTurn: false, lastFrameParent: null,
         bdi: { goal: '', belief: '', preference: '', updatedAt: 0 } }
@@ -594,7 +617,9 @@ export function apply(ctx, config) {
       const s = stateOf(session.id)
       if (event.type === 'turn/start') {
         s.turnInjections = 0
+        s.learnSinceTs = new Date().toISOString() // 学习回注：本轮起点，只消费之后的沉淀
         s.trail = []
+        // 心智拼图 frame 本轮重置（v2.9 合入）
         if (cfg.frameEnabled) { s.frame.evidence = []; s.frame.provenance = 'user'; s.frame.trust = 1.0 }
         s.wroteThisTurn = false; s.verifiedThisTurn = false; s.verifyOnStopWarned = false
         s.lastTodoSig = null
@@ -607,6 +632,9 @@ export function apply(ctx, config) {
         s.continuations = 0
         s.last = undefined
         s.sharedInjections = 0
+        // verify-on-stop：本轮证据标志重置
+        s.verifyRan = false
+        s.verifyOnStopCount = 0
         // continuity P1 计数重置
         s.turnTodoInjections = 0
         s.controlCount = 0
@@ -693,6 +721,14 @@ export function apply(ctx, config) {
           if (callName === 'present') s.presentCalled = true
           if (callName === 'spawn_teammate') s.spawnedThisTurn = true
           if (callName === 'pwsh' && fullArgs.includes('verify_agent')) s.verifyRan = true
+          // verify-on-stop 证据：只认【命令型工具的验证动作】，绝不扫写入内容
+          // （2026-11-18 实测：文件名 verify-probe.txt / 内容 "verify on stop test" 含 verify
+          //  被宽正则误判为"已验证"→ verify-on-stop 静默失效。故限定 callName。）
+          const cmdTools = ['pwsh', 'bash', 'shell', 'exec', 'run_command', 'terminal']
+          if (cmdTools.includes(callName) && /(verify_agent|pytest|npm test|python -m|pytest|-c\s|test_|回归|语法检查|编译)/i.test(fullArgs)) s.verifyRan = true
+          // 写后读回确认：write 之后的 read/cat 即算验证证据（测试场景与真实调用多不带精确文件名参数，
+          // 强制匹配 lastProduct 会误判 → verify-on-stop 该放行时却拦截，25/26 回归失败即此因）
+          if ((callName === 'read' || callName === 'cat') && s.writeCalls > 0) s.verifyRan = true
           // D5 生产性调用标记（写/编辑/todo 更新 = 有进展）
           if (callName === 'write' || callName === 'edit' || callName === 'todo_write') s.lastStepProductive = true
           // continuity P1：todo 调用计数
@@ -714,11 +750,11 @@ export function apply(ctx, config) {
           }
         }
         s.trail.push({ kind: 'call', name: String(event.data?.name ?? ''), args: fullArgs.slice(0, 200), fullArgs, step: event.data?.step, ts: Date.now() })
-        // P2-7：结构化轨迹事件流——五元组随每次工具调用落到 trace（零 LLM）
+        // P2-7：结构化轨迹事件流——五元组随每次工具调用落到 trace（零 LLM，v2.9 合入）
         if (cfg.frameEnabled) {
           const cname = String(event.data?.name ?? '')
           s.frame.role = cname === 'spawn_teammate' ? 'coordinator' : (WRITE_TOOLS.has(cname) ? 'executor' : s.frame.role)
-          if (VERIFY_TOOLS.has(cname)) { s.frame.evidence.push(cname); s.verifiedThisTurn = true }
+          if (VERIFY_TOOLS.has(cname)) { s.frame.evidence.push(cname); s.verifiedThisTurn = true; s.verifyRan = true }
           if (WRITE_TOOLS.has(cname)) s.wroteThisTurn = true
           if (cname === 'web_search' || cname === 'web_fetch') s.frame.provenance = 'external'
         }
@@ -755,23 +791,6 @@ export function apply(ctx, config) {
             ts: new Date().toISOString(), sid: s.sid || '', kind: 'tool_result', name: c.name,
             status, ms: c.ts ? Date.now() - c.ts : null, outChars: String(txt || '').length, step: s.step,
           })
-          // ── 波1：结构化结果反馈捕获（确定性，0 LLM）──
-          // 只记 write/edit——它们是"任务是否真的推进"的锚点。
-          // 字段复用已有 status 判定，不引入新判断逻辑。
-          if (cfg.outcomeCaptureEnabled && c && WRITE_TOOLS.has(c.name)) {
-            try {
-              let target = ''
-              try { target = String((JSON.parse(c.fullArgs || c.args || '{}')).file_path || '') } catch { /* ignore */ }
-              const rec = {
-                ts: new Date().toISOString(), sid: s.sid || '', step: s.step,
-                tool: c.name, target: target.slice(0, 160), status,
-                evidence_ref: String(txt || '').slice(0, 100).replace(/\s+/g, ' '),
-                goal: String(s.frame?.goal || '').slice(0, 120),
-                provenance: s.frame?.provenance || 'user',
-              }
-              appendFileSync(cfg.outcomePath, JSON.stringify(rec) + '\n')
-            } catch { /* ignore */ }
-          }
           // v2：证据类工具的成功结果保留全文（纠正器的定位依据）
           const isEvidence = cfg.evidenceTools.includes(c.name) && status === 'OK'
           c.result = txt.slice(0, isEvidence ? cfg.evidenceMaxChars : 80).replace(/\s+/g, ' ')
@@ -783,12 +802,33 @@ export function apply(ctx, config) {
               s.rejectedItems.push(item)
               if (s.rejectedItems.length > 6) s.rejectedItems.shift()
             }
+            // 学习闭环 A 段：失败的工具结果也记 outcome（B 段据此判"命中后仍失败"、生成降级建议）
+            if (cfg.learningEnabled && s.appendOutcome && (c.name === 'write' || c.name === 'edit' || c.name === 'present_files')) {
+              s.appendOutcome({
+                ts: new Date().toISOString(), sid: s.sid || '', step: s.step,
+                tool: c.name, target: String(c.args || '').slice(0, 200), status,
+                evidence_ref: `trace:${s.step}:${c.name}`,
+                goal: String(s.initial || '').slice(0, 300),
+                provenance: s.frame?.provenance || 'user',
+              })
+            }
           }
           if (status === 'OK' && (c.name === 'write' || c.name === 'edit')) {
             try {
               const a = JSON.parse(c.fullArgs || c.args || '{}')
               if (a.file_path) s.lastProduct = String(a.file_path)
             } catch { /* ignore */ }
+            // ── 学习闭环 A 段：写/编辑成功后捕获 outcome（真实证据，非测试假数据）──
+            // B 段 watcher 会消费这些记录，判定成功/失败并沉淀到 skill 草稿/crit 状态。
+            if (cfg.learningEnabled && s.appendOutcome) {
+              s.appendOutcome({
+                ts: new Date().toISOString(), sid: s.sid || '', step: s.step,
+                tool: c.name, target: s.lastProduct || '', status: 'OK',
+                evidence_ref: `trace:${s.step}:${c.name}`,
+                goal: String(s.initial || '').slice(0, 300),
+                provenance: s.frame?.provenance || 'user',
+              })
+            }
             // ── verify-on-edit（确定性语法检查，0 LLM 成本）──
             // 依据：Qwen3.5-35B scaffold 实验——每次编辑后验证 vs 只做末次验证：
             // SWE-bench Verified Hard 22.2% → 37.8%（+15.6pp）；9B 换 scaffold 19.11%→45.56%。
@@ -1249,23 +1289,6 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
         } catch { /* 深检失败不阻断 */ }
       }
 
-      // ── P0-1 外层验证循环（verify-on-stop）──
-      // 依据：Hermes verify-on-stop / OpenHands /goal——把验证从"循环内一步"移到"停止条件"；
-      // agent 自己不能宣布完成，改了文件却没有验证证据就否决退出（纯规则，0 LLM）。
-      if (cfg.verifyOnStopEnabled && state.wroteThisTurn && !state.verifiedThisTurn && !state.verifyOnStopWarned) {
-        state.verifyOnStopWarned = true
-        state.continuations += 1; state.totalContinuations += 1
-        state.sharedInjections += 1
-        info('behavior-guard: [verify-on-stop] 改文件无验证证据，否决退出')
-        trace({ ts: new Date().toISOString(), sid: sessionId || '', kind: 'verify_on_stop', step: state.step })
-        agent.steer(createSteeringMessage(
-          '[harness 停止条件] 本轮已修改文件，但尚无验证证据（测试/检查/读回确认）。' +
-          '不能直接结束：先运行一次验证工具（如回归检查/读取刚写的文件确认内容），再收尾。',
-          'behavior-guard'
-        ))
-        return
-      }
-
       // ── P1 Critic：present 前的产物质量评审（异质 rubric，与过程审计不同视角）──
       // 依据：四角色标准（Planner/Executor/Critic/Verifier）中 Critic 是"对照意图评产物质量"；
       // Apple 2026：异质 rubric 才能产生独立信号（同 rubric 重复=伪多样性）。
@@ -1326,6 +1349,28 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
           'behavior-guard'
         ))
         info(`behavior-guard: [D4] present-gate 拦截 session=${sessionId}（present 无独立验收痕迹）`)
+        return
+      }
+
+      // ── verify-on-stop（合并补漏：改了文件没验证证据就否决退出，纯规则 0 LLM）──
+      // 依据：Hermes verify-on-stop / OpenHands /goal——验证从"循环内一步"移到"停止条件"。
+      // 收尾验证门（无 present 声明时触发）。最多 cfg.maxVerifyOnStopSteers 次，避免死循环。
+      // 2026-11-18 实测：steer 消息确实进了 inbox（seq30 spliced + seq34 user/message），
+      // 但抽象措辞"运行一次验证工具"被模型忽略 → 改成命令式 + 具体动作 + 二次升级。
+      if (cfg.verifyOnStopEnabled && state.writeCalls > 0 && !state.verifyRan &&
+          (state.verifyOnStopCount || 0) < cfg.maxVerifyOnStopSteers) {
+        state.verifyOnStopCount = (state.verifyOnStopCount || 0) + 1
+        const n = state.verifyOnStopCount
+        info(`behavior-guard: [verify-on-stop] 第 ${n} 次拦截 — 改文件无验证证据`)
+        trace({ ts: new Date().toISOString(), sid: sessionId || '', kind: 'verify_on_stop', step: state.step, n })
+        const text = n === 1
+          ? '[harness 停止条件｜必须执行] 你本轮修改了文件，现在还不能结束。' +
+            '下一步只做一件事：调用 read 工具读取你刚写的文件路径，确认内容正确。' +
+            '读回之后才能收尾。不要跳过这一步，也不要用文字声称"已验证"。'
+          : '[harness 停止条件｜第 ' + n + ' 次拦截] 你上一条结束尝试已被否决——缺少验证动作。' +
+            '现在必须调用 read 工具读取刚写的文件（真实工具调用，不是文字说明）。' +
+            '在看到工具结果之前不要结束本轮。'
+        agent.steer(createSteeringMessage(text, 'behavior-guard'))
         return
       }
 
@@ -1436,24 +1481,21 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
         } catch { /* ignore */ }
       }
 
-      // ── 心智状态触发式注入（分布式重复 → 立即干预，补 8 步控制回合的空窗）──
+      // ── 心智状态触发式注入（合并补漏：跨步重复动作 → 中性事实注入，零 LLM）──
       if (cfg.mindStateEnabled && (s.mindInjectCount || 0) < cfg.maxMindStateInjections) {
         try {
           const sig = mindStateSignals(s, cfg.mindStateLoopThreshold)
-          // 距上次心智/控制注入 ≥6 步 且 检出重复 → 触发（避免与控制回合同步重复注入）
           const gap = s.step - (s.lastMindStep || 0)
           if (sig.loops.length && gap >= 6) {
             s.mindInjectCount = (s.mindInjectCount || 0) + 1
             s.lastMindStep = s.step
-            // 事实陈述 + 退出许可（调研证据：任何"Are you sure / 二选一"式质疑措辞
-            // 与"You are wrong"的 JS 散度仅 0.0186，会让 76.6% 正确答案被推翻——
-            // 所以这里只给中性事实 + 许可，不质疑、不诱导自我怀疑、不给"你还没做完"的暗示）
+            s.sharedInjections += 1
+            info(`behavior-guard: [心智状态] step=${s.step} loops=${sig.loops.length}`)
+            trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'mind_state', step: s.step, loops: sig.loops })
             const msgText = '[harness 状态] 观察到重复动作：' + sig.loops.join('；') +
               '。\n事实：这些动作在此会话中已执行过，结果已在上下文中。' +
               '\n你可以直接结束本轮（若目标已达成）；或选择一个与此前不同的动作继续。' +
               '\n无需重复验证已确认过的内容。'
-            info(`behavior-guard: [心智状态] step=${s.step} loops=${sig.loops.length}`)
-            trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'mind_state', step: s.step, loops: sig.loops })
             const msg = createMessage(msgText, 'behavior-guard')
             const messages = Array.isArray(decision?.messages) ? [...decision.messages, msg] : [msg]
             return { ...decision, messages }
@@ -1474,7 +1516,7 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
           if (cur) parts.push('② 当前项：' + String(cur.content).slice(0, 60))
           if (rej.length) parts.push('③ 已排除：' + rej.join('｜'))
           parts.push('④ 下一步：在思考里列出 2-3 个候选动作，评估哪个对完成目标收益最高，再选一个执行。')
-          // ── P1-4 意图漂移在线信号 ──
+          // ── P1-4 意图漂移在线信号（v2.9 合入）──
           // 初始任务 vs 最新指令关键词覆盖率 < 0.25 → 提示"以最新指令为准"（治现场 16 次旧存档锚定）
           if (cfg.driftSignalEnabled && s.initial && s.latest && s.latest !== s.initial) {
             try {
@@ -1485,12 +1527,11 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
               if (overlap < 0.25) parts.push('⑤ 意图漂移：最新用户指令已偏离初始任务，以【最新指令】为准：' + String(s.latest).slice(0, 90))
             } catch { /* ignore */ }
           }
-          // ── P1-6 用户意图 BDI（伙伴状态卡）──
+          // ── P1-6 用户意图 BDI（伙伴状态卡，v2.9 合入）──
           if (cfg.bdiEnabled && s.bdi?.goal && s.bdi.goal !== String(s.latest).slice(0, 250)) {
             parts.push('⑥ 用户意图（BDI）：' + String(s.bdi.goal).slice(0, 90) + '（状态卡持续维护，不因上下文压缩丢失）')
           }
-          // 心跳：控制回合只更新 lastMindStep（作为触发式注入的冷却基准），
-          // 不追加全文快照——避免"固定格式干扰物"造成 context poisoning（调研：同格式重复注入降准确率）
+          s.lastMindStep = s.step // 心跳：控制回合作为触发式注入的冷却基准，避免同格式刷屏
           info(`behavior-guard: [控制回合] step=${s.step}`)
           trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'control_turn', step: s.step })
           const msg = createMessage(parts.join('\n'), 'behavior-guard')
@@ -1545,6 +1586,34 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
           return { ...decision, messages }
         }
         return decision
+      }
+
+      // ── 学习闭环回注：B 段 watcher 沉淀的结论（skill 草稿/crit 降级/失败归因）──
+      // 队列文件是 append-only jsonl，每行带 consumed 标记由 watcher 改写；这里只读"本会话未注入"的。
+      if (cfg.learningEnabled && (s.learnedInjected || 0) < cfg.feedbackMaxInjectPerSession && !s.pendingInject) {
+        try {
+          const { existsSync: ex2, readFileSync: rd2 } = await import('node:fs')
+          if (ex2(cfg.feedbackQueuePath)) {
+            const lines = rd2(cfg.feedbackQueuePath, 'utf8').split('\n').filter(Boolean)
+            for (let li = 0; li < lines.length; li++) {
+              let f
+              try { f = JSON.parse(lines[li]) } catch { continue }
+              if (f.sid && f.sid !== s.sid) continue
+              if (f.consumed) continue
+              const key = cfg.feedbackQueuePath + ':' + li + ':' + (f.ts || '')
+              if (consumedFeedback.has(key)) continue
+              // 只注入本会话生成之后的新反馈
+              if (f.ts && s.learnSinceTs && f.ts < s.learnSinceTs) continue
+              const msg = createMessage(`[harness 经验沉淀] ${f.text}（来源：${f.source || '离线沉淀'}，仅供参考，不覆盖当前指令）`, 'learning-loop')
+              const messages = Array.isArray(decision?.messages) ? [...decision.messages, msg] : [msg]
+              s.learnedInjected = (s.learnedInjected || 0) + 1
+              consumedFeedback.add(key)
+              info(`learning-loop: 回注沉淀 sid=${s.sid} source=${f.source || '?'}`)
+              trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'learn_feedback', source: f.source || '', step: s.step })
+              return { ...decision, messages }
+            }
+          }
+        } catch { /* ignore */ }
       }
 
       // v3.1 D1/D2 确定性信号（每步检查，不等审计窗口）
@@ -1661,7 +1730,14 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
               // 命中后若仍重复同类失败 → 该教训无效/有害，离线脚本会生成降级建议
               for (const l of lessons) {
                 const m = String(l).match(/【相关教训 (C-\d+)】/)
-                if (m) trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'crit_hit', id: m[1], step: s.step })
+                if (m) {
+                  trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'crit_hit', id: m[1], step: s.step })
+                  // 学习闭环 A 段：记录命中供 B 段结算（命中后 3 步内是否又失败 → helpful/harmful）
+                  if (s.appendPendingLearn) s.appendPendingLearn({
+                    ts: new Date().toISOString(), sid: s.sid || '', step: s.step,
+                    kind: 'crit_hit', id: m[1],
+                  })
+                }
               }
             }
           } catch { /* ignore */ }

@@ -15,7 +15,7 @@ function check(label, actual, expected) {
 function harness(config) {
   const handlers = new Map()
   const ctx = { on: (n, cb) => { handlers.set(n, [...(handlers.get(n) || []), cb]) }, logger: { info() {}, warn() {} } }
-  apply(ctx, config || {})
+  apply(ctx, { probePath: null, ...(config || {}) }) // 测试不写生产探针
   const emit = async (ev, ...args) => { for (const fn of handlers.get(ev) || []) await fn(...args) }
   const emitPreStep = async (agent) => {
     let captured = null
@@ -62,7 +62,7 @@ const cfg = {
   }
   const msg = lastMsg
   check('T1 触发式注入检出跨步重复', /重复|换一条/.test(msg || ''), true)
-  check('T1b 强制二选一决策（非开放式建议）', /A\. 产物已交付/.test(msg || '') && /B\. 尚未交付/.test(msg || ''), true)
+  check('T1b 中性事实+退出许可（无质疑式二选一）', /事实：/.test(msg || '') && /可以直接结束本轮/.test(msg || '') && !/A\. 产物已交付/.test(msg || ''), true)
 }
 
 // ── 测试 2：上限保护（maxMindStateInjections=2，第 3 次不再注入）──
@@ -74,7 +74,7 @@ const cfg = {
     await h.emit('session/event', { id: 'mind-test' }, { type: 'tool/call', data: { name: 'read', arguments: JSON.stringify({ file_path: 'x.html' }) } })
     await h.emit('session/event', { id: 'mind-test' }, { type: 'tool/result', data: { message: { content: [{ type: 'text', text: 'ok' }] } } })
     const msg = await h.emitPreStep(h.agent)   // 每步推进，跨过 gap 阈值
-    if (msg && /心智状态/.test(msg)) injected++
+    if (msg && /harness 状态/.test(msg)) injected++
   }
   check('T2 触发式注入确实发生且<=上限', injected >= 1 && injected <= 2, true)
 }

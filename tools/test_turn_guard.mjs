@@ -28,7 +28,7 @@ function harness(config) {
       warn: (m) => warnings.push(m)
     }
   }
-  apply(ctx, config)
+  apply(ctx, { probePath: null, ...config }) // 测试不写生产探针
   const emit = async (event, ...args) => {
     for (const fn of handlers.get(event) ?? []) await fn(...args)
   }
@@ -178,6 +178,8 @@ const toolCall = () => ({ type: 'tool-call', name: 'pwsh', arguments: '{}' })
   const h = harness({})
   await h.emit('session/event', { id: 's1' }, { type: 'turn/start', data: { turn: 1 } })
   await h.emit('session/event', { id: 's1' }, { type: 'tool/call', data: { name: 'write' } })
+  // 新增：verify-on-stop 要求写后有验证证据——补一个验证工具调用，保持本测试只测 L2 行为
+  await h.emit('session/event', { id: 's1' }, { type: 'tool/call', data: { name: 'read' } })
   await h.emit('session/event', { id: 's1' }, textMsg(text('已写入 calc.py，内容如下：\n\n' + code)))
   await h.emit('agent/turn-stopping', { agent: h.agent, turn: 1 })
   check('L2 本轮调用过 write → 不 steer', h.steered.length, 0)

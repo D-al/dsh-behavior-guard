@@ -11,6 +11,7 @@ const before = existsSync(OUT) ? readFileSync(OUT, 'utf8').split('\n').filter(Bo
 const handlers = new Map()
 const ctx = { on: (n, cb) => handlers.set(n, [...(handlers.get(n) || []), cb]), logger: { info() {}, warn() {} } }
 apply(ctx, {
+  probePath: null, // 测试不写生产探针
   traceEnabled: false, outcomeCaptureEnabled: true,
   auditEnabled: false, criticEnabled: false, deepCheckEnabled: false, plannerCheckEnabled: false,
   continuityEnabled: false, controlEnabled: false, skillsEnabled: false, dangerGuardEnabled: false,

@@ -15,7 +15,8 @@ function check(label, actual, expected) {
 function harness(applyFn, config) {
   const handlers = new Map()
   const ctx = { on: (n, cb) => { handlers.set(n, [...(handlers.get(n) || []), cb]) }, logger: { info() {}, warn() {} } }
-  applyFn(ctx, config || {})
+  // 测试不得写生产探针：probePath:null 覆盖 DEFAULTS，避免把加载探针污染成测试用的 false 配置
+  applyFn(ctx, { probePath: null, ...(config || {}) })
   const emit = async (ev, ...args) => { for (const fn of handlers.get(ev) || []) await fn(...args) }
   // pre-step 需要 next() 返回 decision
   const emitPreStep = async (agent) => {

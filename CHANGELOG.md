@@ -1,3 +1,34 @@
+## [2.9.0] - 2026-11-18 19:40
+
+### Fixed（双向分叉合并：让 README 声称的"已有功能"在任何单一部署里都完整）
+
+上线核对发现**运行版与 GitHub 主库是双向分叉，两边都不完整**：
+
+| 能力 | 运行版(2.3) | GitHub(2.8.3) | 合并后(2.9) |
+|---|---|---|---|
+| 学习闭环（outcome/crit_hit/feedback 回注）| ✅ | ❌ | ✅ |
+| 命令式 verify-on-stop + 中性 mind_state | ✅ | ❌（旧软版，实测无效）| ✅ |
+| frame/drift/bdi 心智拼图（五元组/漂移信号/BDI 卡）| ❌ | ✅ | ✅ |
+| outcomeCapture 开关 | ❌ | ✅ | ✅（与 learningEnabled 任一生效）|
+
+- 以运行版为基底合入 GitHub 独有机制：`frameEnabled` 五元组 trace、`driftSignalEnabled`（控制回合 ⑤）、
+  `bdiEnabled`（控制回合 ⑥）、`outcomeCaptureEnabled`；`maxControlPerSession` 6→24、`maxMindStateInjections` 2→6
+  （覆盖现场 140+ 事件空窗）
+- verify-on-stop 保留运行版**命令式 + 二次升级**（GitHub 软版实测被模型忽略）；frame 命中验证工具时同步置 `verifyRan`，两版证据判定归一
+- outcome 的 `provenance` 由硬编码 `harness-tool-result` 改为 `frame.provenance || 'user'`，与测试契约和 GitHub 版一致；
+  `captureOn = learningEnabled || outcomeCaptureEnabled` 兼容两版开关名
+
+### Fixed（可观测性：测试污染加载探针）
+
+- 4 个单测 harness 的 `apply(ctx, config)` 未隔离 `probePath`，跑测试会把生产探针 `_agent_harness_loaded.json`
+  覆盖成测试用的 `xxxEnabled:false` 配置——导致"功能没接通"的**假象**（本次核对的直接触发点）
+- 修复：4 个测试脚本统一注入 `probePath: null`（`test_turn_guard` / `test_new_guards` / `test_mind_state` / `test_outcome`）
+- 用生产配置刷新探针后，全部 14 个功能开关均为 `true`
+
+### Tests
+- regression_check 30/30、config_check 全栈一致、test_turn_guard 26/26、test_new_guards 40/40、
+  test_mind_state 4/4、test_outcome 6/6；合并版 `node --check` 通过
+
 ## [2.8.3] - 2026-11-18 15:20
 
 ### Added（波1 第一块基础设施：结果反馈捕获）
