@@ -7,6 +7,34 @@
 
 ---
 
+## 🚀 一键开箱（新机器 / 重装后）
+
+本仓库是 **Single Source of Truth**——包含插件代码 + 全部生产配置 + 10 个技能 + 19 个核心工具 + 决策文档。
+同一台同配置机器克隆后，跑一个脚本即可恢复全部修改：
+
+```powershell
+git clone https://github.com/D-al/dsh-behavior-guard.git
+cd dsh-behavior-guard
+.\setup\install.ps1 -DryRun     # 先看会做什么（安全）
+.\setup\install.ps1             # 实际恢复（不覆盖已存在文件）
+.\setup\install.ps1 -Force      # 强制覆盖（会先备份到 .bak-<时间戳>）
+```
+
+恢复内容：`config/AGENTS.md` + `.env.llama` + router preset + chat template + critbank + rubrics +
+autoparser 补丁 + `skills/`(10) + `tools/`(19) + `docs/` + 插件本体（pnpm add）。
+
+**日常回写**：任何本机配置/技能/工具改动后，跑 `.\setup\sync.ps1 [-Commit]` 同步回仓库——
+只同步生产资产（不同步实验脚本/日志/测试结果）。`-DryRun` 可先看差异。
+
+新机器还需手工做的（脚本无法自动）：
+1. dsh / llama.cpp 本体 + 自编 b12244 二进制（见 docs/ 与 config/patches/）
+2. junction 映射与计划任务（RestartDsh / FreezeWatch）
+3. 确认 package.json 的 dsh.profile.bundles 含 dsh-agent-harness
+
+详见 docs/MD_SYSTEM_PLAN.md 的分层原则。
+
+---
+
 ## 导航：怎么读这篇文档
 
 这篇 README 不只是"功能说明"，而是**一份完整的工程决策档案**——记录我们碰到什么瓶颈、搜了哪些论文、做了什么决定、拿到什么效果、又发现了什么新问题。
@@ -161,7 +189,7 @@ verify-gate  →  D4 present-gate  →  独立验收员  →  深检 + 配置一
 ```
 
 - **工具面 28 个、单会话只用 11 个**（17 个零调用）；工具一多准确率是**崩塌不是缓降**：BFCL 日历排程 4→51 工具 **43%→2%**、RAG-MCP 压力测试 10→100+ 工具 **78%→13.62%**，且 38% 错误是**参数填错**（见 [工具选择崩塌曲线综述](http://quidproquo.cc/posts/ai/2026-06-04-tool-selection-at-scale-en)，原始实验见 [RAG-MCP](https://arxiv.org/abs/2505.03275)）。
-- **MCP 三重否决**：① dsh 不支持；② 工具面已满，加 MCP 直接越线（GitHub MCP 默认 42 工具）；③ 本地量化模型更怕工具膨胀（选错工具/编参数/循环）。详见 [PERIPHERAL_CAPABILITIES.md](https://github.com/D-al/dsh-behavior-guard/blob/main/PERIPHERAL_CAPABILITIES.md)。
+- **MCP 三重否决**：① dsh 不支持；② 工具面已满，加 MCP 直接越线（GitHub MCP 默认 42 工具）；③ 本地量化模型更怕工具膨胀（选错工具/编参数/循环）。详见 [PERIPHERAL_CAPABILITIES.md](https://github.com/D-al/dsh-behavior-guard/blob/main/docs/PERIPHERAL_CAPABILITIES.md)。
 - **正确的替代**：Skills——只在相关时加载的过程性知识，不占工具面，是 AGENTS.md 4K 容量之外的出口。
 - **元认知不可用**：[Confident Fools or Careful Searchers?, arXiv 2610.41124](https://arxiv.org/abs/2610.41124)——400 题基准，Mistral Small 只搜 20% 该搜的，且作者明说"测的是产品搜索触发，不是严格元认知"。[MARTA, arXiv 2610.05223](https://arxiv.org/abs/2610.05223)（Retrieve-Always = 诱导性失忆）、FlyBy (KAIST 2026-09)（执行瓶颈 vs 知识瓶颈）。**结论**：用规则代替感觉——"不确定就搜"写进 AGENTS.md。
 
@@ -317,9 +345,9 @@ verify-gate  →  D4 present-gate  →  独立验收员  →  深检 + 配置一
 - 发布流程见 skill `release-plugin.md`；调试见 `harness-debug.md`。
 
 **相关文档**：
-- [PERIPHERAL_CAPABILITIES.md](https://github.com/D-al/dsh-behavior-guard/blob/main/PERIPHERAL_CAPABILITIES.md) — MCP/连接器调研
-- [USAGE_GUIDE.md](https://github.com/D-al/dsh-behavior-guard/blob/main/USAGE_GUIDE.md) — 新注入标签与调节旋钮
-- [MORNING_REPORT_20261118.md](https://github.com/D-al/dsh-behavior-guard/blob/main/MORNING_REPORT_20261118.md) — 一次完整的自主作业报告
+- [PERIPHERAL_CAPABILITIES.md](https://github.com/D-al/dsh-behavior-guard/blob/main/docs/PERIPHERAL_CAPABILITIES.md) — MCP/连接器调研
+- [USAGE_GUIDE.md](https://github.com/D-al/dsh-behavior-guard/blob/main/docs/USAGE_GUIDE.md) — 新注入标签与调节旋钮
+- [MORNING_REPORT_20261118.md](https://github.com/D-al/dsh-behavior-guard/blob/main/docs/MORNING_REPORT_20261118.md) — 一次完整的自主作业报告
 
 ---
 
@@ -463,6 +491,7 @@ apply_patch 切换 / 工具结果去重 / 多审计员 / 自验证 / MCP / 向�
 | **v2.1.0** | 11-18 01:35 | 控制回合（meta-reasoning controller） |
 | **v2.2.0** | 11-18 02:25 | 四项社区缺口：trace / JSON 重试 / Skills / 危险操作分级 |
 | **v2.2.1** | 11-18 03:35 | planner rubric 外置接入 |
+| **v2.4.0** | 11-18 10:45 | 库升级为 Single Source of Truth：新增 config/(AGENTS/env/template/critbank/rubrics/patch) + tools/(19) + docs/ + setup/install.ps1 & sync.ps1（一键开箱）|
 | **v2.3.0** | 11-18 09:30 | Part 8 绿色项 G1-G7 全部落地（skill_draft / crit_revision / trace_timeline / critic_v2 / audit_calibrate / tool-boundaries）|
 | **docs 2.3** | 11-18 08:30 | 远景规划：三层分类（现在能做/前沿/卡脖子）+ 6 条新分支 + 17 篇新论文（含失败归因时间线、技能自进化、反向记忆修订）|
 

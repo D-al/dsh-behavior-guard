@@ -1,0 +1,23 @@
+{
+  "_note": "Planner 检查 rubric（P2 用）。社区依据：MetaGPT SOP——规划者产物必须是'步骤+每步完成标准'，不是散文。改这里即改'验收标准是否可验证'的判据。",
+  "version": "planner-v1",
+  "name": "验收标准可验证性",
+  "rules": [
+    {
+      "id": "criteria",
+      "requirement": "每条验收标准能由一条命令/一个文件/一个阈值/一种输出格式直接判定",
+      "bad_example": "确保功能正常、界面美观、质量良好",
+      "good_example": "运行 python bench/check_hw.py 输出 6 类指标且无异常；文件存在且含 [VERIFY] 段"
+    },
+    {
+      "id": "scope",
+      "requirement": "有明确的'不做什么'边界",
+      "bad_example": "做个硬件监视器（无限范围）",
+      "good_example": "只做 Windows，只读指标，不写系统配置"
+    }
+  ],
+  "verdict_rules": {
+    "ok": "全部验收标准可验证",
+    "unverifiable": "存在感受性描述，给出可验证改写"
+  }
+}

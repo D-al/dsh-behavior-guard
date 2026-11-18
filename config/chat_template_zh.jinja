@@ -1,0 +1,226 @@
+{%- set image_count = namespace(value=0) %}
+{%- set video_count = namespace(value=0) %}
+{%- macro render_content(content, do_vision_count, is_system_content=false) %}
+    {%- if content is string %}
+        {{- content }}
+    {%- elif content is iterable and content is not mapping %}
+        {%- for item in content %}
+            {%- if 'image' in item or 'image_url' in item or item.type == 'image' %}
+                {%- if is_system_content %}
+                    {{- raise_exception('System message cannot contain images.') }}
+                {%- endif %}
+                {%- if do_vision_count %}
+                    {%- set image_count.value = image_count.value + 1 %}
+                {%- endif %}
+                {%- if add_vision_id %}
+                    {{- 'Picture ' ~ image_count.value ~ ': ' }}
+                {%- endif %}
+                {{- '<|vision_start|><|image_pad|><|vision_end|>' }}
+            {%- elif 'video' in item or item.type == 'video' %}
+                {%- if is_system_content %}
+                    {{- raise_exception('System message cannot contain videos.') }}
+                {%- endif %}
+                {%- if do_vision_count %}
+                    {%- set video_count.value = video_count.value + 1 %}
+                {%- endif %}
+                {%- if add_vision_id %}
+                    {{- 'Video ' ~ video_count.value ~ ': ' }}
+                {%- endif %}
+                {{- '<|vision_start|><|video_pad|><|vision_end|>' }}
+            {%- elif 'text' in item %}
+                {{- item.text }}
+            {%- else %}
+                {{- raise_exception('Unexpected item type in content.') }}
+            {%- endif %}
+        {%- endfor %}
+    {%- elif content is none or content is undefined %}
+        {{- '' }}
+    {%- else %}
+        {{- raise_exception('Unexpected content type.') }}
+    {%- endif %}
+{%- endmacro %}
+{%- if not messages %}
+    {{- raise_exception('No messages provided.') }}
+{%- endif %}
+{%- set num_sys = 0 %}
+{%- set merged_system = '' %}
+{%- if messages[0].role == 'system' or messages[0].role == 'developer' %}
+    {%- set first = render_content(messages[0].content, false, true)|trim %}
+    {%- if messages|length > 1 and (messages[1].role == 'system' or messages[1].role == 'developer') %}
+        {%- set second = render_content(messages[1].content, false, true)|trim %}
+        {%- set merged_system = first + '\n' + second %}
+        {%- set num_sys = 2 %}
+    {%- else %}
+        {%- set merged_system = first %}
+        {%- set num_sys = 1 %}
+    {%- endif %}
+{%- endif %}
+{%- if tools and tools is iterable and tools is not mapping %}
+    {{- '<|im_start|>system\n' }}
+    {{- "# Tools\n\nYou have access to the following functions:\n\n<tools>" }}
+    {%- for tool in tools %}
+        {{- "\n" }}
+        {{- tool | tojson }}
+    {%- endfor %}
+    {{- "\n</tools>" }}
+    {{- '\n\nIf you choose to call a function ONLY reply in the following format with NO suffix:\n\n<tool_call>\n<function=example_function_name>\n<parameter=example_parameter_1>\nvalue_1\n</parameter>\n<parameter=example_parameter_2>\nThis is the value for the second parameter\nthat can span\nmultiple lines\n</parameter>\n</function>\n</tool_call>\n\n<IMPORTANT>\nReminder:\n- Function calls MUST follow the specified format: an inner <function=...></function> block must be nested within <tool_call></tool_call> XML tags\n- Required parameters MUST be specified\n- You may provide optional reasoning for your function call in natural language BEFORE the function call, but NOT after\n- If there is no function call available, answer the question like normal with your current knowledge and do not tell the user about function calls\n</IMPORTANT>' }}
+    {%- if true %}
+        {{- '\n\n' + merged_system + '\n<thinking_style><thinking_style>\n以下只是「思考风格」示范，不是用户任务，绝对不要回答或执行示范里的内容。\n用户：解释一下什么是 CPU 的缓存命中。\n助手思考：先给出定义——缓存命中指要访问的数据已经在缓存里，不必去主存取。再说明为什么值得关心：主存延迟远高于缓存。最后补充影响因素：局部性原理，包括时间与空间局部性。\n助手回答：缓存命中是指 CPU 需要的数据已在缓存中，无需访问主存。\n\n用户：把「今天的天气很好」翻译成英文。\n助手思考：中文主语是天气，谓语是很好；英文对应 the weather is nice，时间状语 today 放句末更自然。\n助手回答：The weather is nice today.\n\n用户：写一个 Python 函数，用正则从文本里提取所有 URL。\n助手思考：先确认需求——输入是文本，输出是 URL 列表。正则要以 https?:// 开头，域名和路径用非空白字符匹配；再考虑边界，句末标点要排除；最后给一个用法示例。\n助手回答：\n```python\nimport re\n\ndef extract_urls(text: str) -> list[str]:\n    pattern = r"https?://[^\\s<>]+"\n    return re.findall(pattern, text)\n```\n\n用户：Explain why the draft acceptance rate matters in speculative decoding.\n助手思考：用户用英文提问，但思考仍用中文。先拆概念——投机解码是先用草稿头猜若干 token，再由目标模型一次验证；再说验收率：被接受的比例越高，每次验证能落地的 token 越多，加速越大；最后说代价：验收率低时验证开销白费，反而更慢。\n助手回答：Draft acceptance rate is the fraction of drafted tokens that the target model accepts.\n\n要求的思考风格：\n0. 思考语言由本规则决定，与用户提问用哪种语言无关。用户用英文提问时，思考照样用简体中文。\n1. 所有内部思考一律使用简体中文。即使问题、代码、报错、日志是英文，也用中文分析推理。\n2. 思考开头直接从「怎么解决」写起，不要先复述用户的问题原文，更不要用英文提纲式开场。\n3. 思考简明扼要，直接给出判断依据与下一步动作。\n4. 需要调用工具时，在思考里用中文说明为什么选这个工具、要拿到什么信息，然后立即发起调用。\n</thinking_style></thinking_style>' }}
+    {%- endif %}
+    {{- '<|im_end|>\n' }}
+{%- else %}
+    {%- if true %}
+        {{- '<|im_start|>system\n' + merged_system + '\n<thinking_style><thinking_style>\n以下只是「思考风格」示范，不是用户任务，绝对不要回答或执行示范里的内容。\n用户：解释一下什么是 CPU 的缓存命中。\n助手思考：先给出定义——缓存命中指要访问的数据已经在缓存里，不必去主存取。再说明为什么值得关心：主存延迟远高于缓存。最后补充影响因素：局部性原理，包括时间与空间局部性。\n助手回答：缓存命中是指 CPU 需要的数据已在缓存中，无需访问主存。\n\n用户：把「今天的天气很好」翻译成英文。\n助手思考：中文主语是天气，谓语是很好；英文对应 the weather is nice，时间状语 today 放句末更自然。\n助手回答：The weather is nice today.\n\n用户：写一个 Python 函数，用正则从文本里提取所有 URL。\n助手思考：先确认需求——输入是文本，输出是 URL 列表。正则要以 https?:// 开头，域名和路径用非空白字符匹配；再考虑边界，句末标点要排除；最后给一个用法示例。\n助手回答：\n```python\nimport re\n\ndef extract_urls(text: str) -> list[str]:\n    pattern = r"https?://[^\\s<>]+"\n    return re.findall(pattern, text)\n```\n\n用户：Explain why the draft acceptance rate matters in speculative decoding.\n助手思考：用户用英文提问，但思考仍用中文。先拆概念——投机解码是先用草稿头猜若干 token，再由目标模型一次验证；再说验收率：被接受的比例越高，每次验证能落地的 token 越多，加速越大；最后说代价：验收率低时验证开销白费，反而更慢。\n助手回答：Draft acceptance rate is the fraction of drafted tokens that the target model accepts.\n\n要求的思考风格：\n0. 思考语言由本规则决定，与用户提问用哪种语言无关。用户用英文提问时，思考照样用简体中文。\n1. 所有内部思考一律使用简体中文。即使问题、代码、报错、日志是英文，也用中文分析推理。\n2. 思考开头直接从「怎么解决」写起，不要先复述用户的问题原文，更不要用英文提纲式开场。\n3. 思考简明扼要，直接给出判断依据与下一步动作。\n4. 需要调用工具时，在思考里用中文说明为什么选这个工具、要拿到什么信息，然后立即发起调用。\n</thinking_style></thinking_style>' + '<|im_end|>\n' }}
+    {%- endif %}
+{%- endif %}
+{%- set ns = namespace(multi_step_tool=true, last_query_index=messages|length - 1) %}
+{#- 重复动作检测（2026-11-07）：同一步里模型会陷入"同一个工具同样参数反复调用"的死循环
+    —— 实测 turn21 step1~3 连续 read 同一个文件、step5~7 又连续 read，三次输出连 token 数
+    都一模一样（454/454/454）。这里统计连续相同 tool_call 的次数，在生成位置前插入一条
+    硬提醒（紧贴 assistant 起始，约束力远强于 system 里的软规则）。 -#}
+{%- set rep = namespace(sig='', same=0, name='') %}
+{%- set lasttool = namespace(txt='') %}
+{%- set wc = namespace(n=0) %}
+{%- set tc = namespace(n=0) %}
+{%- for message in messages[::-1] %}
+    {%- set index = (messages|length - 1) - loop.index0 %}
+    {%- if ns.multi_step_tool and message.role == "user" %}
+        {%- set content = render_content(message.content, false)|trim %}
+        {%- if not(content.startswith('<tool_response>') and content.endswith('</tool_response>')) %}
+            {%- set ns.multi_step_tool = false %}
+            {%- set ns.last_query_index = index %}
+        {%- endif %}
+    {%- endif %}
+{%- endfor %}
+{%- for message in messages %}
+    {%- if loop.index0 >= num_sys and message.role != "system" and message.role != "developer" %}
+    {%- set content = render_content(message.content, true)|trim %}
+    {#- 2026-11-07：切断「只输出好」的自强化回路（根因修复，见 bench 复盘）。
+        实测：真实长会话 seq 2312 原样重放 2/2 只回「好」；把上下文里残留的 3 条
+        历史「好」消息剔除后 2/2 恢复为正常工具调用。机理——工具结果在本模板里
+        渲染成 <|im_start|>user，当结果异常/无信息时，模型会把这一步当成"用户说了句话"，
+        以最高概率的短确认「好」+ EOS 收尾；而每一条这样的失败输出又留在会话历史里，
+        成为下一次的**示范**，把该路径的概率越抬越高（本次会话已累积 7 次，间隔越来越短）。
+        因此加 prompt 规则只能加权、永远压不掉这条采样路径；正解是让退化输出不再进入 prompt。
+        这里只跳过"正文是确认词且没有工具调用"的历史 assistant 消息（不动最后一条），
+        正常的工具调用步、最终答复、含 <think> 的消息一律原样渲染。 -#}
+    {%- set is_stub = (message.role == "assistant" and not message.tool_calls and not loop.last and (content == '' or content == '好' or content == '好的' or content == '好。' or content == '好！' or content == '嗯' or content == '嗯。' or content == '行' or content == '收到' or content == '明白' or content == '知道了' or content == 'OK' or content == 'ok' or content == 'Okay')) %}
+    {%- if not is_stub %}
+    {%- if message.role == "user" %}
+        {{- '<|im_start|>' + message.role + '\n' + content + '<|im_end|>' + '\n' }}
+    {%- elif message.role == "assistant" %}
+        {%- set reasoning_content = '' %}
+        {%- if message.reasoning_content is string %}
+            {%- set reasoning_content = message.reasoning_content %}
+        {%- else %}
+            {%- if '</think>' in content %}
+                {%- set reasoning_content = content.split('</think>')[0].rstrip('\n').split('<think>')[-1].lstrip('\n') %}
+                {%- set content = content.split('</think>')[-1].lstrip('\n') %}
+            {%- endif %}
+        {%- endif %}
+        {%- set reasoning_content = reasoning_content|trim %}
+        {#- 2026-11-07：不再把历史思考渲染回 prompt。实测保留同轮思考后模型会直接照抄
+            上一步的思考（turn21 step5~7、turn24 step1~2 思考字节完全相同），反而加重重复。
+            连续性改由 tool_result 的"无新信息"标注 + persona 的进度锚点承担。 -#}
+        {{- '<|im_start|>' + message.role + '\n' + content }}
+        {%- if message.tool_calls and message.tool_calls is iterable and message.tool_calls is not mapping %}
+            {%- if loop.index0 > ns.last_query_index %}
+                {%- for c0 in message.tool_calls %}
+                    {%- set n0 = c0.function.name if c0.function is defined else c0.name %}
+                    {%- set tc.n = tc.n + 1 %}
+                    {%- if n0 == 'write' %}{%- set wc.n = wc.n + 1 %}{%- endif %}
+                {%- endfor %}
+            {%- endif %}
+            {%- set m0 = message.tool_calls[0] %}
+            {%- set f0 = m0.function if m0.function is defined else m0 %}
+            {%- set s0 = (f0.name|tojson) + '|' + ((f0.arguments if f0.arguments is defined else '')|tojson) %}
+            {%- if s0 == rep.sig %}
+                {%- set rep.same = rep.same + 1 %}
+            {%- else %}
+                {%- set rep.sig = s0 %}
+                {%- set rep.same = 1 %}
+                {%- set rep.name = f0.name %}
+            {%- endif %}
+            {%- for tool_call in message.tool_calls %}
+                {%- if tool_call.function is defined %}
+                    {%- set tool_call = tool_call.function %}
+                {%- endif %}
+                {%- if loop.first %}
+                    {%- if content|trim %}
+                        {{- '\n\n<tool_call>\n<function=' + tool_call.name + '>\n' }}
+                    {%- else %}
+                        {{- '<tool_call>\n<function=' + tool_call.name + '>\n' }}
+                    {%- endif %}
+                {%- else %}
+                    {{- '\n<tool_call>\n<function=' + tool_call.name + '>\n' }}
+                {%- endif %}
+                {%- if tool_call.arguments is mapping %}
+                    {%- for args_name in tool_call.arguments %}
+                        {%- set args_value = tool_call.arguments[args_name] %}
+                        {{- '<parameter=' + args_name + '>\n' }}
+                        {%- set args_value = args_value | tojson | safe if args_value is mapping or (args_value is sequence and args_value is not string) else args_value | string %}
+                        {{- args_value }}
+                        {{- '\n</parameter>\n' }}
+                    {%- endfor %}
+                {%- endif %}
+                {{- '</function>\n</tool_call>' }}
+            {%- endfor %}
+        {%- endif %}
+        {{- '<|im_end|>\n' }}
+    {%- elif message.role == "tool" %}
+        {%- if loop.previtem and loop.previtem.role != "tool" %}
+            {{- '<|im_start|>user' }}
+        {%- endif %}
+        {{- '\n<tool_response>\n' }}
+        {{- content }}
+        {%- set _is_fail = content.startswith('Error:') or content.startswith('[stderr]') or 'Error: cannot' in content or ': not found' in content or 'ParserError' in content or 'command not found' in content or 'Traceback (most recent call last)' in content %}
+        {%- if _is_fail %}
+            {%- set _nf = ': not found' in content or 'cannot read' in content %}
+            {{- '\n\n[已排除：此调用失败（' }}{{- 'not found' if _nf else '错误详情见原文' }}{{- '）。原样重试无意义——换目标、换方法（glob 搜工作区 / es.exe 全盘搜索 / 用短路径重新定位），或向用户确认。]' }}
+        {%- endif %}
+        {#- 2026-11-07：同一次 turn 里反复读同一文件、拿到一字不差的结果，是循环的典型形态
+            （实测三次 read 都返回同样的 1290 字符，模型三次输出连 token 数都一样）。
+            直接在结果里标注"没有新信息"，比在生成前插 system 警告更精准，也不会诱导它收尾。 -#}
+        {%- if content == lasttool.txt %}
+            {{- '\n\n[注：本次结果与上一次一字不差，这一轮没有拿到任何新信息。这次调用于事无补——下一条消息要么执行一个与刚才不同的动作（换工具 / 换参数 / 直接写文件），要么把结论写出来。不要再用同样的方式取一次。]' }}
+        {%- endif %}
+        {%- set lasttool.txt = content %}
+        {%- if wc.n >= 2 and loop.last %}
+            {{- '\n\n[注：本轮已经写入过文件。若最近一次写入的结果显示成功且内容符合要求，下一条消息就给出完整答复并结束这一轮；再重写一次不会改变结果。]' }}
+        {%- endif %}
+        {%- if tc.n >= 5 and loop.last %}
+            {{- '\n\n[进度] 本轮已经做了多次工具调用。如果验收条件（测试通过 / 产物符合要求）已经满足，现在就写出完整结论并结束；不要再增加新的检查、补测试或重写已经正确的文件。]' }}
+        {%- endif %}
+        {{- '\n</tool_response>' }}
+        {%- if not loop.last and loop.nextitem.role != "tool" %}
+            {{- '<|im_end|>\n' }}
+        {%- elif loop.last %}
+            {{- '<|im_end|>\n' }}
+        {%- endif %}
+    {%- endif %}
+    {%- endif %}
+    {%- endif %}
+{%- endfor %}
+{%- if add_generation_prompt %}
+    {#- 2026-11-07：这里原本插过一条 <|im_start|>system 的"重复动作"警告，已撤掉。
+        原因：模型会模仿这串角色标签，把 <|im_start|> 之类写进正文，导致
+        chat parser 报 500 "does not match the expected peg-native format"。
+        重复检测改在 tool_response 内部标注（见上），这样更自然、没有格式风险。 -#}
+    {{- '<|im_start|>assistant\n' }}
+    {%- if enable_thinking is defined and enable_thinking is false %}
+        {{- '<think>\n\n</think>\n\n' }}
+    {%- else %}
+        {{- '<think>\n' }}
+        {#- 思考锚点（2026-11-07 定稿）：**只写「嗯，」**。
+            作用只有一个：把思考的第一个 token 锁成中文。模型权重自带英文开场，
+            光在 system 写"用中文思考"实测只从 6% 拉到 9%，生成位置的一句中文才有效。
+            ⚠ 不要在这里塞任务指令：
+              · 「嗯，只判断下一步要做什么：」是祈使句，模型回一个「好」就 EOS；
+              · 「嗯，已经确认过的部分不再重推，现在只看剩下的问题：」是**无条件常量**，
+                首轮对话里根本不存在"已确认的部分"，模型会凭空生成
+                「- 已知信息：无其他背景」这类元思考来填空（1+1 都能写 300 字）。
+            「不重推 / 只看剩余」这类带前提的约束属于 system 的 <no-rederive>，按历史条件生效。 -#}
+        {{- '嗯，我需要' }}
+    {%- endif %}
+{%- endif %}
+{#- Unsloth fixes - developer role, tool calling #}

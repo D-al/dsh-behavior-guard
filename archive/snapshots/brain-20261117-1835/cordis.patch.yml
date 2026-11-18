@@ -1,0 +1,501 @@
+# Your patch layer for this dsh profile, applied after every bundle layer:
+# a top-level YAML array of loader patch entries (id-targeted config
+# overrides, disables, and insert lists; `!!js` expressions allowed).
+- id: agent-default-model
+  name: "@deepseek-ai/dsh-agent-default-model"
+  config:
+    provider: llama-35b
+    model: Qwen3.6-35B-A3B-UD-Q4_K_XL
+    reasoningEffort: high
+- id: ui-settings-account
+  name: "@deepseek-ai/dsh-client-ui-settings-account"
+  config:
+    version: 1
+    step: done
+    purpose: office
+    process: compact
+    completion: completed
+    usage: compact
+    developerTools: false
+- id: ui-chat
+  name: "@deepseek-ai/dsh-client-ui-chat"
+  config:
+    transcriptView: compact
+    performanceUsage: compact
+- id: ui-settings
+  name: "@deepseek-ai/dsh-client-ui-settings"
+  config:
+    enabled: false
+- id: llm-deepseek-account
+  name: "@deepseek-ai/dsh-llm-deepseek-account"
+  config:
+    models:
+      - id: deepseek-flash
+        name: DeepSeek-V41-Flash
+        contextWindow: 1000000
+        inputModalities:
+          - text
+          - image
+        systemPromptUpdate: in-history
+        toolUpdate: addition-only
+      - id: deepseek-v4-pro
+        name: DeepSeek-V4-Pro
+        description: Stronger agentic coding, knowledge, and difficult reasoning; suited
+          to complex or quality-critical tasks at higher cost.
+        contextWindow: 1000000
+        inputModalities:
+          - text
+- id: llm-pi-ai
+  name: "@deepseek-ai/dsh-llm-pi-ai"
+  config:
+    providers:
+      llama-35b:
+        displayName: llama.cpp · Qwen3.6-35B-A3B
+        api: openai-completions
+        baseURL: http://127.0.0.1:8081/v1
+        headers:
+          Authorization: Bearer llama
+        defaultContextWindow: 98304
+        defaultMaxTokens: 8192
+        timeoutMs: 172800000
+        streamIdleTimeoutMs: 600000
+        models:
+          - id: Qwen3.6-35B-A3B-UD-Q4_K_XL
+            name: Qwen3.6-35B-A3B-UD-Q4_K_XL
+            contextWindow: 98304
+            maxTokens: 8192
+            input:
+              - text
+              - image
+            reasoningEfforts:
+              off: none
+              high: high
+- id: agent-preset-registry
+  name: "@deepseek-ai/dsh-agent-preset-registry"
+  config:
+    default: standard
+    selectedDefault: cordis
+- id: plugin-store
+  disabled: true
+
+# 启用会话回收站插件 - 删除会话时自动清理缓存目录
+- id: dsh-session-trash-bin
+  name: "dsh-session-trash-bin"
+  config:
+    enabled: true
+
+# 让 dsh 内置的「网页搜索」(web_search) 工具改用本地 SearXNG:
+#   provider 由 dsh-searxng-autostart 插件注册(其 id 为 searxng), 这里把 web 服务的
+#   searchProvider 指向它。官方内置的 deepseek/exa/perplexity 三个 provider 都需要
+#   API key; 本地这一路免费、无需密钥。
+#   注: 之前尝试禁用 tool-web(移除内置搜索工具)会连带上 web 服务一起出问题, 而且实测
+#   并未真正移除工具 —— 故改为「保留工具 + 换 provider」这一稳妥的做法。
+- id: web
+  name: "@deepseek-ai/dsh-web"
+  config:
+    searchProvider: searxng
+
+# ============================================================
+#  自动上下文压缩 —— 整份重写出厂预设 preset-cordis
+# ------------------------------------------------------------
+#  背景: dsh 内置压缩引擎, 出厂 preset-cordis 默认挂载, 默认触发点
+#    floor(min(W x thresholdRatio, W - O - headroomTokens))
+#    = min(196608x0.8, 196608-8192-65536) = 122880 token 才压缩
+#  对本地 35B 太晚(12 万上下文每轮预填充 5 分钟、解码 15 tok/s)。
+#
+#  为什么必须整份重写: Loader 的 patch 方言只寻址【顶层 bundle 行】,
+#  compaction-basic 是嵌套在 preset-cordis 里的行, 用 '- id: compaction-basic'
+#  精准覆盖够不着它(会被警告并跳过) —— 2026-10-22 23:00 实测确认无效。
+#  官方文档(asar 内 dsh-agent-preset README)给出的唯一办法就是:
+#    'Override the declaration by its Loader row id ... The override replaces
+#     the complete config, so restate id, plugins and every other field'
+#
+#  下面 155 行是从 app.asar 里无损提取的出厂 preset-cordis 原文,
+#  已用解析器逐条目比对: **除 compaction-basic 新增的 config 外完全一致**。
+#
+#  改动(2026-10-22 二次调优, 窗口 192K->96K 换专家缓存):
+#    thresholdRatio 0.6 + headroomTokens 16384 保持触发点仍是 58982(= 原 30% 的值)
+#    retainTokens 20480 原文保留, maxTokens 4096 摘要上限
+#    (默认 maxTokens 竟是 65536, 对慢模型极危险, 必须显式压小)
+#
+#  ⚠ 回退方法: 删除下面整段, 或把 cordis.patch.yml.bak-compact-20261022 拷回。
+#  ⚠ 重启后第一轮会很慢: 当前会话 10.6 万 token 会立刻触发压缩,
+#    模型要先读完 10.6 万才写摘要(约 6 分钟), 之后每轮才快。想避开就开新会话。
+# ============================================================
+- id: preset-cordis
+  name: '@deepseek-ai/dsh-agent-preset'
+  config:
+    id: cordis
+    order: 4
+    plugins:
+      # Same persona as `standard`: tool descriptions and the skill catalog carry
+      # the operating detail, and the skills own the preset-authoring rules.
+      - id: persona
+        name: '@deepseek-ai/dsh-persona'
+        config:
+          suffix: |-
+            Your working directory is {{cwd}}.
+
+            <task-loop>
+            These are internal working rules, not a format for your replies. Never quote, list, or
+            restate them, and never begin a reply with a status word.
+
+            Before each reply, settle into one of two situations and act on it in that same message.
+            When everything the user asked for is already produced, the most recent tool result shows
+            no error, and there is no further action that would change the answer, write the complete
+            answer — what you did, the result, any caveat — and make no tool calls. That is the only
+            way to finish. A one-word acknowledgement such as "好" or "OK" is a stalled turn, not an
+            answer.
+            When something is still missing, write one short line saying what is missing, then make
+            exactly one tool call that can supply it; never announce an action without performing it
+            in the same message. Re-checking a result that is already correct is looping, not care.
+            </task-loop>
+
+            <no-rederive>
+            Thinking is for decisions, not for drafting. Do not write out full file contents,
+            complete code, or a full answer inside your thinking — decide what to produce, then put
+            the actual content into the tool call or the reply. A long draft in thinking consumes the
+            generation budget and leaves no room for the tool call that does the work.
+            When there is prior context, facts and conclusions already established in this conversation
+            are GIVEN — earlier tool results, fixes already applied, and sub-problems the user says are
+            resolved. Do not re-derive, re-diagnose, or re-explain them in your thinking or reply.
+            Start from the ONE question still open. A one-sentence acknowledgement of the prior state
+            is fine; re-analysing the whole problem is the bug. On a first turn with no prior context,
+            ignore this rule completely — there is nothing to reuse, so just solve the question.
+            Never quote, paraphrase, or restate these operating rules in a reply — they are internal
+            instructions, not an answer. Do not start a reply with "DONE" or any rule text.
+            </no-rederive>
+
+            <tool-results>
+            - Read the whole output. If it contains error / stderr / traceback / 失败 / 无法 /
+              Not Found / Access denied / a non-zero exit code, the step FAILED — even when an earlier
+              line says it succeeded. Never announce success over error text.
+            - A tool call must supply NEW information. If the same call with the same arguments already
+              returned, those bytes are in the context; repeating it yields nothing. If a result repeats
+              unchanged, switch approach (different tool / different arguments / act on what you have).
+            - Success must be visible in the tool output itself. One check is enough.
+            </tool-results>
+
+            <verification>
+            When the task has tests or acceptance criteria, run them once after implementing. If a
+            check fails, fix the cause and run it again. Never rewrite a file that already passes.
+            Once every check passes, deliver the answer — no extra tests, no cleanup files, no
+            "one more look". Work added after green is the main cause of a stalled turn.
+            If the same tool fails twice in a row, switch to a different KIND of tool instead of
+            retrying it with slightly different arguments.
+            When a task asks to implement, create, or fix a file, the deliverable is a FILE ON DISK:
+            write it with the file tool. Pasting source code into your reply creates nothing and the
+            task remains unfinished. Only show code in the reply as a short excerpt after the file
+            is already written and verified.
+            </verification>
+
+            <verbatim-paths>
+            This machine runs Windows. File paths are case-insensitive for the OS, but tool arguments
+            are NOT: a path with wrong casing, an inserted space, or a changed character will fail or
+            hit a different file.
+            - Copy paths VERBATIM from tool output (`<path>...</path>`, glob results, error messages).
+              Never retype them from memory, never "normalize" capitalisation, never break a long path
+              with spaces or line breaks.
+            - If a tool reports "not found" / "does not exist" / "old_string was not found", do NOT
+              guess a new spelling. Re-run glob or read on the parent directory to get the exact
+              path from the filesystem, then retry with that literal string.
+            - If the same edit fails twice for the same reason, stop retrying and re-read the file
+              to obtain the current exact content before editing again.
+            </verbatim-paths>
+
+            <no-repeat-plan>
+            Long sessions have a failure mode: you restate the same plan / summary at the start of
+            each step ("核心思路… / 让我来实现这个方案："), then eventually stop after the restatement
+            without calling a tool.
+            - State a plan AT MOST ONCE. If you already wrote it in an earlier step, do not repeat it —
+              just do the next concrete action.
+            - Never open a message with a recap of what you already did. Open with the one-line reason
+              for the current step, then the tool call.
+            - If you catch yourself writing the same sentences as the previous step, stop typing and
+              issue the tool call instead — but if you are about to call the same tool with the same
+              arguments, that is the stop condition in <action-discipline>, not a reason to retry.
+            - NEVER call the same tool with identical arguments twice in one turn. If you already read
+              a file, its content is already in the context — do not read it again. Repeating a call
+              gives you the same bytes and wastes the whole turn.
+            </no-repeat-plan>
+          prefix: >-
+            You are a coding agent powered by the {{model}} model.
+      - id: agent-instructions
+        name: '@deepseek-ai/dsh-agent-instructions'
+        config:
+          maxBytes: 65536
+      - id: tool-bash
+        name: '@deepseek-ai/dsh-tool-bash'
+        disabled: !!js process.platform === 'win32'
+      - id: tool-pwsh
+        name: '@deepseek-ai/dsh-tool-pwsh'
+        disabled: !!js process.platform !== 'win32'
+      - id: tool-fs
+        name: '@deepseek-ai/dsh-tool-fs'
+      - id: tool-fs-search
+        name: '@deepseek-ai/dsh-tool-fs-search'
+        config:
+          sampleOverCapGlobResults: false
+      # ── tool-jobs 禁用（2026-11-17 工具面裁剪）：job_kill/job_list/job_output
+      #    40h×3 会话零调用（后台任务场景不存在），schema 白占注意力税。
+      #    论文依据：RAG-MCP（全量载入 13.6% vs 检索 43.1%）；BFCL 10→100 工具 78%→<40%
+      #    （"100-Tool Agent Is a Trap"）。回滚：去掉 disabled: true。
+      - id: tool-jobs
+        disabled: true
+        name: '@deepseek-ai/dsh-tool-jobs'
+      - id: command-goal
+        disabled: !!js true
+        name: '@deepseek-ai/dsh-command-goal'
+      - id: tool-goal
+        disabled: !!js true
+        name: '@deepseek-ai/dsh-tool-goal'
+      - id: planning
+        name: cordis:group
+        group: true
+        isolate:
+          planMode: true
+        config:
+          - id: plan-mode
+            name: '@deepseek-ai/dsh-plan-mode'
+            config:
+              section: |
+                You are in plan mode. Stay in plan mode until exit_plan_mode succeeds or the user switches the session mode. Imperative language to implement changes means plan the implementation, not execute it. A user's conversational agreement — including an answer confirming something you asked — approves nothing and does not end plan mode; fold the confirmed decision into the plan and submit it through exit_plan_mode.
+
+                Explore first. Use non-mutating reads, searches, static analysis, and checks to ground the plan in the actual repository. Do not edit or write files, change configuration, run formatters or code generation that rewrites tracked files, commit, or otherwise carry out the plan. Prefer existing functions and patterns over new machinery.
+
+                The tool catalog stays the same across modes for request-cache stability. These plan-mode rules override any later tool description or guidance that suggests using mutation tools; those tools remain listed to keep the tool catalog unchanged. Do not use todo_write to track this planning phase: it tracks implementation after an approved plan, while the plan itself belongs in exit_plan_mode.
+
+                Resolve discoverable facts by inspection. Use ask_user_question only for user-owned choices or material ambiguity that inspection cannot answer. Do not ask the user where code lives or how current behavior works when you can find out.
+
+                Make the plan decision-complete: state the goal and success criteria; group implementation changes by subsystem; identify public API, schema, and data-flow changes; cover edge cases, failure modes, tests, acceptance criteria, and explicit assumptions. Keep it concise enough to review but detailed enough that another engineer can implement it without making design decisions.
+
+                When ready, call exit_plan_mode with the complete plan markdown, starting with a # title. Make exit_plan_mode the only and final tool call in that assistant response: it presents the plan for approval, and implementation begins only in a later step after approval. Do not paste the final plan as a plain reply or ask "should I proceed?" through prose or ask_user_question. If review rejects it, incorporate the feedback and present again. If the review channel is unavailable or aborted, stay in plan mode and ask the user to switch modes manually; do not proceed with implementation.
+      - id: compaction
+        name: cordis:group
+        group: true
+        isolate:
+          compaction: true
+          toolResultPruner: true
+        config:
+          - id: compaction-basic
+            name: '@deepseek-ai/dsh-compaction-basic'
+            config:
+              # 触发点 = floor(min(W x ratio, W - O - headroom)) = min(98304x0.55, 98304-8192-16384)
+              #        = min(54067, 73728) = 54067  (约 54K)
+              # 2026-11-06 由 0.70 回调到 0.55:
+              #   实测在 68.8K 上下文时模型进入"复读退化"——连续 4 步重复同一份计划小结,
+              #   最后一步只写计划、没发工具调用就 EOS, dsh 判定本轮完成(表现为"答一半就停")。
+              #   工作区间压到 54K 以下可避开该退化区; 仍比 0.45(44K) 宽松, 不会频繁压缩。
+              # 上限说明: headroomTokens=16384 把触发点硬顶在 73728, 想更晚须调小 headroom。
+              thresholdRatio: 0.55
+              headroomTokens: 16384
+              # 压缩后保留的原文 token: 16384 + 摘要(<=4096) ≈ 20K, 符合"一次压到 20K 左右"。
+              retainTokens: 24576
+              maxTokens: 1024
+              compactionRetries: 1
+              maxOverflowRetries: 1
+              auto: true
+          - id: command-compact
+            name: '@deepseek-ai/dsh-command-compact'
+          - id: tool-result-pruner
+            name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+            config:
+              thresholdChars: 3072
+              headChars: 1536
+              tailChars: 512
+      - id: delegation
+        disabled: !!js true
+        name: cordis:group
+        group: true
+        isolate:
+          workflowEngine: true
+        config:
+          - id: tool-subagent-control
+            name: '@deepseek-ai/dsh-tool-subagent-control'
+          - id: tool-subagent-list-agents
+            name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+          - id: tool-subagent
+            name: '@deepseek-ai/dsh-tool-subagent'
+            config:
+              provider: spawn
+              toolName: subagent
+              modelSelectionSettings: true
+              backgroundMode: continuable
+          - id: tool-subagent-fork
+            name: '@deepseek-ai/dsh-tool-subagent'
+            config:
+              provider: fork
+              toolName: subagent_fork
+              backgroundMode: continuable
+          - id: tool-subagent-codex
+            name: '@deepseek-ai/dsh-tool-subagent'
+            disabled: true
+            config:
+              provider: codex
+              toolName: subagent_codex
+              backgroundMode: one-shot
+              maxDepth: provider-managed
+          - id: tool-subagent-claude-code
+            name: '@deepseek-ai/dsh-tool-subagent'
+            disabled: true
+            config:
+              provider: claude-code
+              toolName: subagent_claude_code
+              backgroundMode: one-shot
+              maxDepth: provider-managed
+          - id: workflow-ptc
+            name: '@deepseek-ai/dsh-workflow-ptc'
+            config:
+              provider: spawn
+          - id: tool-workflow
+            name: '@deepseek-ai/dsh-tool-workflow'
+          - id: tool-ralph
+            name: '@deepseek-ai/dsh-tool-ralph'
+            disabled: true
+            config:
+              subagentProvider: spawn
+              maxRounds: 64
+      - id: tool-ask-user
+        name: '@deepseek-ai/dsh-tool-ask-user'
+      - id: tool-todo
+        name: '@deepseek-ai/dsh-tool-todo'
+        config:
+          allowParallelInProgress: true
+      - id: tool-web
+        name: '@deepseek-ai/dsh-tool-web'
+        config:
+          fetch: true
+          searchTimeoutMs: 60000
+      - id: tool-cordis
+        disabled: !!js true
+        name: '@deepseek-ai/dsh-tool-cordis'
+      - id: skill-filesystem
+        name: '@deepseek-ai/dsh-skill-filesystem'
+        config:
+          customSkillDirs:
+            - !!js process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('@deepseek-ai/dsh-agent-preset/package.json')),
+              'skills')
+      - id: tool-skill
+        name: '@deepseek-ai/dsh-tool-skill'
+      - id: present
+        name: '@deepseek-ai/dsh-tool-present'
+      - id: tool-plugin-manager
+        name: '@deepseek-ai/dsh-plugin-manager/tools'
+        disabled: !!js "!ctx.get('profileContext')"
+      # ── 反「只输出好」第二层：轮次结束前的 continuation guard（2026-11-07）──────
+      # 第一层是 chat 模板不渲染历史退化消息（治本，切断示范回路）；
+      # 本插件是兜底：万一仍出现「正文只有一个确认词 + 无 tool_calls」，在
+      # agent/turn-stopping 处用 agent.steer() 强制再走一步，避免被 ReAct 契约
+      # 「没有 tool_calls ≡ 最终答复」误判为正常完成。
+      # 判定四条同时满足才动手：无 tool_calls、正文≤maxBodyChars 或命中确认词、
+      # 本轮已用过工具、本轮未触发过。异常只记录不抛（插件抛错会结束整个轮次）。
+      # 关闭方式：enabled: false，或整段注释掉后重启 dsh。
+# [合并为 behavior-guard 2026-11-17]       - id: turn-continuation-guard
+# [合并为 behavior-guard 2026-11-17]         name: 'dsh-turn-continuation-guard'
+# [合并为 behavior-guard 2026-11-17]         config:
+# [合并为 behavior-guard 2026-11-17]           enabled: true
+# [合并为 behavior-guard 2026-11-17]           maxContinuationsPerTurn: 1
+# [合并为 behavior-guard 2026-11-17]           maxContinuationsPerSession: 20
+# [合并为 behavior-guard 2026-11-17]           maxBodyChars: 3
+# [合并为 behavior-guard 2026-11-17]           requirePriorToolCall: true
+# [合并为 behavior-guard 2026-11-17]           # L0 空手收尾：正文为空且没有任何工具调用 ⇒ 这一轮对用户是空的（把规划当成执行）。
+# [合并为 behavior-guard 2026-11-17]           # 现场来自 2026-11-11 Q4@temp0.1 跑 projectlab P4：第 1 步思考 683 字把整套计划写完，
+# [合并为 behavior-guard 2026-11-17]           # 然后正文空 + 无 tool_calls + finish=stop 直接结束。前三层都抓不到（正文是空的）。
+# [合并为 behavior-guard 2026-11-17]           blockEmptyFinish: true
+# [合并为 behavior-guard 2026-11-17]           # L1 假完成校验：正文声称「已写入 X」时，直接 stat X。不存在 ⇒ steer 回去真正落盘。
+# [合并为 behavior-guard 2026-11-17]           # 这是社区 verified finish 的最小实现（模型编不出真实存在的文件）。
+# [合并为 behavior-guard 2026-11-17]           checkFileClaims: true
+# [合并为 behavior-guard 2026-11-17]           # 严格模式：还要求文件在本轮开始后被改过。默认关，避免"引用上一轮成果"误判。
+# [合并为 behavior-guard 2026-11-17]           requireFreshMtime: false
+# [合并为 behavior-guard 2026-11-17]           # L2：本轮用过工具、但没调用任何写文件工具，正文却贴了 ≥minCodeLines 行代码 ⇒ 视为把产物写在回复里。
+# [合并为 behavior-guard 2026-11-17]           blockCodeWithoutWrite: true
+# [合并为 behavior-guard 2026-11-17]           minCodeLines: 20
+# [合并为 behavior-guard 2026-11-17]           # 临时探针：确认插件被加载后即可删除本行（留空则永不写文件）。
+# [合并为 behavior-guard 2026-11-17]           probePath: 'D:/WorkBuddyWorkSpace/2026-10-13-20-41-43/bench/_guard_loaded.json'
+
+# [合并为 behavior-guard 2026-11-17]       # ── 任务连续性（2026-11-17 第二轮剃刀合并：task-state 海马体 + task-plan 闹钟）──
+# [合并为 behavior-guard 2026-11-17]       # P0 压缩存档（MemGPT/Hippo）+ P1 todo 闹钟（2609.38108/CoPE），注入优先级 P0 > P1
+      - id: task-continuity
+        name: 'dsh-task-continuity'
+        config:
+          enabled: true
+          maxInitialChars: 2000
+          maxLatestChars: 1000
+          noTodoStepThreshold: 4
+          staleStepThreshold: 5
+          maxTodoInjectionsPerTurn: 1
+          maxTodoInjectionsPerSession: 4
+          probePath: 'D:/WorkBuddyWorkSpace/2026-10-13-20-41-43/bench/_task_continuity_loaded.json'
+
+      # ── 监控-修正闭环：实时独立审计（2026-11-17）──────────────────
+      # audit_session.py 的实时版：每 8 步由插件直调 llama-server 做无历史轻量审计
+      # （只查两个高置信信号：重复失败>=2、跑偏），发现问题经 pre-step 注入修正指令。
+      # 离线实测：漂移会话轨迹上 step6 触发，修正指令精确到"改用 step3 glob 结果中的路径"。
+      # 安全阀：请求失败/解析失败静默跳过；每轮<=1次注入、每会话<=4次；注入后清空轨迹防重复触发。
+      - id: behavior-guard
+        name: 'dsh-behavior-guard'
+        config:
+          enabled: true
+          auditEverySteps: 8
+          auditTimeoutMs: 90000
+          maxInjectionsPerTurn: 1
+          maxInjectionsPerSession: 4
+          probePath: 'D:/WorkBuddyWorkSpace/2026-10-13-20-41-43/bench/_audit_loop_loaded.json'
+
+      # ── 前额叶外置：todo 纪律执行器（2026-11-17）──────────────────
+      # 依据：Plan-Execution Gap(2609.38108) 声明的计划仅 22~45% 被遵守；
+      # Claude Code TodoWrite 实战——闹钟模式（连续 N 步不更新就注入提醒）。
+      # A：多步任务却从未列单 → 提醒先建清单；B：列单后停滞 → 提醒回清单。
+      - id: task-plan
+        name: 'dsh-task-plan'
+        config:
+          enabled: true
+          noTodoStepThreshold: 4
+          staleStepThreshold: 5
+          maxInjectionsPerTurn: 1
+          maxInjectionsPerSession: 4
+          probePath: 'D:/WorkBuddyWorkSpace/2026-10-13-20-41-43/bench/_task_plan_loaded.json'
+
+      # ── 方案A：任务状态持久化（2026-11-17）────────────────────────
+      # MemGPT 式 working context 的 harness 自动维护版：自动存档用户真实指令，
+      # 任何压缩事件后通过 pre-step 重注入。模型零参与（35B 做不好自主记忆管理）。
+      # 依据：MemGPT(2310.08560) DMR 32.1%→92.5%；Hippo(2610.24453) 只存真实指令防污染。
+      - id: task-state
+        name: 'dsh-task-state'
+        config:
+          enabled: true
+          maxInitialChars: 2000
+          maxLatestChars: 1000
+          probePath: 'D:/WorkBuddyWorkSpace/2026-10-13-20-41-43/bench/_task_state_loaded.json'
+
+      # ── 思考后验检测（2026-11-17）────────────────────────────
+      # 依据：社区 dsh-chinese-thinking 第5层后验检测 + EOP 论文（ICLR2026）
+      # 阈值来自离线回放：累计重述>=7 在退化会话 step12 触发，正常会话全程最高6，零误伤。
+      # 语言提醒独立于 system prompt（社区第2层），每4步一次，避免稀释也避免刷屏。
+# [已剔除 2026-11-17 第二轮剃刀]       - id: reason-guard
+# [已剔除 2026-11-17 第二轮剃刀]         name: 'dsh-reason-guard'
+# [已剔除 2026-11-17 第二轮剃刀]         config:
+# [已剔除 2026-11-17 第二轮剃刀]           enabled: true
+# [已剔除 2026-11-17 第二轮剃刀]           replanLimit: 7
+# [已剔除 2026-11-17 第二轮剃刀]           cjkFloor: 0.30
+# [已剔除 2026-11-17 第二轮剃刀]           maxInjectionsPerTurn: 2
+# [已剔除 2026-11-17 第二轮剃刀]           maxInjectionsPerSession: 8
+# [已剔除 2026-11-17 第二轮剃刀]           # languageReminder 已剔除（2026-11-17 剃刀）：被模板锚点「嗯，我需要」覆盖——
+# [已剔除 2026-11-17 第二轮剃刀]           # dsh 每步都是新的 generation prompt，锚点每步生效，比每 4 步注入一条提醒
+# [已剔除 2026-11-17 第二轮剃刀]           # 更便宜（几个 token vs 一条完整消息）且更有效（生成位置 vs 上下文中部）。
+# [已剔除 2026-11-17 第二轮剃刀]           languageReminder: false
+# [已剔除 2026-11-17 第二轮剃刀]           reminderEverySteps: 4
+# [已剔除 2026-11-17 第二轮剃刀]           probePath: 'D:/WorkBuddyWorkSpace/2026-10-13-20-41-43/bench/_reason_guard_loaded.json'
+
+# [已剔除 2026-11-17 第二轮剃刀]       # ── B 方案：搜索预算提示（2026-11-16）────────────────────────────
+# [已剔除 2026-11-17 第二轮剃刀]       # 代替"加守卫层"：在工具结果后附加机器提示，打断"失败→重规划→再失败"回路。
+# [已剔除 2026-11-17 第二轮剃刀]       # 现场：新会话路径不可达时 23 步重述任务 14 次、烧 15 分钟、最后给出假总结。
+# [已剔除 2026-11-17 第二轮剃刀]       # 判据按"搜索类工具累计空结果"，不用"连续失败"（会被中间成功结果清零）。
+# [已剔除 2026-11-17 第二轮剃刀]       - id: search-budget
+# [已剔除 2026-11-17 第二轮剃刀]         name: 'dsh-search-budget'
+# [已剔除 2026-11-17 第二轮剃刀]         config:
+# [已剔除 2026-11-17 第二轮剃刀]           enabled: true
+# [已剔除 2026-11-17 第二轮剃刀]           budget: 3
+# [已剔除 2026-11-17 第二轮剃刀]           maxHintsPerTurn: 2
+# [已剔除 2026-11-17 第二轮剃刀]           maxHintsPerSession: 6
+# [已剔除 2026-11-17 第二轮剃刀]           probePath: 'D:/WorkBuddyWorkSpace/2026-10-13-20-41-43/bench/_search_budget_loaded.json'

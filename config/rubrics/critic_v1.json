@@ -1,0 +1,36 @@
+{
+  "_note": "Critic 评审 rubric。社区实践用 YAML，但插件运行环境无 YAML 依赖——用等价 JSON 保持单一来源（避免文档一套 prompt 一套）。改这里即改评审标准，无需改代码。",
+  "version": "critic-v1",
+  "name": "产物质量评审",
+  "dimensions": [
+    {
+      "id": 1,
+      "name": "达标性",
+      "question": "产物是否覆盖任务要求的每一项？",
+      "fail_example": "任务要求 CPU 每核利用率，产物只有总利用率"
+    },
+    {
+      "id": 2,
+      "name": "完整性",
+      "question": "是否有空缺、占位符、未实现部分、明显截断？",
+      "fail_example": "函数体是 pass/TODO，或文件在句中截断"
+    },
+    {
+      "id": 3,
+      "name": "可用性",
+      "question": "按任务要求能直接用、直接跑通吗？",
+      "fail_example": "缺 main 入口、缺依赖声明、路径写死本机绝对路径"
+    },
+    {
+      "id": 4,
+      "name": "一致性",
+      "question": "内部有无自相矛盾（同一事实两处不同说法）？",
+      "fail_example": "前面说输出 JSON、后面示例是 YAML"
+    }
+  ],
+  "verdict_rules": {
+    "accept": "四维全达标",
+    "reject": "任一维度不达标，必须给出最关键的一个修正动作",
+    "uncertain": "产物内容为空或无法读取时"
+  }
+}
