@@ -2,6 +2,9 @@
 
 > 范围：`D:/Brain/**`（engine / dsh-data / workspace / publish / appdata）+ junction 映射 + 计划任务 + harness 插件。
 > 目的：找出**进一步优化的空间（含架构层）**，并评估"给上游开 PR"是否值得。
+>
+> ✅ **执行状态（11:40，v2.5.0）**：前 3 项清理 + A1 可移植性改造均已完成。
+> A2（全栈 config_check）/ A3（拆 index.mjs）/ 开 PR 仍待做。
 
 ---
 

@@ -18,6 +18,8 @@ cd dsh-behavior-guard
 .\setup\install.ps1 -DryRun     # 先看会做什么（安全）
 .\setup\install.ps1             # 实际恢复（不覆盖已存在文件）
 .\setup\install.ps1 -Force      # 强制覆盖（会先备份到 .bak-<时间戳>）
+.\setup\links.ps1 -DryRun        # 看 junction 映射计划
+.\setup\links.ps1                # 建 7 个稳定 junction（p/ bench/ memory/ dsh/ ...）
 ```
 
 恢复内容：`config/AGENTS.md` + `.env.llama` + router preset + chat template + critbank + rubrics +
@@ -28,7 +30,7 @@ autoparser 补丁 + `skills/`(10) + `tools/`(19) + `docs/` + 插件本体（pnpm
 
 新机器还需手工做的（脚本无法自动）：
 1. dsh / llama.cpp 本体 + 自编 b12244 二进制（见 docs/ 与 config/patches/）
-2. junction 映射与计划任务（RestartDsh / FreezeWatch）
+2. 计划任务（RestartDsh / FreezeWatch）——junction 已由 links.ps1 自动建
 3. 确认 package.json 的 dsh.profile.bundles 含 dsh-agent-harness
 
 详见 docs/MD_SYSTEM_PLAN.md 的分层原则。
