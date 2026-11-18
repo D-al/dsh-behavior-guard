@@ -271,6 +271,11 @@ cd dsh-behavior-guard
 
 # 第四部分 · 索引与入口
 
+
+> **相对社区的先进/落后对比**（6 路调研，含"以为领先但其实平凡"的证伪）见
+> [COMPETITIVE_ANALYSIS.md](docs/COMPETITIVE_ANALYSIS.md)。核心结论：
+> 护城河是**整合与跨层复用**，不是任何单一技术原创。
+
 | 想找什么 | 去哪 |
 |---|---|
 | **怎么装 / 怎么调 / 怎么查故障** | **[说明书集合](docs/MANUALS.md)** |
