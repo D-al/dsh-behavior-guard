@@ -3,7 +3,7 @@
 > **DeepSeek Harness（dsh）的 agent harness 聚合插件** —— 在一个 8GB 显存的笔记本上，用确定性代码和结构化角色，帮 35B 本地模型把长会话任务稳定做完。
 >
 > 本仓库是 **Single Source of Truth**：插件代码 + 全部生产配置 + 10 个技能 + 19 个核心工具 + 决策档案 + 一键安装脚本。
-> 当前版本 **v2.5.3**（2026-11-18）。仓库名沿用历史名 `dsh-behavior-guard`，npm 包名/插件 id 为 `dsh-agent-harness`。
+> 当前版本 **v2.6.0**（2026-11-18）。仓库名沿用历史名 `dsh-behavior-guard`，npm 包名/插件 id 为 `dsh-agent-harness`。
 
 ---
 
