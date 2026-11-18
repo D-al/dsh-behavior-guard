@@ -401,6 +401,7 @@ verify-gate  →  D4 present-gate  →  独立验收员  →  深检 + 配置一
 **相关文档**：
 - [PERIPHERAL_CAPABILITIES.md](https://github.com/D-al/dsh-behavior-guard/blob/main/docs/PERIPHERAL_CAPABILITIES.md) — MCP/连接器调研
 - [USAGE_GUIDE.md](https://github.com/D-al/dsh-behavior-guard/blob/main/docs/USAGE_GUIDE.md) — 新注入标签与调节旋钮
+- [BRAIN_AUDIT_20261118.md](https://github.com/D-al/dsh-behavior-guard/blob/main/docs/BRAIN_AUDIT_20261118.md) — 全面资产盘点 + 架构级优化清单 + 开 PR 评估
 - [MORNING_REPORT_20261118.md](https://github.com/D-al/dsh-behavior-guard/blob/main/docs/MORNING_REPORT_20261118.md) — 一次完整的自主作业报告
 
 ---
