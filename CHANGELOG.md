@@ -1,3 +1,12 @@
+## [2.5.1] - 2026-11-18 11:45
+
+### Changed（A2 全栈配置一致性）
+- `config_check.py` 从 env-vs-INI（23 键）扩展为**四层检查**：
+  ① env vs INI ② cordis llama contextWindow vs env CTX（跳过 ollama 的 1000000）
+  ③ AGENTS.md 引用的 skill 都存在（外置后防死链）④ skill keywords 非空/无重复（防检索失效）
+- `regression_check.py` 加入该检查 → **门禁 29 → 30/30**
+- 负向测试 3/3 PASS（伪造 cordis 不一致 / 缺失 skill / 缺 keywords 都能抓到）
+
 ## [2.5.0] - 2026-11-18 11:40
 
 ### Changed（A1 可移植性改造 + 前 3 项清理）

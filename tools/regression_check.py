@@ -109,6 +109,15 @@ except Exception as e:
 for f in ['verify_agent.py', 'audit_session.py', 'entropy_probe.py', 'speed_probe.py']:
     check('工具:' + f, os.path.exists(os.path.join(BENCH, f)))
 
+# ── 8. 全栈配置一致性（A2，2026-11-18）──
+try:
+    r = subprocess.run([sys.executable, os.path.join(BENCH, 'config_check.py')],
+                       capture_output=True, text=True, timeout=30)
+    check('配置:全栈一致性(env/INI/cordis/skills)', r.returncode == 0,
+          (r.stdout + r.stderr)[-300:])
+except Exception as e:
+    check('配置:全栈一致性', False, str(e))
+
 # ── 总结 ──
 fails = [r for r in results if not r[1]]
 print('\n══════ %d/%d 通过 ══════' % (len(results) - len(fails), len(results)))
