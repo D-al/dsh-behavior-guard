@@ -31,9 +31,9 @@ CritBank 真实命中）、共享状态总线（GWT）、预期闭环（FEP）�
 
 | 排序 | 目标 | 收益 | 成本 | 解锁 | 建议 |
 |---|---|---|---|---|---|
-| 1 | **S3 频次收尾** | 中 | **极低**（2 个 trace 字段）| — | 立刻做，顺手 |
-| 1 | **M6 安全规则测试** | 中 | **极低**（文档+1 测试）| — | 立刻做，顺手 |
-| 3 | **S2 可控遗忘** | 高 | 低（已有脚本骨架）| S1 投毒防御 | 早做，防假记忆 |
+| ✅ | **S3 频次收尾** | 中 | **极低**（2 个 trace 字段）| — | ✅ v2.17 已完成 |
+| ✅ | **M6 安全规则测试** | 中 | **极低**（文档+1 测试）| — | ✅ v2.17 已完成 |
+| ✅ | **S2 可控遗忘** | 高 | 低（已有脚本骨架）| S1 投毒防御 | ✅ v2.17 已完成 |
 | 4 | **S5 角色失效修复** | 高 | 中（需端到端复现）| — | ✅ **v2.15 已完成** |
 | 5 | **M4 注入预算 token 化** | 高 | 中（改注入路径+验证）| 全场景抗稀释 | S3 后做 |
 | 6 | **S1 技能自进化** | **极高**（+18.7pp 外部证据）| **高**（Self-Harness P0-P3）| M1 检索对象 | 重点投入，但先 P0 验证 |
@@ -59,8 +59,8 @@ CritBank 真实命中）、共享状态总线（GWT）、预期闭环（FEP）�
 | # | 目标 | 性价比 | 为什么现在做 | 完成标准（DoD） | 状态 |
 |---|---|---|---|---|---|
 | S1 | **技能自进化闭环** | 极高/高 | 数据已 ≥20 条，草稿已产出；这是短期①的核心 | outcome+FEP 偏差喂 `skill_draft`；草稿命中同类任务成功率上升；`promote_skills` 仍人工审批（ADR-0015）；投毒防御先于自动写回 | [ ] |
-| S2 | **可控遗忘常态化** | 高/低 | CritBank 目前 0 计数，假记忆会自我强化 | 真实 helpful/harmful 计数非零；`crit_decay.py --apply` 月度跑；无过时经验被引用（假记忆自检） | [ ] |
-| S3 | **频次重设收尾** | 中/极低 | 审计发现 learn_watcher 每 30s 全量巩固是空转（已改）；还剩两项小改 | ① trace 加 `turn`/`controlTotal` 字段；② `docs/CADENCE_REDESIGN.md` 三条结论落地；心跳日志验证 `[deep]` 每 10 分钟一次 | [ ]（部分完成：watcher 已改）|
+| S2 | **可控遗忘常态化** | 高/低 | CritBank 目前 0 计数，假记忆会自我强化 | 真实 helpful/harmful 计数非零；`crit_decay.py --apply` 月度跑；无过时经验被引用（假记忆自检） | ✅ v2.17 |
+| S3 | **频次重设收尾** | 中/极低 | 审计发现 learn_watcher 每 30s 全量巩固是空转（已改）；还剩两项小改 | ① trace 加 `turn`/`controlTotal` 字段；② `docs/CADENCE_REDESIGN.md` 三条结论落地；心跳日志验证 `[deep]` 每 10 分钟一次 | ✅ v2.17 |
 | S4 | **自适应原型端到端对照** | 中/中 | 机制已有（`adaptiveThinkEnabled`），默认关，缺证据 | P3/P4/P5 各跑 2 次取中位；token 降且成功率不降才开，否则保持关闭 | [ ] |
 | S5 | **角色失效修复** | 高/中 | 诊断发现验收员触发路径脱节（`wait_agent` 0 次 vs `spawn_teammate` 73 次）；Critic LLM 0% 成功 | ① 验收员触发扩展到 spawn 完成检测；② Critic 0% 根因复现；③ 角色 LLM 失败写明确 error 字段不静默。见 [诊断](docs/COMPACTION_AND_ROLES_DIAGNOSIS.md) | ✅ v2.15 |
 
@@ -89,7 +89,7 @@ CritBank 真实命中）、共享状态总线（GWT）、预期闭环（FEP）�
 | M3 | **用户意图 BDI 深化** | 中/中 | GWT 的 bdiGoal + FEP 偏差 | `s.bdi` 单槽升级 belief/desire/intention 三槽；用户约束跨压缩不丢；意图漂移检测有状态可依 | [ ] |
 | M4 | **注入预算 token 化** | 高/中 | 频次审计结论 | `workspaceSnapshot` 加 `injectionTokensUsed`；预算按 token 而非次数；端到端验证不误挡安全注入 | [ ] |
 | M5 | **工具面结构改造** | 中高/高 ⛔ | 用户拍板"哪些进内核" | 28 个工具收敛到最小内核（read/write/edit/search/shell/bridge）；低频能力进 10 个 skill 卡 + skill 内脚本；危险拦截 hook 化；不动则保持现状 | [ ] |
-| M6 | **安全规则不可覆盖的硬声明 + 测试** | 中/极低 | 无 | AGENTS.md 显式声明"skill/prompt 无法覆盖安全底线"；加语义回归测试 | [ ] |
+| M6 | **安全规则不可覆盖的硬声明 + 测试** | 中/极低 | 无 | AGENTS.md 显式声明"skill/prompt 无法覆盖安全底线"；加语义回归测试 | ✅ v2.17 |
 
 依据：[mini-harness](https://github.com/jb-san/mini-harness)（7 工具 + skill/hook）、
 [dsh-browser-agent](https://github.com/nonentity303/dsh-browser-agent)（安全规则优先级）、
@@ -141,6 +141,11 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 | 深度维护审计（8 P0 + 9 P1 修复）| v2.12.0 | 106 PASS / 0 FAIL |
 | Self-Harness 纳入路线图 + GPU 引擎守护 + 同族对标 | v2.13.0 | 106 PASS / 0 FAIL；GPU 自检过 |
 | learn_watcher 频次三层改造 | v2.14.0 | 语法 OK；心跳 `[deep]` 每 10 分钟 |
+| 压缩存档去重 + 角色失效诊断 + 过程折叠 | v2.15.0 | `test_archive_dedup.mjs` 9/9 |
+| S5 角色失效修复（静默失败 / Critic 0% / 验收员触发）| v2.16.0 | `test_role_fixes.mjs` 6/6 |
+| **S3 频次收尾**（trace 带 turn/controlTotal）| v2.17.0 | `test_trace_context.mjs` 5/5 |
+| **M6 安全规则不可覆盖**（声明 + 测试）| v2.17.0 | `test_security_boundary.mjs` 8/8 |
+| **S2 可控遗忘常态化**（真实计数 + 月度 decay + 假记忆自检）| v2.17.0 | `test_controllable_forgetting.py` 11/11 |
 | 结果反馈捕获 / 确定性门控 / 三角色 / P0-P2 心智拼图 | v2.0~v2.9 | 见 CHANGELOG 全文 |
 
 完整历史见 [CHANGELOG](CHANGELOG.md) 与 [时间线](docs/history/TIMELINE.md)——**历史只追加，不重写**。

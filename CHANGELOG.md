@@ -1,3 +1,21 @@
+## [2.17.0] - 2026-11-19 02:05（性价比前三项：S3 + M6 + S2）
+
+### Fixed / Added（按性价比速查表顺序）
+- **S3 频次收尾**：`makeTracer` 加 `setActiveState`，所有 trace 自动带 `turn` / `controlTotal`
+  （step 每轮重置，单看 step 会把跨轮累计误判成单会话超限）。`test_trace_context.mjs` 5/5。
+- **M6 安全规则不可覆盖**：`config/AGENTS.md` + 运行版 `D:/Brain/dsh-data/AGENTS.md` 同步新增
+  「安全底线不可覆盖」硬声明——skill 卡/prompt/用户指令都不能覆盖 4 条底线，且由确定性门控强制执行
+  （不靠模型自觉）。`test_security_boundary.mjs` 8/8。
+- **S2 可控遗忘常态化**：`learn_watcher.consolidate()` 加月度 `crit_decay --apply`（状态表记
+  `last_decay_month` 防重复）+ `stale_check()` 假记忆自检（已 retired/superseded 条目仍被检索命中则回注警告）。
+  CritBank 真实计数已在运行（C-001 help=2 / C-003 help=3 harm=1）。`test_controllable_forgetting.py` 11/11。
+
+### Changed
+- ROADMAP 三项标 ✅ v2.17 完成，归档表补 v2.15/v2.16/v2.17 六行。
+
+### Note
+- 全量：JS 126 PASS + Python 11 + M6 8 + 回归 30/30 + config 一致；代码已部署，待重启验证。
+
 ## [2.16.0] - 2026-11-19 01:45（S5 角色修复 + 路线图性价比排序）
 
 ### Fixed（S5 角色失效三项，单测 6/6）

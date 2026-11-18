@@ -252,9 +252,16 @@ const VERIFY_TOOLS = new Set(['pwsh', 'bash', 'verify_agent', 'regression_check'
 function makeTracer(cfg, ctx) {
   let bytes = 0
   try { bytes = statSync(cfg.tracePath).size } catch { bytes = 0 }
-  return function trace(rec) {
+  // S3：频次审计需要区分"跨轮"与"跨会话"——step 每轮 turn/start 重置，
+  // 单看 step 会把 16 轮累计误判成单会话超限。trace 自动补 turn/controlTotal。
+  let activeState = null
+  const tracer = function trace(rec) {
     if (!cfg.traceEnabled) return
     try {
+      if (activeState && rec && typeof rec === 'object') {
+        if (rec.turn === undefined) rec.turn = activeState.turn || 0
+        if (rec.controlTotal === undefined) rec.controlTotal = activeState.controlTotal || 0
+      }
       const line = JSON.stringify(rec) + '\n'
       if (bytes > cfg.maxTraceBytes) {
         // 简单轮转：改名归档，重新开始（P0 修复：renameSync 已导入；失败要可见而非静默吞）
@@ -269,6 +276,8 @@ function makeTracer(cfg, ctx) {
       bytes += Buffer.byteLength(line)
     } catch { /* ignore */ }
   }
+  tracer.setActiveState = (s) => { activeState = s }
+  return tracer
 }
 
 // ── 学习闭环：轻量追加写入（同步、失败静默，绝不影响推理循环）──
@@ -701,6 +710,8 @@ export function apply(ctx, config) {
         bdi: { goal: '', belief: '', preference: '', updatedAt: 0 } }
       states.set(id, s)
     }
+    // S3：让 trace 自动带当前 state 的 turn/controlTotal（频次审计可区分跨轮/跨会话）
+    if (trace.setActiveState) trace.setActiveState(s)
     return s
   }
 
