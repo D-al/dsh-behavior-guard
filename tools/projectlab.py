@@ -37,7 +37,7 @@ TEMPERATURE = float(os.environ.get("QL_TEMP", "0.6"))
 SEED = int(os.environ["QL_SEED"]) if os.environ.get("QL_SEED") else None
 # 路由模式下必须显式指定模型，否则会用「当前已加载的那个」——容易跑到错误权重上。
 MODEL_ID = os.environ.get("QL_MODEL", "Qwen3.6-35B-A3B-UD-Q4_K_XL")
-ROOT = r"D:\WorkBuddyWorkSpace\2026-10-13-20-41-43\bench\projectlab_sandbox"
+ROOT = r"D:\Brain\workspace\bench\projectlab_sandbox"
 
 
 class _L(yaml.SafeLoader):

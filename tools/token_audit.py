@@ -13,7 +13,6 @@ import json
 import os
 import re
 import sys
-import os
 import urllib.request
 
 URL = "http://127.0.0.1:8081/tokenize"

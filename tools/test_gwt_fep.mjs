@@ -7,7 +7,7 @@
  *     - 快照是只读投影，不修改原 state
  *  ② 验证 FEP 预期闭环（见下方，随实现补）
  */
-import { apply } from 'file:///C:/Users/Ad/.dsh/profiles/desktop/node_modules/dsh-agent-harness/index.mjs'
+import { apply } from '../index.mjs'
 import { writeFileSync, existsSync, readFileSync, unlinkSync } from 'node:fs'
 
 let pass = 0, total = 0

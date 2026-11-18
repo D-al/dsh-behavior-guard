@@ -80,7 +80,7 @@ python bench/regression_check.py     # 应 30/30
 ### 2.1 `.env.llama`（`config/env.llama`）
 
 ```
-CTX 98304 / NGL 99 / NCMOE 40 / MOE_CACHE_CPU_SHARE 0 / MOE_CACHE_MIB 1350
+CTX 98304 / NGL 99 / NCMOE 40 / MOE_CACHE_CPU_SHARE 1.0(解码批) + _PREFILL=0 / MOE_CACHE_MIB 1350
 UBATCH 1536 / THREADS 6 / BATCH 4096 / CTK q8_0 / CTV q4_0 / MMPROJ_OFFLOAD 1
 SPEC_TYPE draft-mtp / NMAX 5 / SPEC_DRAFT_P_MIN 0.8 / CTX_CHECKPOINTS 2
 TEMP 留空 / TOP_P 0.95 / REASONING_BUDGET 4096 / REPEAT_PENALTY 1.1
@@ -91,7 +91,9 @@ DRY 0.8-1.75-32-512
 - `.env` **覆盖** INI——`config_check.py` 比对 23 个重叠键。
 - `LLAMA_35B_TEMP` 必须**留空**（CLI 会覆盖 preset 的温度）。
 - `CTX_CHECKPOINTS=2` 是承重墙（降到 1 每步全量重预填 **+23%**）。
-- `MOE_CACHE_CPU_SHARE=0`——1.0 让 decode +37% 但端到端慢 **2.4×**。
+- **MOE share 分批**（本地引擎补丁）：解码批 `LLAMA_35B_MOE_CACHE_CPU_SHARE=1.0`（CPU 算 miss 省 PCIe、
+  decode +30%），提示批 `LLAMA_35B_MOE_CACHE_CPU_SHARE_PREFILL=0`（否则端到端慢 **2.4×**）。
+  旧表述"share=0 是铁律"已被分阶段方案取代——详见 `config/env.llama` 的实测注释。
 - `DRY --dry-allowed-length 32`（设 2 会让模型改字形躲惩罚）。
 
 ### 2.2 压缩配置
@@ -212,7 +214,7 @@ DRY 0.8-1.75-32-512
 | llama.cpp | 自编 **b12244** + [autoparser 2 行补丁](https://github.com/D-al/dsh-behavior-guard/blob/main/config/patches/autoparser-fix.patch) |
 | node / pnpm（rc.3 后）| 24.21.0 / 11.28.5 |
 | 模型 | Qwen3.6-35B-A3B UD-Q4_K_XL（21.28 GiB）|
-| harness | **v2.11.0**（GWT 总线 + FEP 闭环已在线；版本史见 CHANGELOG）|
+| harness | **v2.12.0**（GWT 总线 + FEP 闭环已在线；版本史见 CHANGELOG）|
 
 ### 5.2 升级检查清单（每次升级必做）
 

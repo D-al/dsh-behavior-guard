@@ -27,7 +27,7 @@ import urllib.request
 import yaml
 
 URL = "http://127.0.0.1:8081/v1/chat/completions"
-ROOT = r"D:\WorkBuddyWorkSpace\2026-10-13-20-41-43\bench\agentlab_sandbox"
+ROOT = r"D:\Brain\workspace\bench\agentlab_sandbox"
 
 
 # ---------------------------------------------------------------- persona

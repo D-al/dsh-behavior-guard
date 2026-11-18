@@ -2,8 +2,8 @@
  * 两个新机制的离线单测：todo 回灌（P1.5）+ present-gate（D4）
  * 用法: node bench/test_new_guards.mjs
  */
-import { apply as applyContinuity } from 'file:///C:/Users/Ad/.dsh/profiles/desktop/node_modules/dsh-agent-harness/index.mjs'
-import { apply as applyGuard } from 'file:///C:/Users/Ad/.dsh/profiles/desktop/node_modules/dsh-agent-harness/index.mjs'
+import { apply as applyContinuity } from '../index.mjs'
+import { apply as applyGuard } from '../index.mjs'
 
 const results = []
 function check(label, actual, expected) {
@@ -138,12 +138,12 @@ console.log(`\n${pass}/${results.length} 通过`)
 
 // ── CritBank 检索测试（模块级加载）──
 {
-  const { apply: applyG2 } = await import('file:///C:/Users/Ad/.dsh/profiles/desktop/node_modules/dsh-agent-harness/index.mjs')
+  const { apply: applyG2 } = await import('../index.mjs')
   // 直接验证 critbank 文件可解析 + 关键词命中（通过导出不可用则以文件校验代替）
   const fs = await import('node:fs')
   try {
     const bank = JSON.parse(fs.readFileSync('D:/Brain/workspace/bench/critbank.json', 'utf8'))
-    check('CritBank 可解析且 ≥8 条', bank.length >= 8, true)
+    check('CritBank 可解析且 9 条（与 AGENTS.md 声明一致）', bank.length === 9, true)
     const hit = bank.filter(c => (c.tags || []).some(t => 'error: not found'.includes(t)))
     check('CritBank 路径不存在教训可被命中', hit.some(c => c.id === 'C-002'), true)
   } catch (e) {

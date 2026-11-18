@@ -3,7 +3,7 @@
  * 验证：① 分布式重复检测（跨步、非连续）② 触发式注入 ③ 收尾自检 ④ 注入上限
  * 用法: node bench/test_mind_state.mjs
  */
-import { apply } from 'file:///C:/Users/Ad/.dsh/profiles/desktop/node_modules/dsh-agent-harness/index.mjs'
+import { apply } from '../index.mjs'
 
 const results = []
 function check(label, actual, expected) {

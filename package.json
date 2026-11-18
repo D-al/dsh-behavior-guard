@@ -1,13 +1,22 @@
 {
   "name": "dsh-agent-harness",
-  "version": "2.11.1",
+  "version": "2.12.0",
   "description": "dsh-agent-harness: Single Source of Truth harness（插件+配置+技能+工具+一键安装）。行为治理+任务连续性。",
   "type": "module",
   "main": "index.mjs",
   "files": [
     "index.mjs",
     "cordis.patch.yml",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md",
+    "ROADMAP.md",
+    "LICENSE",
+    "config/",
+    "setup/",
+    "skills/",
+    "tools/",
+    "docs/",
+    "decisions/"
   ],
   "keywords": [
     "dsh",

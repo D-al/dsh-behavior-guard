@@ -9,7 +9,14 @@ import os, sys, subprocess, json, urllib.request
 
 BENCH = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(BENCH)
-TPL = os.path.join(BENCH, 'chat_template_zh.jinja')
+# 兼容两种布局：bench/（本机安装）与仓库 tools/ + config/（SSOT）
+CONFIG = os.path.join(ROOT, 'config')
+def find_asset(name):
+    for p in (os.path.join(BENCH, name), os.path.join(CONFIG, name)):
+        if os.path.exists(p):
+            return p
+    return os.path.join(BENCH, name)
+TPL = find_asset('chat_template_zh.jinja')
 AGENTS = r'C:\Users\Ad\.dsh\AGENTS.md'
 PLUG = r'C:\Users\Ad\.dsh\profiles\desktop\node_modules'
 CORDIS = r'C:\Users\Ad\.dsh\profiles\desktop\cordis.patch.yml'
@@ -107,7 +114,7 @@ except Exception as e:
 
 # ── 7. bench 工具存在 ──
 for f in ['verify_agent.py', 'audit_session.py', 'entropy_probe.py', 'speed_probe.py']:
-    check('工具:' + f, os.path.exists(os.path.join(BENCH, f)))
+    check('工具:' + f, os.path.exists(find_asset(f)))
 
 # ── 8. 全栈配置一致性（A2，2026-11-18）──
 try:

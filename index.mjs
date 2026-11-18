@@ -19,7 +19,7 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import { writeFileSync, readFileSync, readdirSync, statSync, existsSync, appendFileSync, openSync, readSync, closeSync } from 'node:fs'
+import { writeFileSync, readFileSync, readdirSync, statSync, existsSync, appendFileSync, openSync, readSync, closeSync, renameSync } from 'node:fs'
 import path from 'node:path'
 import { execFile, execFileSync } from 'node:child_process'
 
@@ -246,7 +246,7 @@ function loadSkills(dir) {
 const WRITE_TOOLS = new Set(['write', 'edit', 'apply_patch', 'multi_edit', 'create_file', 'str_replace', 'write_file', 'notebook_edit'])
 const VERIFY_TOOLS = new Set(['pwsh', 'bash', 'verify_agent', 'regression_check', 'config_check', 'read'])
 
-function makeTracer(cfg) {
+function makeTracer(cfg, ctx) {
   let bytes = 0
   try { bytes = statSync(cfg.tracePath).size } catch { bytes = 0 }
   return function trace(rec) {
@@ -254,8 +254,12 @@ function makeTracer(cfg) {
     try {
       const line = JSON.stringify(rec) + '\n'
       if (bytes > cfg.maxTraceBytes) {
-        // 简单轮转：改名归档，重新开始
-        try { renameSync(cfg.tracePath, cfg.tracePath.replace('.jsonl', `-${Date.now()}.jsonl`)) } catch { /* ignore */ }
+        // 简单轮转：改名归档，重新开始（P0 修复：renameSync 已导入；失败要可见而非静默吞）
+        try {
+          renameSync(cfg.tracePath, cfg.tracePath.replace('.jsonl', `-${Date.now()}.jsonl`))
+        } catch (e) {
+          try { ctx?.logger?.warn?.(`[harness trace] 轮转失败: ${String(e?.message || e)}`) } catch { /* ignore */ }
+        }
         bytes = 0
       }
       appendFileSync(cfg.tracePath, line)
@@ -639,16 +643,19 @@ function blocksText(content) {
 
 export function apply(ctx, config) {
   const cfg = { ...DEFAULTS, ...TURN_GUARD_DEFAULTS }
-  const trace = makeTracer(cfg)
-  const SKILLS = cfg.skillsEnabled ? loadSkills(cfg.skillsDir) : []
-  // normalizeConfig 只覆盖 raw 中显式给出的键——所以先改签名再手写合并：
+  // P0 修复：配置合并必须【先于】所有依赖配置的初始化（trace / SKILLS 原先读的是默认值，
+  // 导致 skillsEnabled:false / 自定义 tracePath 等覆盖彻底失效）。
+  // raw 只覆盖显式给出且非 undefined/null 的键——避免 null 覆盖让 `>= null` 恒真等隐性 bug。
   for (const k of Object.keys(cfg)) {
-    if (rawHasKey(config, k)) cfg[k] = config[k]
+    if (rawHasKey(config, k) && config[k] !== undefined && config[k] !== null) cfg[k] = config[k]
   }
   for (const k of Object.keys(cfg)) {
     if (cfg[k] && typeof cfg[k] === 'object' && !Array.isArray(cfg[k]) && config && typeof config[k] === 'object' && !Array.isArray(config[k])) cfg[k] = { ...cfg[k], ...config[k] }
   }
   if (!cfg.enabled) return
+  // 依赖配置的初始化放在合并之后
+  const trace = makeTracer(cfg, ctx)
+  const SKILLS = cfg.skillsEnabled ? loadSkills(cfg.skillsDir) : []
 
   // 学习闭环 appenders（cfg 合并后创建，路径以 preset 为准）
   // outcomeCaptureEnabled 是 GitHub v2.8 的开关名；learningEnabled 是运行版学习闭环总开关。
@@ -668,7 +675,6 @@ export function apply(ctx, config) {
 
   const states = new Map()
   const consumedFeedback = new Set() // 学习回注：进程内已消费的 feedback 行（避免重复注入）
-  let sessionInjections = 0
 
   function stateOf(id) {
     let s = states.get(id)
@@ -676,7 +682,7 @@ export function apply(ctx, config) {
       s = { initial: '', step: 0, trail: [], turnInjections: 0, auditing: false,
         // turn-guard L0-L3 状态（合并）
         turn: 0, turnStartedAt: undefined, toolCalls: 0, writeCalls: 0,
-        continuations: 0, totalContinuations: 0, last: undefined, sharedInjections: 0,
+        continuations: 0, totalContinuations: 0, last: undefined, sharedInjections: 0, sessionInjections: 0,
         // sid 取有效短 id：session-xxx → xxx 前 8 位（旧版对 session-* 全截成 "session-"，trace 无法区分会话）
         sid: String(id || '').replace(/^session-/, '').slice(0, 8), injectedSkills: [], skillCards: 0, dangerHits: 0,
         // continuity 状态（initial 复用上面的字段）
@@ -851,7 +857,10 @@ export function apply(ctx, config) {
         if (cfg.frameEnabled) {
           const cname = String(event.data?.name ?? '')
           s.frame.role = cname === 'spawn_teammate' ? 'coordinator' : (WRITE_TOOLS.has(cname) ? 'executor' : s.frame.role)
-          if (VERIFY_TOOLS.has(cname)) { s.frame.evidence.push(cname); s.verifiedThisTurn = true; s.verifyRan = true }
+          // P0 修复：frame 证据只记自己的事，绝不写 verifyRan——
+          // 否则本轮任何无关 read（尤其发生在写之前）都会短路 verify-on-stop / present-gate。
+          // verifyRan 只由上方收窄后的命令型工具 + 写后读回逻辑置位。
+          if (VERIFY_TOOLS.has(cname)) { s.frame.evidence.push(cname); s.verifiedThisTurn = true }
           if (WRITE_TOOLS.has(cname)) s.wroteThisTurn = true
           if (cname === 'web_search' || cname === 'web_fetch') s.frame.provenance = 'external'
         }
@@ -900,7 +909,7 @@ export function apply(ctx, config) {
               if (s.rejectedItems.length > 6) s.rejectedItems.shift()
             }
             // 学习闭环 A 段：失败的工具结果也记 outcome（B 段据此判"命中后仍失败"、生成降级建议）
-            if (cfg.learningEnabled && s.appendOutcome && (c.name === 'write' || c.name === 'edit' || c.name === 'present_files')) {
+            if (s.appendOutcome && (c.name === 'write' || c.name === 'edit' || c.name === 'present_files')) {
               s.appendOutcome({
                 ts: new Date().toISOString(), sid: s.sid || '', step: s.step,
                 tool: c.name, target: String(c.args || '').slice(0, 200), status,
@@ -917,7 +926,7 @@ export function apply(ctx, config) {
             } catch { /* ignore */ }
             // ── 学习闭环 A 段：写/编辑成功后捕获 outcome（真实证据，非测试假数据）──
             // B 段 watcher 会消费这些记录，判定成功/失败并沉淀到 skill 草稿/crit 状态。
-            if (cfg.learningEnabled && s.appendOutcome) {
+            if (s.appendOutcome) {
               s.appendOutcome({
                 ts: new Date().toISOString(), sid: s.sid || '', step: s.step,
                 tool: c.name, target: s.lastProduct || '', status: 'OK',
@@ -1513,6 +1522,8 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
         state.verifyOnStopCount = (state.verifyOnStopCount || 0) + 1
         const n = state.verifyOnStopCount
         info(`behavior-guard: [verify-on-stop] 第 ${n} 次拦截 — 改文件无验证证据`)
+        // P0 修复：verify-on-stop 的 steer 原先不计数，绕过每轮共享预算、并挤掉 D5 审计额度
+        state.sharedInjections += 1
         trace({ ts: new Date().toISOString(), sid: sessionId || '', kind: 'verify_on_stop', step: state.step, n })
         const text = n === 1
           ? '[harness 停止条件｜必须执行] 你本轮修改了文件，现在还不能结束。' +
@@ -1544,8 +1555,10 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
   })
 
   ctx.on('agent/pre-step', async ({ agent } = {}, next) => {
-    const decision = await next()
+    // P1 修复：next() 放进 try——它抛错时也要走统一降级，不能冒出监听器导致轮次中断
+    let decision = { messages: [] }
     try {
+      decision = (await next()) || decision
       if (!agent) return decision
       const s = stateOf(agent.session?.id)
       if (!s || s.auditing) return decision
@@ -1655,8 +1668,13 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
       }
 
       // ── 控制回合（meta-reasoning controller，每 N 步一次，零 LLM）──
-      if (cfg.controlEnabled && s.step > 0 && s.step % cfg.controlEverySteps === 0 && (s.controlCount || 0) < cfg.maxControlPerSession) {
+      // P1 修复：maxControlPerSession 是会话级上限，controlCount 是每轮节流——
+      // 原先每轮把 controlCount 清零，导致会话级上限形同虚设。
+      if (cfg.controlEnabled && s.step > 0 && s.step % cfg.controlEverySteps === 0 &&
+          (s.controlCount || 0) < 1 &&   // 每轮至多一次（controlCount 在 turn/start 清零）
+          (s.controlTotal || 0) < cfg.maxControlPerSession) {
         s.controlCount = (s.controlCount || 0) + 1
+        s.controlTotal = (s.controlTotal || 0) + 1
         try {
           // ① GWT：从共享只读快照取数（不再各读 s.todos / s.rejectedItems 散落字段）
           const snap = workspaceSnapshot(s)
@@ -1740,8 +1758,12 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
         s.auditing = true
         let text = null
         try {
-          // 相对路径解析到 workspaceRoot（verify_agent.py 的 cwd 不一定是工作区）
-          const absProduct = resolveSafePath(pv.product) || pv.product
+          // P1 安全修复：越界路径必须拒绝，不能回退到未校验的原始路径
+          const absProduct = resolveSafePath(pv.product)
+          if (!absProduct) {
+            info(`audit-loop: 代验收拒绝越界产物路径 ${String(pv.product).slice(0, 120)}`)
+            return decision
+          }
           const res = await runVerifyAgent(absProduct, pv.criteria)
           if (res) {
             info(`audit-loop: 代验收结论 ${res.verdict} — ${String(res.reason).slice(0, 80)}`)
@@ -1750,7 +1772,7 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
         } finally { s.auditing = false }
         if (text) {
           s.turnInjections += 1
-          sessionInjections += 1
+          s.sessionInjections = (s.sessionInjections || 0) + 1
           const msg = createMessage(text, 'audit-loop')
           const messages = Array.isArray(decision?.messages) ? [...decision.messages, msg] : [msg]
           return { ...decision, messages }
@@ -1792,14 +1814,14 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
         s.pendingInject = null
         s.trail = [] // 修正后重新观察
         s.turnInjections += 1
-        sessionInjections += 1
+        s.sessionInjections = (s.sessionInjections || 0) + 1
         const msg = createMessage(text, 'audit-loop')
         const messages = Array.isArray(decision?.messages) ? [...decision.messages, msg] : [msg]
         return { ...decision, messages }
       }
       if (s.pendingCorrector) {
         s.pendingCorrector = false
-        if (s.turnInjections < cfg.maxInjectionsPerTurn && sessionInjections < cfg.maxInjectionsPerSession) {
+        if (s.turnInjections < cfg.maxInjectionsPerTurn && (s.sessionInjections || 0) < cfg.maxInjectionsPerSession) {
           s.auditing = true
           let text = null
           try {
@@ -1814,7 +1836,7 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
           } finally { s.auditing = false }
           if (text) {
             s.turnInjections += 1
-            sessionInjections += 1
+            s.sessionInjections = (s.sessionInjections || 0) + 1
             s.sharedInjections += 1
             s.trail = []
             const msg = createMessage(text, 'audit-loop')
@@ -1849,7 +1871,7 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
       else if (s.justCompacted === true) gateReason = 'post-compaction'
       if (!gateReason) return decision
       if (s.turnInjections >= cfg.maxInjectionsPerTurn) return decision
-      if (sessionInjections >= cfg.maxInjectionsPerSession) return decision
+      if ((s.sessionInjections || 0) >= cfg.maxInjectionsPerSession) return decision
       if (!s.trail.length) return decision
       s.justCompacted = false
       info(`audit-loop: [D5] 审计门控触发（${gateReason}）step=${s.step}`)
@@ -1922,7 +1944,7 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
       if (!text) return decision
 
       s.turnInjections += 1
-      sessionInjections += 1
+      s.sessionInjections = (s.sessionInjections || 0) + 1
       s.sharedInjections += 1
       s.trail = [] // 修正后重新观察
       // 自校准：记录本次干预（3 步后结算有效性：注入后 3 步内无新失败 = 有效）

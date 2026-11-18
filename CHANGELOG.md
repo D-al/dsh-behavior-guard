@@ -1,3 +1,51 @@
+## [2.12.0] - 2026-11-18 22:20（维护性更新：深度审计与修复）
+
+> 范围：代码 / 配置 / 脚本 / 文档四层全审计。两个 Explore agent 并行只读审计 + 主代理逐条核实。
+
+### Fixed（P0 真 bug，均已加专项回归）
+- **`renameSync` 未导入**：trace 轮转时 `ReferenceError` 被 catch 静默吞掉，`maxTraceBytes` 完全失效、
+  `_trace.jsonl` 无限增长 → 补 import，失败改走 logger.warn。
+- **配置合并发生在依赖初始化之后**：`SKILLS` / `makeTracer` 在合并前用默认值算完，
+  导致 `skillsEnabled:false` / 自定义 `tracePath` 等覆盖彻底无效 → 合并循环提前，并过滤 undefined/null
+  （顺带修 `null` 覆盖使 `>= null` 恒真一类隐性 bug）。
+- **`outcomeCaptureEnabled` 假接通**：appender 按两开关创建，但写入点硬编码 `learningEnabled`
+  → 改为按 appender 存在性判断，单开 `outcomeCaptureEnabled` 也能写。
+- **无关 `read` 短路两道安全闸门**：frame 的 `VERIFY_TOOLS` 把 `verifyRan` 置真，
+  使 verify-on-stop / present-gate 静默失效 → frame 只记自己的证据，不再写 `verifyRan`。
+- **verify-on-stop 绕过每轮共享预算**：其 steer 不递增 `sharedInjections` → 补计数。
+- **测试污染生产数据**：`test_outcome.mjs` 直接读写生产 `_outcome.jsonl` → 改 `os.tmpdir()` 并清理。
+- **6 个测试 import 写死已安装副本**：改仓库源码后跑测试仍测旧版（绿色假象），换机器全挂
+  → 全部改为相对 `../index.mjs`。
+- **仓库根 `cordis.patch.yml` 格式错误**：声明为 `bundle.patch` 却是 profile 级覆盖（无 `insert:`），
+  发布出去插件挂载失效 → 拆为 bundle patch（仓库根，只挂本体）+ profile patch（`config/profile.patch.yml`，本机专属）。
+
+### Fixed（P1 冲突）
+- `sessionInjections` 是 apply 级全局、跨会话共享 → 移入 state（会话隔离）。
+- `maxControlPerSession` 被每轮 `controlCount=0` 重置成"每轮上限" → 新增 `controlTotal` 会话累计。
+- `pendingVerify` 越界路径回退到未校验原始路径 → 改为拒绝。
+- `agent/pre-step` 的 `next()` 在 try 外，抛错会冒出监听器 → 移入 try。
+- 硬编码旧时间戳工作区路径（`env.llama`/INI×6 + agentlab/projectlab）→ 改稳定路径 `D:/Brain/workspace/bench`（ADR-0016）。
+- **MOE share 文档冲突**：README/MANUALS 写"铁律=0"，生产实为解码批 1.0 / 提示批 0（引擎补丁）
+  → 按分阶段方案如实表述；threads 注释"保留 10"与实际 6 对齐。
+- `regression_check.py` 在仓库布局下找不到 `config/` 资产与 2 个工具 → 兼容两种布局，并补齐缺失的
+  `audit_session.py` / `entropy_probe.py` 到 SSOT。
+- package.json `files` 漏掉全部资产 → 补齐 config/setup/skills/tools/docs/decisions/CHANGELOG/ROADMAP/LICENSE；
+  仓库原本无 LICENSE 文件（README 已声明 MIT）→ 补 MIT LICENSE。
+- 版本声明与测试计数：MANUALS v2.11.0→v2.11.1；skills 里 38/32/29 统一为 40/30；
+  `USAGE_GUIDE` 的 `node agentlab.py` 改为 `python tools/agentlab.py`；critbank 断言 ≥8→===9。
+
+### Known limitations（如实记录，未改）
+- `critbankPath` 在模块顶层硬编码、配置覆盖无效；`checkSyntax`/`checkArtifactDeep` 硬编码 python 路径。
+- `verifyEnabled` 是死配置（代验收设计上常开），已保留但无代码路径。
+- `critbankDecayEnabled`/`writebackEnabled`/`episodicSearchEnabled`/`sessionTreeEnabled` 是中期目标预留开关，
+  当前无 harness 内代码路径（对应机制由 B 段 Python 脚本实现）。
+- 发布版 bundle patch 仍含本机路径（probePath/allowedRoots），新机器需按 MANUALS 覆盖。
+
+### Tests
+- 新增 `test_maintenance_fixes.mjs` 5/5（逐条验证上述 P0/P1 修复）
+- 全套 7 个测试文件 **106 PASS / 0 FAIL**；回归 30/30（仓库布局与 bench 布局均通过）；
+  config 全栈一致；所有 .mjs/.py 语法检查通过
+
 ## [2.11.1] - 2026-11-18 21:35（docs-only）
 
 ### Changed（全仓 md 一致性整理，无代码变更）

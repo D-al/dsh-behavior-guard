@@ -5,7 +5,7 @@
  * ③ test-time 自适应：控制回合按双信号路由，trace 记 adaptive_route
  * 用法: node bench/test_short_term_goals.mjs
  */
-import { apply } from 'file:///C:/Users/Ad/.dsh/profiles/desktop/node_modules/dsh-agent-harness/index.mjs'
+import { apply } from '../index.mjs'
 import { writeFileSync, unlinkSync, existsSync, readFileSync } from 'node:fs'
 
 let pass = 0, total = 0

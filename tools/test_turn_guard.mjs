@@ -2,7 +2,7 @@
  * turn-continuation-guard 的离线单测：不启动 dsh，mock 掉 ctx / agent 跑事件序列。
  * 用法: node bench/test_turn_guard.mjs
  */
-import { apply } from 'file:///C:/Users/Ad/.dsh/profiles/desktop/node_modules/dsh-agent-harness/index.mjs'
+import { apply } from '../index.mjs'
 import { writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'

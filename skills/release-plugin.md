@@ -18,7 +18,7 @@ node --check "C:/Users/Ad/.dsh/profiles/desktop/node_modules/<插件>/index.mjs"
 ```bash
 cd D:/WorkBuddyWorkSpace/2026-10-13-20-41-43/bench
 node test_turn_guard.mjs      # 26 项
-node test_new_guards.mjs      # 32 项
+node test_new_guards.mjs      # 40 项
 python regression_check.py    # 29 项门禁
 ```
 

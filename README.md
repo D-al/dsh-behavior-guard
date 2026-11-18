@@ -3,7 +3,7 @@
 > **合成心智（Synthetic Mind）**：用一个 35B 本地模型 + 一套确定性脚手架，合成比模型本身可靠得多的心智——**模型权重一个字节没动，变的是它外面的脑区**。
 
 本仓库是 **Single Source of Truth**：插件代码 + 生产配置 + 10 个技能卡 + 23 个分析脚本 + 决策档案 + 一键安装。
-当前 **v2.11.1**（2026-11-18）。仓库名沿用历史名 `dsh-behavior-guard`，npm 包名/插件 id 为 `dsh-agent-harness`。
+当前 **v2.12.0**（2026-11-18）。仓库名沿用历史名 `dsh-behavior-guard`，npm 包名/插件 id 为 `dsh-agent-harness`。
 
 ---
 
@@ -49,7 +49,7 @@
 
 ---
 
-## 路线图（重排于 v2.11.1）
+## 路线图（重排于 v2.11.1，维护更新于 v2.12.0）
 
 > 完整、可验证的目标见 [ROADMAP.md](ROADMAP.md)。这里只列骨架。
 > **已完成的 8 项（含 GWT 总线 / FEP 闭环）归档在 ROADMAP 的"已完成"节，不再占用短中长期位置。**
@@ -72,7 +72,7 @@
 - **硬件**：i7-12650H / 64G DDR4 / RTX 4060 Laptop **8G** / Qwen3.6-35B-A3B UD-Q4_K_XL（21.28 GiB）
 - **显存安全线**：空闲 ≥450 MiB；低于 186 必卡（WDDM 换页 → 1~2 t/s）
 - **引擎**：自编 b12244 + autoparser 两行补丁（上游 [未合并](https://github.com/ggml-org/llama.cpp/pull/29307)，每次升级重打）
-- **配置铁律**：`.env` 覆盖 INI；`CTX_CHECKPOINTS=2` 承重墙；`MOE_CACHE_CPU_SHARE=0`；`.env` 的 `LLAMA_35B_TEMP` 必须留空
+- **配置铁律**：`.env` 覆盖 INI；`CTX_CHECKPOINTS=2` 承重墙；**MOE share 分批**（引擎补丁：解码批 `1.0` 省 PCIe / 提示批 `_PREFILL=0` 避免端到端慢 2.4×）；`.env` 的 `LLAMA_35B_TEMP` 必须留空
 
 ---
 
@@ -107,7 +107,7 @@ git clone https://github.com/D-al/dsh-behavior-guard.git && cd dsh-behavior-guar
 | [docs/MD_SYSTEM_PLAN.md](docs/MD_SYSTEM_PLAN.md) | 文档分层原则（三层体系） |
 
 ## 版本历史
-完整版本历史 → [CHANGELOG.md](CHANGELOG.md)。当前 **v2.11.1**（三阶段目标重排，全仓 md 一致性整理）。
+完整版本历史 → [CHANGELOG.md](CHANGELOG.md)。当前 **v2.12.0**（深度审计与维护性修复，详见 CHANGELOG）。
 
 ## License
 MIT

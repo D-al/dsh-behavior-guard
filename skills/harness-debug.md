@@ -17,7 +17,7 @@ Get-Item 'D:\Brain\workspace\bench\_agent_harness_loaded.json' | ForEach-Object 
 ```bash
 cd D:/WorkBuddyWorkSpace/2026-10-13-20-41-43/bench
 node test_turn_guard.mjs     # L0-L3 共 26
-node test_new_guards.mjs     # 其余共 38
+node test_new_guards.mjs     # 40 项（合计 106 PASS，见 CHANGELOG v2.12.0）
 ```
 测试用 `harness()` 造假的 ctx/agent，直接 `emit('session/event', {...})` 和 `emitPreStep()`
 - **命名坑**：session/event 用 `id` 做键，pre-step 用 `agent.session.id`——两处必须同一个值（`s1`），
