@@ -26,6 +26,7 @@
 | [CADENCE_AUDIT.md](CADENCE_AUDIT.md) | 数据 | 自动化频次底稿：全部参数 + 5538 行 trace 真实触发数 |
 | [CADENCE_REDESIGN.md](CADENCE_REDESIGN.md) | 解释 | 频次该怎么调：哪些不动、哪些改、社区依据 |
 | [COMPACTION_AND_ROLES_DIAGNOSIS.md](COMPACTION_AND_ROLES_DIAGNOSIS.md) | 诊断 | 压缩触发/重复工作/角色可见性/过程折叠五问实证解答 |
+| [HETEROGENEOUS_MODELS_EVALUATION.md](HETEROGENEOUS_MODELS_EVALUATION.md) | 评估 | 大小模型分工可行性：原设想证伪 + 两条窄路径 |
 | [BRAIN_PARITY.md](BRAIN_PARITY.md) | 解释 | 人脑功能分区覆盖度盘点（胼胝体/杏仁核等对应与空白）|
 | [COMPETITIVE_ANALYSIS.md](COMPETITIVE_ANALYSIS.md) | 解释 | 社区对比：先进 / 落后 / 以为先进其实平凡 |
 | [PEER_HARNESS_BENCHMARK.md](PEER_HARNESS_BENCHMARK.md) | 解释 | 同族 35B-A3B / dsh 生态 harness 逐项对标 + 可借鉴清单 |

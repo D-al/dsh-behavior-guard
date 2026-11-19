@@ -42,10 +42,16 @@ CritBank 真实命中）、共享状态总线（GWT）、预期闭环（FEP）�
 | 9 | **S4 自适应端到端** | 中 | 中（要跑 6 次长任务）| — | 可与 S1 并行验证 |
 | 10 | **M2 会话树实时化** | 中 | 中高（改 parent 指针）| 真 rewind | 中期后半 |
 | 11 | **M5 工具面改造** | 中高 | 高（重构+用户拍板）| 上下文瘦身 | ⛔ 等用户拍板 |
-| 12 | **L2 标准化 eval** | 高（外部效度）| 高（迁移基准）| 可比社区 | 长期优先 |
-| 13 | **L1 FEP→世界模型** | 高 | **极高**（需 M1+M3）| — | 最后 |
-| 14 | **L3 脑分区空白** | 低（探索性）| 高 | — | 有证据再做 |
-| 15 | **L4 独立轨道** | 中 | 高（引擎/上游）| 免维护 patch | 不插队 |
+| 12 | **M7 小模型格式修复器** | 中 | 中（起小模型+endpoint 覆盖）| 省 JSON 重试的 35B 调用 | 新提案，先量调用耗时占比 |
+| 13 | **L2 标准化 eval** | 高（外部效度）| 高（迁移基准）| 可比社区 | 长期优先 |
+| 14 | **L1 FEP→世界模型** | 高 | **极高**（需 M1+M3）| — | 最后 |
+| 15 | **L5 小模型 Critic 预警** | 中 | 高（需 A/B 召回率≥80%）| 减 35B 调用 | 新提案，未验证不做 |
+| 16 | **L3 脑分区空白** | 低（探索性）| 高 | — | 有证据再做 |
+| 17 | **L4 独立轨道** | 中 | 高（引擎/上游）| 免维护 patch | 不插队 |
+
+> **新提案（2026-11-19）**：异构多模型评估结论是"原设想的角色分工反了 + 0.8B 太小"。
+> 小模型**不能**做审计/纠正/验收（弱 verifier 放行强 actor 错误，比不审查更糟）；
+> 只保留"格式修复"和"Critic 轻量预警"两条窄路径。详见 [评估](docs/HETEROGENEOUS_MODELS_EVALUATION.md)。
 
 **读法**：收益=能力/质量提升幅度；成本=代码改动+验证时长；`⛔`=被外部决策阻塞；`✅`=已完成。
 
@@ -90,6 +96,7 @@ CritBank 真实命中）、共享状态总线（GWT）、预期闭环（FEP）�
 | M4 | **注入预算 token 化** | 高/中 | 频次审计结论 | `workspaceSnapshot` 加 `injectionTokensUsed`；预算按 token 而非次数；端到端验证不误挡安全注入 | [ ] |
 | M5 | **工具面结构改造** | 中高/高 ⛔ | 用户拍板"哪些进内核" | 28 个工具收敛到最小内核（read/write/edit/search/shell/bridge）；低频能力进 10 个 skill 卡 + skill 内脚本；危险拦截 hook 化；不动则保持现状 | [ ] |
 | M6 | **安全规则不可覆盖的硬声明 + 测试** | 中/极低 | 无 | AGENTS.md 显式声明"skill/prompt 无法覆盖安全底线"；加语义回归测试 | ✅ v2.17 |
+| M7 | **小模型格式修复器** | 中/中 | 真实角色耗时占比（先测量）+ Qwen3-0.6B 模型 | `jsonRetryTimes=1` 的格式修复改走常驻小模型（0.6B），只做格式重写不判断对错；35B 首轮输出兜底；A/B 验证端到端提速。见 [评估](docs/HETEROGENEOUS_MODELS_EVALUATION.md) | [ ] |
 
 依据：[mini-harness](https://github.com/jb-san/mini-harness)（7 工具 + skill/hook）、
 [dsh-browser-agent](https://github.com/nonentity303/dsh-browser-agent)（安全规则优先级）、
@@ -107,6 +114,7 @@ CritBank 真实命中）、共享状态总线（GWT）、预期闭环（FEP）�
 | L2 | **标准化 eval** | 高/高 | 自建 P3/P4/P5 迁移到 SWE-bench Verified 子集；与社区同基准可比；借鉴 `swe-agent-lite` 的 harness | [ ] |
 | L3 | **脑功能分区空白区** | 低/高 | 按 [BRAIN_PARITY](docs/BRAIN_PARITY.md) 补眶额价值 / 脑干稳态；调研已完成，待决定是否落 ADR | [ ] |
 | L4 | **独立轨道（不插队）** | 中/高 | autoparser 上游 PR（[#29307](https://github.com/ggml-org/llama.cpp/pull/29307)）+ 撤本地补丁；llama.cpp v1.0.0 升级（FP8 KV + 非阻塞 MoE cache）；dsh rc 升级 | [ ] |
+| L5 | **小模型 Critic 轻量预警** | 中/高 | 0.6B 先扫产物给"疑似问题"，命中再调 35B；**未命中只记 trace 不拦截**（漏判=回现状，不误伤）。前置 A/B：预警召回率 ≥80% 才上。见 [评估](docs/HETEROGENEOUS_MODELS_EVALUATION.md) | [ ] |
 
 ---
 
@@ -164,3 +172,4 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 | FEP 偏差走运行时注入通道 | 实测挤掉 D5 审计额度（ADR-0017）——学习信号只进 trace/学习队列 |
 | 改 Electron 启动参数降 3D | `--disable-gpu` 等已证伪反效果（[Electron #50469](https://github.com/electron/electron/issues/50469)）；见 [GPU 守护](docs/GPU_ENGINE_GUARD.md) |
 | 无差别提高自动化频次 | 频次审计证明大部分参数经实测校准合理；只按证据调（[CADENCE_REDESIGN](docs/CADENCE_REDESIGN.md)）|
+| **小模型（0.8B 级）做审计/纠正/验收** | JudgeBench 小 judge 一致率仅 45-60%（近抛硬币）；"强 judge 才鲁棒"要求 judge ≥ actor；弱 verifier 放行强 actor 错误比不审查更糟。**验收员本就是 Python 规则，零 LLM**（[评估](docs/HETEROGENEOUS_MODELS_EVALUATION.md)）|

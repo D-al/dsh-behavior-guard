@@ -214,7 +214,7 @@ DRY 0.8-1.75-32-512
 | llama.cpp | 自编 **b12244** + [autoparser 2 行补丁](https://github.com/D-al/dsh-behavior-guard/blob/main/config/patches/autoparser-fix.patch) |
 | node / pnpm（rc.3 后）| 24.21.0 / 11.28.5 |
 | 模型 | Qwen3.6-35B-A3B UD-Q4_K_XL（21.28 GiB）|
-| harness | **v2.17.0**（GWT 总线 + FEP 闭环已在线；版本史见 CHANGELOG）|
+| harness | **v2.18.0**（GWT 总线 + FEP 闭环已在线；版本史见 CHANGELOG）|
 
 ### 5.2 升级检查清单（每次升级必做）
 

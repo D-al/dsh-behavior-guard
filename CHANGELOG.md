@@ -1,3 +1,21 @@
+## [2.18.0] - 2026-11-19 13:00（异构多模型评估：原设想证伪 + 两条窄路径入路线图）
+
+### Docs-only（不改代码，不动生产配置）
+- `docs/HETEROGENEOUS_MODELS_EVALUATION.md`：两路独立调研（论文/社区）交叉验证的结论。
+  - **原设想证伪**："35B 做 planner/验收 + 0.8B 做其他角色"角色分工反了且 0.8B 选小了。
+    社区主流是"小模型先跑、大模型把关"（MoA/RouteLLM/FrugalGPT/spec decoding），不是反过来。
+  - **关键前提纠正**：验收员**本来就是** `verify_agent.py` 规则脚本、零 LLM——想优化的 35B 成本不存在。
+  - **反对证据**：JudgeBench 小 judge 一致率 45-60%（近抛硬币）；"强 judge 才鲁棒"要求 judge ≥ actor；
+    多 agent 失败分类学指出弱 verifier 放行强 actor 错误比不审查更糟。
+  - **本机可行性已核实**：RAM 63.7G/free 53.6G、显存 8188/free 7251MiB；autostart 原生支持
+    `LLAMA_PROFILES=35b,small` 多实例；harness 加 per-role endpoint 覆盖约 5 行。**技术上做得到，但不该按原设想做。**
+- ROADMAP：新增 **M7 小模型格式修复器**（中/中，前置先量角色耗时占比）与
+  **L5 小模型 Critic 轻量预警**（中/高，前置召回率 A/B ≥80%）；"小模型做审计/纠正/验收"进明确不做。
+- 性价比速查表扩到 17 项，M7 排 12、L5 排 15。
+
+### Note
+- 本版本**不改 index.mjs / 配置 / 生产服务**，纯评估与路线图更新。
+
 ## [2.17.0] - 2026-11-19 02:05（性价比前三项：S3 + M6 + S2）
 
 ### Fixed / Added（按性价比速查表顺序）
