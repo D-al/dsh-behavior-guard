@@ -3,7 +3,8 @@
 > **给第一次来的 AI / 接手者**：这个文件回答三个问题——项目现在在哪（§1）、接下来做什么（§2-4）、
 > 为什么是这个顺序（§5）。每条目标都带**完成标准（DoD）**，做完打勾并写进 [CHANGELOG](CHANGELOG.md)。
 > 入口在 [README](README.md)；细节在 [docs/](docs/README.md)；"为什么这么决定"在 [decisions/](decisions/README.md)。
-> 更新于 2026-11-19（v2.14.0：频次重设 + Now/Next/Later 重排）。
+> 更新于 2026-11-19（**v2.23 重定基线**：短期目标全部完成，进入中期执行期；分级按 S7/S4/S1 实测证据重算）。
+> 本次重绘依据：[重定基线分析](docs/ROADMAP_REBASELINE_20261119.md)。
 
 ---
 
@@ -12,13 +13,18 @@
 **项目是什么**：给 dsh（DeepSeek Harness）的一个 cordis 插件，通过**模型外部**的确定性脚手架
 （规则注入 + 门控 + 旁路学习），让一个 8G 显存上的 35B MoE 模型表现得像可靠 agent。**模型权重一个字节没动。**
 
-**做到哪了**：地基全部完成，处于「**骨架已立、血肉待长**」——数据底座（trace 5500+ / outcome 63+ /
-CritBank 真实命中）、共享状态总线（GWT）、预期闭环（FEP）、权限代劳都已在线。
-现在的瓶颈不是"缺结构"，是"**积累的数据还没变成能力**"。
+**做到哪了（v2.23）**：**短期目标 S1-S9 全部完成**，地基 + 数据变现层都已在线——
+GWT 总线、FEP 闭环、CritBank（真实计数+可控遗忘）、审计自校准（误差可度量）、
+有状态反馈环（NSED 思想）、注入检测（规则层）、Self-Harness P0-P2（**35B 已能亲自提 patch**）。
+trace 已达 **6970 行**，弱点聚类产出 4 簇 + 13 条受保护行为。
+
+**现在的位置**：从「把数据变成能力」转入「**让器官间流动**」——进入中期执行期。
+下一波首项是 **M4（注入预算 token 化）** 和 **M1（情景检索进主循环）**，
+两者都已有成熟前置（频次审计结论 / evidence bundle），不需要再等数据。
 
 **为什么是这个顺序**（[ADR-0017](decisions/0017-gwt-first-then-fep.md)）：
 结构性地基越晚做越贵 → 先做；数据型目标时间站在我们这边 → 中间做；需要世界模型/外部基准的 → 最后做。
-一句话：**先建总线，再往上接器官。**
+一句话：**先建总线，再往上接器官**——现在总线和数据都齐了，该接器官了。
 
 **怎么判断一条新工作该放哪**：问它属于下面哪一波（§5），是否依赖未完成项。一波没验收，不开始下一波。
 
@@ -33,90 +39,79 @@ CritBank 真实命中）、共享状态总线（GWT）、预期闭环（FEP）�
 ## 2. 性价比速查（先做哪个？）
 
 > **性价比 = 收益 / 成本**；`解锁` 指完成它后哪些目标变便宜。按此表从上到下领活。
-> 这是**决策辅助**，不是硬顺序——硬依赖见 §5，一波没验收不开始下一波。
+> 这是**决策辅助**，不是硬顺序——硬依赖见 §6，一波没验收不开始下一波。
+> **v2.23 重排依据**：[重定基线分析](docs/ROADMAP_REBASELINE_20261119.md)——按 S7/S4/S1 实测重算，
+> 已完成项全部收进 §7 归档，不再占用排序号。
 
-| 排序 | 目标 | 收益 | 成本 | 解锁 | 建议 |
+| 排序 | 目标 | 收益 | 成本 | 依赖 / 解锁 | 建议 |
 |---|---|---|---|---|---|
-| ✅ | **S3 频次收尾** | 中 | **极低**（2 个 trace 字段）| — | ✅ v2.17 已完成 |
-| ✅ | **M6 安全规则测试** | 中 | **极低**（文档+1 测试）| — | ✅ v2.17 已完成 |
-| ✅ | **S2 可控遗忘** | 高 | 低（已有脚本骨架）| S1 投毒防御 | ✅ v2.17 已完成 |
-| ✅ | **S8 审计自校准落盘修复** | 高 | **极低** | 误差可度量 → S9/L6 前置 | ✅ v2.21 |
-| ✅ | **S6 工具结果注入检测** | 高 | 低（规则层先行）| 外周神经第一块 | ✅ v2.21（规则版；86M 模型后置）|
-| ✅ | **S9 有状态反馈 + 循环上限** | 高 | 中 | 抑制误差放大 | ✅ v2.21 |
-| ✅ | **S7 CPU 小模型基准** | 中 | 低 | 外设决策前置 | ✅ v2.22（0.6B CPU 4-6s，证伪实时外设）|
-| 8 | **S5 角色失效修复** | 高 | 中（需端到端复现）| — | ✅ **v2.15 已完成** |
-| 9 | **M4 注入预算 token 化** | 高 | 中（改注入路径+验证）| 全场景抗稀释 | S3 后做 |
-| ✅ | **S1 技能自进化** | 极高 | 高（P0-P2 本轮）| M1 检索对象 | ✅ v2.22（P0+P1+P2；P3 未启动）|
-| 11 | **M1 情景检索** | 高 | 中 | — | 依赖 S1 evidence |
-| 12 | **M3 BDI 三槽** | 中 | 中 | L1 世界模型 | 中期后半 |
-| ✅ | **S4 自适应端到端** | 中 | 中 | — | ✅ v2.22（P3 A/B；token 未降故不开）|
-| 14 | **M2 会话树实时化** | 中 | 中高（改 parent 指针）| 真 rewind | 中期后半 |
-| 15 | **M5 工具面改造** | 中高 | 高（重构+用户拍板）| 上下文瘦身 | ⛔ 等用户拍板 |
-| 16 | **M7 小模型格式修复器** | 中 | 中（需 S7 基准先过）| 省 JSON 重试的 35B 调用 | 依赖 S7 |
-| 17 | **L2 标准化 eval** | 高（外部效度）| 高（迁移基准）| 可比社区 | 长期优先 |
-| 18 | **L1 FEP→世界模型** | 高 | **极高**（需 M1+M3）| — | 最后 |
-| 19 | **L5 小模型 Critic 预警** | 中 | 高（需 S7 + A/B 召回率≥80%）| 减 35B 调用 | 收紧前置条件 |
-| 20 | **L3 脑分区空白** | 低（探索性）| 高 | — | 有证据再做 |
-| 21 | **L4 独立轨道** | 中 | 高（引擎/上游）| 免维护 patch | 不插队 |
+| **1** | **M4 注入预算 token 化** | 高 | 中 | 频次审计已铺路 → 全场景抗稀释 | **下一波首项**，纯规则 |
+| **2** | **M1 情景检索进主循环** | 高 | 中 | GWT + S1 evidence bundle **均已就绪** | 把 S1 数据变现，紧随 M4 |
+| 3 | **M3 BDI 三槽** | 中 | 中 | GWT+FEP 已立 → L1 世界模型 | 中期后半 |
+| 4 | **M2 会话树实时化** | 中 | 中高 | GWT 加 parentId → 真 rewind | 中期后半 |
+| 5 | **M5 工具面改造** | 中高 | 高 ⛔ | 用户拍板"哪些进内核" | 不阻塞别人，等决策 |
+| 6 | **M7 格式修复器（重定义）** | 中 | **中高**（S7 后上调）| 需先测 **86M 分类器**（0.6B 已证伪）| 降级：收益存疑，先验证 86M |
+| 7 | **L2 标准化 eval** | 高（外部效度）| 高 | 迁移 SWE-bench 子集 | 长期优先 |
+| 8 | **L1 FEP→世界模型** | 高 | **极高** | 需 M1+M3 完成 | 最后做 |
+| 9 | **L6 专属误差预测器** | 中 | 高 | 需 S8 真实数据 + 单次蒸馏纪律 | 长期探索 |
+| 10 | **L5 小模型 Critic 预警** | **低**（S7 后下调）| 高 | 0.6B 5s 不实用，须换 86M | 降级：无实证收益前不做 |
+| 11 | **L3 脑分区空白** | 低（探索性）| 高 | 有证据再做 | 观望 |
+| 12 | **L4 独立轨道** | 中 | 高 | 引擎/上游 PR | 不插队 |
+| — | **L7 FAKEOK 抑制（新）** | 中（探索）| 低 | S4 发现 ⑦ 提示让 FAKEOK→PASS | 不占坑，先小规模验证 |
 
-> **三轮架构评估（2026-11-19）**：
-> ① [判断类证伪](docs/HETEROGENEOUS_MODELS_EVALUATION.md)：小模型当审计/纠正/验收 = 弱 judge 放行强 actor 错误，不做。
-> ② [外设类成立](docs/PERIPHERAL_MODELS_EVALUATION.md)：小模型做感知/分类/反射（注入检测 86M<10ms、路由 0.5B 83%）有生产实证——
-> 但要 router-first、**不要 cascade**（交互场景 tiering 对延迟几乎无用）。
-> ③ [反馈环与蒸馏](docs/FEEDBACK_LOOP_AND_DISTILLATION_EVALUATION.md)：前馈流水线误差放大诊断正确；
-> NSED（arXiv 2601.16863）的循环共识对症但完整协议不适合本机，只借"状态回流/最优停止/禁止自评"；
-> **发现审计自校准文件从未落盘=误差盲区**，故 S8 升为 P0。蒸馏只做单次（递归会自噬），L6 误差预测器为唯一切口。
+> **✅ 已完成 16 项**（S1-S9 全部 + M6 + 地基）已收进 **§7 归档**。
+> **🔴 本轮关闭的尾巴**：S4 P4/P5 补跑（token 未降已定论）、S7 校准曲线（0.6B 已证伪）、
+> "0.6B 做实时外设"（实测 4-6s，比文献慢 10×）。
 
-**读法**：收益=能力/质量提升幅度；成本=代码改动+验证时长；`⛔`=被外部决策阻塞；`✅`=已完成。
+> **四轮架构评估沉淀**（按时间）：
+> ① [判断类证伪](docs/HETEROGENEOUS_MODELS_EVALUATION.md)：小模型当审计/纠正/验收 = 弱 judge 放行强 actor 错误。
+> ② [外设类成立](docs/PERIPHERAL_MODELS_EVALUATION.md)：感知/路由有生产实证，但 router-first 不要 cascade。
+> ③ [反馈环与蒸馏](docs/FEEDBACK_LOOP_AND_DISTILLATION_EVALUATION.md)：前馈误差放大 → NSED 思想（S9 已落地）；蒸馏只做单次。
+> ④ [实测收口](docs/S7_SMALL_MODEL_BENCH_RESULT.md) + [S4 A/B](docs/S4_ADAPTIVE_AB_RESULT.md) + [S1 P0-P2](docs/S1_SELF_HARNESS_P0P1_RESULT.md)：
+> 0.6B 不适合实时外设；adaptive token 未降故不开；35B 亲提案跑通。
+
+**读法**：收益=能力/质量提升幅度；成本=代码改动+验证时长；`⛔`=被外部决策阻塞；`✅`=已完成（见 §7）。
 
 ---
 
-## 3. 🟢 短期（Now，1-2 周）：把积累的数据变成能力
+## 3. 🟢 短期（Now）：✅ 已全部完成，移入归档
 
-> 共同特征：数据已经够了（outcome 63+ / trace 5500+ / 技能草稿已产出），只差接成闭环。
-> 全部**权重零改 + 纯文本/规则**，不改引擎。
+> **v2.23：S1-S9 全部完成**，本节不再列活跃目标。完整 DoD 与验证见 **§7 归档**。
 
-| # | 目标 | 性价比 | 为什么现在做 | 完成标准（DoD） | 状态 |
-|---|---|---|---|---|---|
-| S1 | **技能自进化闭环** | 极高/高 | 数据已 ≥20 条，草稿已产出；这是短期①的核心 | outcome+FEP 偏差喂 `skill_draft`；草稿命中同类任务成功率上升；`promote_skills` 仍人工审批（ADR-0015）；投毒防御先于自动写回 | ✅ v2.22（P0+P1+P2）|
-| S2 | **可控遗忘常态化** | 高/低 | CritBank 目前 0 计数，假记忆会自我强化 | 真实 helpful/harmful 计数非零；`crit_decay.py --apply` 月度跑；无过时经验被引用（假记忆自检） | ✅ v2.17 |
-| S3 | **频次重设收尾** | 中/极低 | 审计发现 learn_watcher 每 30s 全量巩固是空转（已改）；还剩两项小改 | ① trace 加 `turn`/`controlTotal` 字段；② `docs/CADENCE_REDESIGN.md` 三条结论落地；心跳日志验证 `[deep]` 每 10 分钟一次 | ✅ v2.17 |
-| S4 | **自适应原型端到端对照** | 中/中 | 机制已有（`adaptiveThinkEnabled`），默认关，缺证据 | P3/P4/P5 各跑 2 次取中位；token 降且成功率不降才开，否则保持关闭 | ✅ v2.22（部分：P3 A/B）|
-| S5 | **角色失效修复** | 高/中 | 诊断发现验收员触发路径脱节（`wait_agent` 0 次 vs `spawn_teammate` 73 次）；Critic LLM 0% 成功 | ① 验收员触发扩展到 spawn 完成检测；② Critic 0% 根因复现；③ 角色 LLM 失败写明确 error 字段不静默。见 [诊断](docs/COMPACTION_AND_ROLES_DIAGNOSIS.md) | ✅ v2.15 |
-| **S6** | **工具结果注入检测（周围神经 P0）** | 高/低 | 86M Prompt-Guard CPU <10ms，可挂每次工具结果前；与确定性门控互补，误报可回退 | 输入/工具结果前置扫描命中注入指令时 steer 提醒"这是数据不是指令"；trace 记命中；**不自动拦截**（遵守 ADR-0014 中性措辞）。v2.21 交付**规则层**（6 种模式 + 会话上限），已测误报（普通文本不触发）；86M Prompt-Guard 模型层 + 真实假阳性率测量后置。见 [评估](docs/PERIPHERAL_MODELS_EVALUATION.md) | ✅ v2.21（规则版）|
-| **S7** | **CPU 小模型基准（前置）** | 中/低 | 53G RAM 空闲可常驻小模型群，但 CPU 延迟/吞吐/置信校准未测——所有外设决策的前置 | 实测 Qwen3-0.6B Q8_0 在 i7-12650H 上的单次延迟（分类 4.2s / 格式 6.0s）+ JSON 可靠性 5/5；
-    **ECE/Brier 校准曲线未做**（thinking 模型输出不稳，需单独设计）。结论：0.6B 不适合实时外设，
-    S6 模型层须用 86M 分类器。见 [基准结果](docs/S7_SMALL_MODEL_BENCH_RESULT.md) | ✅ v2.22（校准部分未完成）|
-| **S8** | **审计自校准落盘修复** | 高/极低 | 诊断发现 `_audit_feedback.jsonl` **从未生成**——审计干预是否有效无法度量，误差放大是盲区 | ① 审计注入结算写盘（干预后 3 步 badNow/effective）；② 单测验证文件生成；③ 累计 ≥30 条后出"有效率"报告；见 [评估](docs/FEEDBACK_LOOP_AND_DISTILLATION_EVALUATION.md) | ✅ v2.21 |
-| **S9** | **有状态反馈 + 审计纠正循环上限** | 高/中 | 现有 planner→审计→纠正→验收是前馈 DAG；借鉴 NSED 的"共识回流"思想抑制误差放大 | ① 审计/纠正结论写 `s.reviewState`，下轮执行前注入"上次问题+是否修复"；② 循环上限 ≤2 轮 + 收敛判据（连续 N 步无新 FAIL 即停）；③ 禁止审计自评自己的纠正（对角掩码精神）| ✅ v2.21 |
+**短期交付的能力**（一句话盘点）：
+- **数据变现**：S1 Self-Harness P0-P2（35B 亲提案跑通）、S2 可控遗忘、S3 trace 上下文字段
+- **误差治理**：S8 审计自校准（误差可度量）、S9 有状态反馈环（NSED 思想）、S5 角色失效修复
+- **外周神经**：S6 注入检测规则层、S7 CPU 基准（证伪 0.6B 实时外设）
+- **验证收口**：S4 自适应 A/B（token 未降 → 保持关闭）
 
-**S1 的实现路径 = Self-Harness 四阶段**（[完整方案](docs/SELF_HARNESS_PLAN.md) / [ADR-0018](decisions/0018-self-harness-two-stage.md)）：
-- P0 可编辑面白名单 + 双 split 评测台（安全面禁改；基线方差 <10%）
-- P1 trace → 失败签名精确聚类 → evidence bundle（`recovered_friction` 列为保护对象）
-- P2 先 Meta-Harness（WorkBuddy 离线跑通协议）→ 再 Self-Harness（35B 自己提案）
-- P3 与 learn_watcher 合并常态化（需 P0-P2 验收后才启动）
-- 依据：[Self-Harness 2606.09498](https://arxiv.org/abs/2606.09498) Qwen3.5-35B-A3B +18.7pp
+**留下的三条尾巴**（不阻塞中期，记录在此防遗忘）：
+1. S1 P3 常态化 + 双 split 真实评测（ADR-0018 要求完整验收后才启动；2-4h/轮未跑）
+2. S6 的 86M Prompt-Guard 模型层（规则层够用，待实测误报率 >2% 才做）
+3. S8 真实运行产生 `_audit_feedback.jsonl`（代码+单测已过，待真实会话触发审计门控）
 
-**频次依据**：[CADENCE_AUDIT](docs/CADENCE_AUDIT.md)（数据底稿）+ [CADENCE_REDESIGN](docs/CADENCE_REDESIGN.md)（结论）。
-核心发现：大部分频次经实测校准**不该动**（control 8 步、critic ≤2 次、压缩 0.55 均合理）；
-真问题只有 learn_watcher 过密（已改）+ 注入预算按次数不按 token（列中期）。
+**保留的方法论资产**：
+**Self-Harness 四阶段**（[方案](docs/SELF_HARNESS_PLAN.md) / [ADR-0018](decisions/0018-self-harness-two-stage.md)）——
+P0/P1/P2 已交付，P3 作为中期 M1 完成后的候选闭环，不自动启动。
+依据：[Self-Harness 2606.09498](https://arxiv.org/abs/2606.09498) Qwen3.5-35B-A3B +18.7pp。
+
+**频次依据**：[CADENCE_AUDIT](docs/CADENCE_AUDIT.md) + [CADENCE_REDESIGN](docs/CADENCE_REDESIGN.md)——
+大部分频次经实测校准**不该动**；注入预算按次数不按 token 的问题已转入 **M4**。
 
 ---
 
 ## 4. 🟡 中期（Next，1-2 月）：器官间流动
 
-> 共同特征：结构已在（GWT 总线已立），缺的是把离线脚本接进主循环。
-> 依赖：S1 的 evidence bundle 是情景检索的检索对象。
+> 共同特征：结构已在（GWT 总线已立）、数据已变现（S1 evidence bundle 已产出），缺的是把离线脚本接进主循环。
+> **执行顺序按 §2 速查表**：M4 → M1 → （验收后）M3/M2 → M5（等拍板）→ M7（需先验证 86M）。
 
 | # | 目标 | 性价比 | 依赖 | 完成标准（DoD） | 状态 |
 |---|---|---|---|---|---|
-| M1 | **情景检索进主循环** | 高/中 | GWT（已完成）+ S1 evidence bundle | `es.exe` 从离线脚本接入控制回合自动 top-3 注入；长任务中历史经验被主动引用 >0 次；结果写回 GWT 的 evidence 字段 | [ ] |
-| M2 | **会话树实时化** | 中/中高 | GWT 加 `parentId` | `session_tree.py` 从事后分析变实时写 parent 指针；能从任一节点 fork 且不改写历史、不付 KV 后缀税（ADR-0013） | [ ] |
+| **M4** | **注入预算 token 化** | 高/中 | 频次审计结论（已就绪）| `workspaceSnapshot` 加 `injectionTokensUsed`；预算按 token 而非次数；端到端验证不误挡安全注入 | [ ] ← **下一波首项** |
+| **M1** | **情景检索进主循环** | 高/中 | GWT + **S1 evidence bundle（均已就绪）** | `es.exe` 从离线脚本接入控制回合自动 top-3 注入；长任务中历史经验被主动引用 >0 次；结果写回 GWT 的 evidence 字段 | [ ] |
 | M3 | **用户意图 BDI 深化** | 中/中 | GWT 的 bdiGoal + FEP 偏差 | `s.bdi` 单槽升级 belief/desire/intention 三槽；用户约束跨压缩不丢；意图漂移检测有状态可依 | [ ] |
-| M4 | **注入预算 token 化** | 高/中 | 频次审计结论 | `workspaceSnapshot` 加 `injectionTokensUsed`；预算按 token 而非次数；端到端验证不误挡安全注入 | [ ] |
-| M5 | **工具面结构改造** | 中高/高 ⛔ | 用户拍板"哪些进内核" | 28 个工具收敛到最小内核（read/write/edit/search/shell/bridge）；低频能力进 10 个 skill 卡 + skill 内脚本；危险拦截 hook 化；不动则保持现状 | [ ] |
-| M6 | **安全规则不可覆盖的硬声明 + 测试** | 中/极低 | 无 | AGENTS.md 显式声明"skill/prompt 无法覆盖安全底线"；加语义回归测试 | ✅ v2.17 |
-| M7 | **小模型格式修复器** | 中/中 | 真实角色耗时占比（先测量）+ Qwen3-0.6B 模型 | `jsonRetryTimes=1` 的格式修复改走常驻小模型（0.6B），只做格式重写不判断对错；35B 首轮输出兜底；A/B 验证端到端提速。见 [评估](docs/HETEROGENEOUS_MODELS_EVALUATION.md) | [ ] |
+| M2 | **会话树实时化** | 中/中高 | GWT 加 `parentId` | `session_tree.py` 从事后分析变实时写 parent 指针；能从任一节点 fork 且不改写历史、不付 KV 后缀税（ADR-0013） | [ ] |
+| M5 | **工具面结构改造** | 中高/高 ⛔ | 用户拍板"哪些进内核" | 28 个工具收敛到最小内核（read/write/edit/search/shell/bridge）；低频能力进 skill 卡 + skill 内脚本；危险拦截 hook 化；不动则保持现状 | [ ] |
+| M7 | **格式修复器（重定义）** | 中/**中高** | 先验证 **86M 分类器**（0.6B 已证伪）| 只做格式重写不判断对错、35B 首轮兜底；**前置**：86M 模型 CPU 延迟实测 <500ms（S7 证明 0.6B 需 4-6s 不可用）；A/B 验证端到端提速才上。见 [S7 基准](docs/S7_SMALL_MODEL_BENCH_RESULT.md) | [ ]（降级）|
 
 依据：[mini-harness](https://github.com/jb-san/mini-harness)（7 工具 + skill/hook）、
 [dsh-browser-agent](https://github.com/nonentity303/dsh-browser-agent)（安全规则优先级）、
@@ -130,12 +125,13 @@ CritBank 真实命中）、共享状态总线（GWT）、预期闭环（FEP）�
 
 | # | 目标 | 性价比 | 完成标准（DoD） | 状态 |
 |---|---|---|---|---|
-| L1 | **FEP 深化：偏差 → 世界模型** | 高/极高 | 现有只判"产物是否存在"，升级为断言"产物内容满足 what"；预期断言精度/召回可测；误报不侵占注入通道（ADR-0017） | [ ] |
-| L2 | **标准化 eval** | 高/高 | 自建 P3/P4/P5 迁移到 SWE-bench Verified 子集；与社区同基准可比；借鉴 `swe-agent-lite` 的 harness | [ ] |
-| L3 | **脑功能分区空白区** | 低/高 | 按 [BRAIN_PARITY](docs/BRAIN_PARITY.md) 补眶额价值 / 脑干稳态；调研已完成，待决定是否落 ADR | [ ] |
-| L4 | **独立轨道（不插队）** | 中/高 | autoparser 上游 PR（[#29307](https://github.com/ggml-org/llama.cpp/pull/29307)）+ 撤本地补丁；llama.cpp v1.0.0 升级（FP8 KV + 非阻塞 MoE cache）；dsh rc 升级 | [ ] |
-| L5 | **小模型 Critic 轻量预警** | 中/高 | 0.6B 先扫产物给"疑似问题"，命中再调 35B；**未命中只记 trace 不拦截**（漏判=回现状，不误伤）。前置 A/B：预警召回率 ≥80% 才上。见 [评估](docs/HETEROGENEOUS_MODELS_EVALUATION.md) | [ ] |
-| L6 | **专属误差预测器（主模型打造队友）** | 中/高 | 用 trace（真实分布）+ 35B 标注训练 0.5B 二分类器"这一步是否会失败"；**只做单次蒸馏 n=1**（递归会自噬），**必须保留 UNCERTAIN 样本**（否则队友"自信地错"）。前置 S8 数据积累。见 [评估](docs/FEEDBACK_LOOP_AND_DISTILLATION_EVALUATION.md) | [ ] |
+| L2 | **标准化 eval** | 高/高 | 自建 P3/P4/P5 迁移到 SWE-bench Verified 子集；与社区同基准可比；借鉴 `swe-agent-lite` 的 harness | [ ]（长期优先）|
+| L1 | **FEP 深化：偏差 → 世界模型** | 高/极高 | 现有只判"产物是否存在"，升级为断言"产物内容满足 what"；预期断言精度/召回可测；误报不侵占注入通道（ADR-0017）。**需 M1+M3 先完成** | [ ]（最后）|
+| L6 | **专属误差预测器（主模型打造队友）** | 中/高 | 用 trace（真实分布）+ 35B 标注训练 0.5B 二分类器"这一步是否会失败"；**只做单次蒸馏 n=1**（递归会自噬），**必须保留 UNCERTAIN 样本**。前置：S8 真实运行数据落盘（当前待观察）+ S1 evidence bundle（已就绪）| [ ] |
+| L5 | **小模型 Critic 轻量预警** | **低**/高 | 0.6B 扫一次要 5s（S7 实测），预警层不实用 → **须换 86M 分类器且实测达标**才重启；未命中只记 trace 不拦截；前置召回率 A/B ≥80% | [ ]（**降级**）|
+| L3 | **脑功能分区空白区** | 低/高 | 按 [BRAIN_PARITY](docs/BRAIN_PARITY.md) 补眶额价值 / 脑干稳态；调研已完成，待决定是否落 ADR | [ ]（观望）|
+| L4 | **独立轨道（不插队）** | 中/高 | autoparser 上游 PR（[#29307](https://github.com/ggml-org/llama.cpp/pull/29307)）+ 撤本地补丁；llama.cpp v1.0.0 升级；dsh rc 升级 | [ ] |
+| **L7** | **FAKEOK 抑制（新探索）** | 中/低 | S4 的 P3 A/B 发现 ⑦ 提示让 off 组 FAKEOK→on 组 PASS（但 token 未降）；验证"防提前假装完成"的轻量机制，与 D4 交付闸门同源。先小规模对照，不占正式坑位 | [ ]（探索）|
 
 ---
 
@@ -146,9 +142,9 @@ CritBank 真实命中）、共享状态总线（GWT）、预期闭环（FEP）�
 | 波次 | 主题 | 依赖逻辑 | 状态 |
 |---|---|---|---|
 | **0 地基期** | 数据底座 + 共享总线 | 没 outcome 无从比对、没 GWT 只能手动搬运状态——所有后续机制的前提 | ✅ 完成（v2.8~v2.12）|
-| **1 回填期** | 把数据变成能力 | FEP 偏差 + outcome 已攒够，现在能喂技能进化与遗忘 | 🟢 短期 S1-S5（S5 已完成） |
-| **2 连接期** | 器官间流动 | GWT 已立，情景检索/会话树可进主循环；BDI 有状态卡可依 | 🟡 中期 M1-M6 |
-| **3 进化期** | 从经验变聪明 | **投毒防御必须先于写回闭环**——SkillJack：80% 攻击删源后仍存活 | 🔴 长期 L1-L4 |
+| **1 回填期** | 把数据变成能力 | FEP 偏差 + outcome 已攒够，喂技能进化与遗忘 | ✅ **完成（v2.22：S1-S9 全部）** |
+| **2 连接期** | 器官间流动 | GWT + evidence bundle 均已立，情景检索/会话树可进主循环 | 🟡 **当前波次**：M4 → M1 → M3/M2 |
+| **3 进化期** | 从经验变聪明 | **投毒防御必须先于写回闭环**——SkillJack：80% 攻击删源后仍存活 | 🔴 长期 L1-L7（P0 白名单已立，P3 未启动）|
 
 **双向迭代**：依赖链不只向上——第 4 层审计需求曾反向复用第 1 层 spec 日志信号；
 FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时注入通道"（ADR-0017）。
@@ -178,6 +174,7 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 | **S8 审计自校准落盘** + **S9 有状态反馈** + **S6 注入检测** | v2.21.0 | `test_audit_feedback` 6/6 + `test_review_loop` 8/8 + `test_injection_scan` 6/6 |
 | **S1 Self-Harness P0-P2** | v2.22.0 | `self_harness_gate.py` 11/11 + 35B 真提案落候选 + 6970 行 trace 聚类 4 簇 |
 | **S4 自适应 A/B** + **S7 CPU 小模型基准** | v2.22.0 | P3 off FAIL/on PASS（token 未降不开）；0.6B CPU 4-6s（证伪实时外设）|
+| **路线图重定基线** | v2.23.0 | [重定基线分析](docs/ROADMAP_REBASELINE_20261119.md)：短期全完成、M4/M1 升首档、M7/L5 降级、L7 新增 |
 | 结果反馈捕获 / 确定性门控 / 三角色 / P0-P2 心智拼图 | v2.0~v2.9 | 见 CHANGELOG 全文 |
 
 完整历史见 [CHANGELOG](CHANGELOG.md) 与 [时间线](docs/history/TIMELINE.md)——**历史只追加，不重写**。
@@ -197,3 +194,6 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 | 改 Electron 启动参数降 3D | `--disable-gpu` 等已证伪反效果（[Electron #50469](https://github.com/electron/electron/issues/50469)）；见 [GPU 守护](docs/GPU_ENGINE_GUARD.md) |
 | 无差别提高自动化频次 | 频次审计证明大部分参数经实测校准合理；只按证据调（[CADENCE_REDESIGN](docs/CADENCE_REDESIGN.md)）|
 | **小模型（0.8B 级）做审计/纠正/验收** | JudgeBench 小 judge 一致率仅 45-60%（近抛硬币）；"强 judge 才鲁棒"要求 judge ≥ actor；弱 verifier 放行强 actor 错误比不审查更糟。**验收员本就是 Python 规则，零 LLM**（[评估](docs/HETEROGENEOUS_MODELS_EVALUATION.md)）|
+| **0.6B/1B 级 LLM 做实时外设** | S7 实测：Qwen3-0.6B Q8_0 纯 CPU 分类 4.2s / 格式 6.0s（比文献边缘设备 392ms 慢 10×），且 thinking 吃光 content 需 max_tokens≥512。实时注入检测须用 86M 级 BERT 分类器，不是 LLM（[基准](docs/S7_SMALL_MODEL_BENCH_RESULT.md)）|
+| **开启 adaptiveThinkEnabled 默认值** | S4 P3 A/B：token 4172→4168 未降（DoD 要求"token 降且成功率不降"）；单次 FAIL→PASS 有噪声，不足以证明机制有效。保持默认关闭（[结果](docs/S4_ADAPTIVE_AB_RESULT.md)）|
+| **递归自喂式蒸馏** | Nature 2024：第 9 代退化为"野兔清单"；只做单次 n=1 且保留 UNCERTAIN 样本（[评估](docs/FEEDBACK_LOOP_AND_DISTILLATION_EVALUATION.md)）|
