@@ -23,16 +23,19 @@ import subprocess
 import sys
 import time
 import urllib.request
+from pathlib import Path
 
 import yaml
 
 URL = "http://127.0.0.1:8081/v1/chat/completions"
-ROOT = r"D:\Brain\workspace\bench\agentlab_sandbox"
+BENCH_DIR = os.environ.get('BENCH_DIR') or r'D:\Brain\workspace\bench'
+USERPROFILE = os.environ.get('USERPROFILE') or r'C:\Users\Ad'
+ROOT = str(Path(BENCH_DIR) / 'agentlab_sandbox')
 
 
 # ---------------------------------------------------------------- persona
 def load_persona(cwd=None):
-    text = open(r"C:\Users\Ad\.dsh\profiles\desktop\cordis.patch.yml", encoding="utf-8").read()
+    text = open(str(Path(USERPROFILE) / '.dsh' / 'profiles' / 'desktop' / 'cordis.patch.yml'), encoding="utf-8").read()
     cfg = yaml.load(text, Loader=_YamlLoader)
     for e in cfg:
         if isinstance(e, dict) and e.get("id") == "preset-cordis":

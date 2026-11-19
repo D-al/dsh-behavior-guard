@@ -23,7 +23,6 @@
         maxInjectionsPerTurn: 1
         maxInjectionsPerSession: 4
         sharedMaxPerTurn: 3
-        verifyScript: 'D:/Brain/workspace/bench/verify_agent.py'
         pythonPath: 'D:/Python/python.exe'
         verifyTimeoutMs: 120000
         verifyMinWaits: 2
@@ -47,14 +46,3 @@
         # specLogPath 由本机 profile patch 覆盖（路径含 profile 名，不可移植）
         specAcceptanceMin: 0.65
         specSignalEnabled: true
-        critbankPath: 'D:/Brain/workspace/bench/critbank.json'
-        auditFeedbackPath: 'D:/Brain/workspace/bench/_audit_feedback.jsonl'
-        ledgerPath: 'D:/Brain/workspace/bench/_compaction_ledger.jsonl'
-        workspaceRoot: 'C:/Users/Ad/Documents/deepseek-harness/default-workspace'
-        allowedRoots:
-          - 'C:/Users/Ad/Documents/deepseek-harness/default-workspace'
-          - 'D:/Brain/workspace'
-          - 'D:/Brain/dsh-data'
-          - 'D:/llama.cpp'
-          - 'D:/GGUF_Download'
-        probePath: 'D:/Brain/workspace/bench/_agent_harness_loaded.json'

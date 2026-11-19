@@ -1,3 +1,31 @@
+## [2.26.2] - 2026-11-20 00:45（GitHub 权威仓库深度维护 —— 修"push 上去仍带 bug"）
+
+### 背景
+用户指出：我们 push 到 GitHub 的插件本身带着同样的问题，重装会复现原坑；并要求能并行就并行。
+三路子任务并行：①配置层审计 ②代码层审计 ③一键安装/卸载脚本；主代理负责验证与集成。
+
+### 修复（权威仓库，P0）
+- **index.mjs 路径参数化**：原写死 C:/Users/Ad/... 与 D:/Brain/workspace/...（换机器/删 junction 必崩）。
+  新增 resolvePathEnv()：优先 BENCH_DIR / DSH_HOME / WORKSPACE_ROOT 环境变量，原值作回退（本机行为不变）。
+  所有 probePath/critbankPath/skillsDir/tracePath/allowedRoots 改为 BENCH_DIR/HOME_DIR 拼接。
+- **cordis.patch.yml 清理**：包内 patch 原本不该有本机路径覆盖（文件头注释明确"本机覆盖写 profile patch"）。
+  删除误加的路径覆盖键，让已参数化的 DEFAULTS 接管。
+- **补齐缺失脚本**：weakness_miner.py / self_harness_proposer.py 只在 bench 有、权威仓库 tools/ 没有 → 已补入。
+- **tools/*.py 可移植化**：19 个脚本 33 处硬编码路径改为 env 优先 + 原值回退（子任务）。
+- **一键安装/卸载**：setup/install.ps1 + uninstall.ps1 + install-restore-config.ps1（子任务），
+  解决"装上去卸不掉"；均 ASCII-only / parse 0 错误 / 幂等 / 自动备份。
+- **restart_dsh.ps1**：UTF-8 无 BOM 中文注释被 PowerShell 5.1 当 GBK → 语法错误 → dsh 起不来。
+  改为纯 ASCII；计划任务 RestartDsh 改走此 wrapper 并显式设 DSH_HOME；XML 模板同步。
+
+### 踩坑与回滚（诚实记录）
+- 曾尝试把 cordis.patch.yml 路径改成 !!js 表达式（含 !!js [...] 数组），**导致 dsh 启动失败**。
+  官方 loader 确认：!!js [...] 的方括号被 YAML 当 flow sequence、逗号切碎表达式。
+  已回滚并改用"从包内 patch 删除路径键、由 DEFAULTS 接管"的正确设计。
+
+### 验证
+- JS 160 PASS / 0 FAIL；Python 31 文件语法 0 错误；gate 11/11；config 一致。
+- dsh 重启成功：8081 health OK、会话桥 health OK、运行态快照刷新、probe 写到 BENCH_DIR。
+
 ## [2.26.1] - 2026-11-20 00:20（dsh 平台层整治：插件升级 v2.26.0 + 会话依赖治理）
 
 ### 背景

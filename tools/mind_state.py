@@ -26,9 +26,11 @@ import re
 import sys
 import glob
 from collections import Counter, defaultdict
+from pathlib import Path
 
-SESS_ROOT = r'D:\Brain\dsh-data\sessions\--C-Users-Ad-Documents-deepseek-harness-default-workspace--'
-BENCH = r'D:\Brain\workspace\bench'
+DSH_HOME = os.environ.get('DSH_HOME') or r'D:\Brain\dsh-data'
+BENCH = os.environ.get('BENCH_DIR') or r'D:\Brain\workspace\bench'
+SESS_ROOT = str(Path(DSH_HOME) / 'sessions' / '--C-Users-Ad-Documents-deepseek-harness-default-workspace--')
 OUT = os.path.join(BENCH, '_mind_state.json')
 
 INJECT_MARKERS = ['[harness 任务存档]', '[harness 控制回合]', '[harness 独立审计]',

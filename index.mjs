@@ -25,6 +25,22 @@ import { execFile, execFileSync } from 'node:child_process'
 
 export const name = 'agent-harness'
 
+// ── 路径解析层（2026-11-20 平台整治 P0）────────────────────────────────────
+// 历史 bug：下面 DEFAULTS 里所有路径写死 C:/Users/Ad 和 D:/Brain/workspace/...，
+// 换机器、删 .dsh junction、或重装到别的盘后全部失效——GitHub 上的版本同样带这个病。
+// 现在统一从环境解析（dsh 官方 shell-env 会注入 DSH_HOME；restart_dsh.ps1 也显式设置），
+// 并为单机保留原值作回退（env 缺失时行为不变）。
+function resolvePathEnv(primary, ...fallbacks) {
+  const v = process.env[primary]
+  if (v && String(v).trim()) return String(v).trim().replace(/\\/g, '/')
+  for (const f of fallbacks) { if (f && existsSync(f)) return String(f).replace(/\\/g, '/') }
+  return fallbacks[fallbacks.length - 1] || ''
+}
+const HOME_DIR = resolvePathEnv('DSH_HOME', 'D:/Brain/dsh-data', path.join(path.dirname(process.env.USERPROFILE || 'C:/Users/Ad'), '.dsh'))
+const BENCH_DIR = resolvePathEnv('BENCH_DIR', 'D:/Brain/workspace/bench', path.join(path.dirname(HOME_DIR), 'workspace/bench'))
+const WS_ROOT = resolvePathEnv('WORKSPACE_ROOT', 'C:/Users/Ad/Documents/deepseek-harness/default-workspace')
+const USER_HOME = (process.env.USERPROFILE || 'C:/Users/Ad').replace(/\\/g, '/')
+
 const DEFAULTS = {
   enabled: true,
   auditEverySteps: 8,
@@ -42,16 +58,16 @@ const DEFAULTS = {
   evidenceMaxChars: 2000,
   // v3 代执行器：只读操作由插件确定性执行（构造性消除传递损耗）
   executorEnabled: true,
-  workspaceRoot: 'C:/Users/Ad/Documents/deepseek-harness/default-workspace',
+  workspaceRoot: WS_ROOT,
   // 路径安全边界：绝对路径必须落在这些根内才允许代读
   allowedRoots: [
-    'C:/Users/Ad/Documents/deepseek-harness/default-workspace',
-    'D:/WorkBuddyWorkSpace/2026-10-13-20-41-43',
-    'C:/Users/Ad/.dsh',
-    'C:/Users/Ad/.workbuddy',
-    'D:/llama.cpp',
+    WS_ROOT,
+    BENCH_DIR,
+    HOME_DIR,                                  // 原 C:/Users/Ad/.dsh → DSH_HOME
+    path.join(USER_HOME, '.workbuddy'),
+    'D:/llama.cpp',                            // 运行时安装位置（env 可覆盖，见下）
     'D:/GGUF_Download'
-  ],
+  ].filter(Boolean),
   executorMaxChars: 4000,
   maxInjectionsPerTurn: 1,
   maxInjectionsPerSession: 4,
@@ -83,9 +99,9 @@ const DEFAULTS = {
   presentGateEnabled: true,
   maxPresentGatePerTurn: 1,
   maxPresentGatePerSession: 2,
-  probePath: 'D:/Brain/workspace/bench/_agent_harness_loaded.json',
+  probePath: `${BENCH_DIR}/_agent_harness_loaded.json`,
   // CritBank：结构化失效教训库（零 LLM 成本的检索式注入；U-Fold 检索式上下文思路）
-  critbankPath: 'D:/Brain/workspace/bench/critbank.json',
+  critbankPath: `${BENCH_DIR}/critbank.json`,
   // ── 任务连续性（2026-11-18 合并自 dsh-task-continuity）──
   // P0 压缩存档（MemGPT/Hippo/ARC）+ P1.5 todo 回灌（Manus recitation）+ P1 todo 闹钟（2609.38108）
   continuityEnabled: true,
@@ -96,7 +112,7 @@ const DEFAULTS = {
   maxTodoInjectionsPerSession: 4,
   todoEchoEnabled: true,
   maxEchoItems: 12,
-  ledgerPath: 'D:/Brain/workspace/bench/_compaction_ledger.jsonl',
+  ledgerPath: `${BENCH_DIR}/_compaction_ledger.jsonl`,
   // 控制回合（meta-reasoning controller，零 LLM）：每 controlEverySteps 步注入一次控制器摘要，
   // 含 已确立/已排除/当前项/已用步数 + "列 2-3 个候选再选一个"——模拟 Meta Controller 的四个动作。
   controlEverySteps: 8,
@@ -130,16 +146,16 @@ const DEFAULTS = {
   // ── Observability（2026-11-18）：per-step trace（零 LLM，追加写 jsonl）──
   // 社区共识（Keyhole/Praison/ZOOZ）：没有 trace 就无法度量，没有度量就无法优化。
   traceEnabled: true,
-  tracePath: 'D:/Brain/workspace/bench/_trace.jsonl',
+  tracePath: `${BENCH_DIR}/_trace.jsonl`,
   maxTraceBytes: 8000000,
   // ── 学习闭环集成（2026-11-18 18:40）：把 bench/ 里的 .py 机制真正接进运行路径 ──
   // A 段（本文件）：write/edit 结果追加 outcome；crit_hit 记入待结算队列；旁路 watcher（B 段）
   // 消费这两类事件跑 crit_decay/skill_draft/crit_revision/trace_timeline，并写入回注队列。
   // 本文件在 pre-step 读回注队列，把"沉淀结论"注入下一轮——形成 轨迹→沉淀→回注 闭环。
   learningEnabled: true,
-  outcomePath: 'D:/Brain/workspace/bench/_outcome.jsonl',
-  pendingLearnPath: 'D:/Brain/workspace/bench/_pending_learn.jsonl',
-  feedbackQueuePath: 'D:/Brain/workspace/bench/_learn_feedback.jsonl',
+  outcomePath: `${BENCH_DIR}/_outcome.jsonl`,
+  pendingLearnPath: `${BENCH_DIR}/_pending_learn.jsonl`,
+  feedbackQueuePath: `${BENCH_DIR}/_learn_feedback.jsonl`,
   feedbackMaxInjectPerSession: 2,
   // JSON 解析失败时的重试次数（社区标准：解析失败 → 附格式纠正重试一次）
   jsonRetryTimes: 1,
@@ -148,7 +164,7 @@ const DEFAULTS = {
   // 实现：扫 bench/skills/*.md 的 frontmatter，按 initial+latest 的关键词命中注入"技能卡"（名称+摘要+路径），
   // 模型需要细节时自行 read。零 LLM 成本。
   skillsEnabled: true,
-  skillsDir: 'D:/Brain/workspace/bench/skills',
+  skillsDir: `${BENCH_DIR}/skills`,
   maxSkillCardsPerSession: 2,
   // ── 危险操作分级（2026-11-18，社区 permission tiering：auto / read-only / confirm）──
   // block：递归删除、强推、重置工作区等不可逆动作 → 注入确认要求（不静默执行）
@@ -159,13 +175,13 @@ const DEFAULTS = {
   messageNoTodo: '[harness 执行检查] 这是一个多步任务，但你还没有用 todo_write 建立任务清单。立即停下：先调用 todo_write 写出完整步骤清单（每条 = 动词 + 目标 + 完成标准，末尾加 [VERIFY] 验证项），把第一项标为 in_progress，然后按清单顺序执行。',
   messageStale: '[harness 执行检查] 你已经连续多步没有更新 todo 清单了。立即回到清单：把刚完成的项标为 completed，把下一项标为 in_progress，再继续执行。如果发现实际工作与清单偏离，先修订清单再继续。',
   // 审计员自校准：每次干预记录到 jsonl，3 步后结算"注入后是否还有新失败"（有效/无效）
-  auditFeedbackPath: 'D:/Brain/workspace/bench/_audit_feedback.jsonl',
+  auditFeedbackPath: `${BENCH_DIR}/_audit_feedback.jsonl`,
   // ── MTP 信心信号（2026-11-17，SU/SAG 的零改动代理）──
   // llama-server 每次请求都会打印 "draft acceptance = 0.89 (X accepted / Y generated)"——
   // 这是 MTP draft 头与主模型的一致率：低接受率 = 模型在犹豫/漂移（不确定），
   // 与 SU（arXiv 2609.05274）的 draft cross-likelihood 同源，只是聚合到请求级（零改动）。
   // 阶段 1 只读日志尾部，不触发额外推理；< threshold 时作为审计门控信号之一。
-  specLogPath: 'D:/Brain/dsh-data/profiles/desktop/node_modules/dsh-llama-server-autostart/llama-server-run.log',
+  specLogPath: `${HOME_DIR}/profiles/desktop/node_modules/dsh-llama-server-autostart/llama-server-run.log`,
   specAcceptanceMin: 0.65,
   // 短期①：spec 阈值分类标定——不同任务的正常 draft acceptance 区间不同，
   // 全局 0.65 在长尾（尤其低接受率的开放任务）会误触发审计。启用后按任务类型覆盖全局值。
@@ -299,7 +315,7 @@ function makeAppender(path) {
 // ── Rubric 外置加载（JSON 单一来源；缺失则用内置默认）──
 function loadRubric(name, fallback) {
   try {
-    const p = `D:/Brain/workspace/bench/rubrics/${name}`
+    const p = `${BENCH_DIR}/rubrics/${name}`
     const j = JSON.parse(readFileSync(p, 'utf8'))
     return j && typeof j === 'object' ? j : fallback
   } catch {
@@ -507,7 +523,7 @@ function workspaceSnapshot(s) {
 // ── CritBank 经验检索（模块级加载一次）──
 let CRITBANK = []
 try {
-  CRITBANK = JSON.parse(readFileSync('D:/Brain/workspace/bench/critbank.json', 'utf8'))
+  CRITBANK = JSON.parse(readFileSync(`${BENCH_DIR}/critbank.json`, 'utf8'))
 } catch { /* 缺失则静默不启 */ }
 
 function matchCritbank(s) {

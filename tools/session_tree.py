@@ -22,9 +22,11 @@ import json
 import os
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
 
-TRACE = r'D:\Brain\workspace\bench\_trace.jsonl'
-TREE = r'D:\Brain\workspace\bench\_session_tree.json'
+BENCH_DIR = os.environ.get('BENCH_DIR') or r'D:\Brain\workspace\bench'
+TRACE = str(Path(BENCH_DIR) / '_trace.jsonl')
+TREE = str(Path(BENCH_DIR) / '_session_tree.json')
 
 
 def load_tree():

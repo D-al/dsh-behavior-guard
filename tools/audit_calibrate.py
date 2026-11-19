@@ -20,8 +20,10 @@
 import json
 import os
 from collections import defaultdict
+from pathlib import Path
 
-FEEDBACK = r'D:\Brain\workspace\bench\_audit_feedback.jsonl'
+BENCH_DIR = os.environ.get('BENCH_DIR') or r'D:\Brain\workspace\bench'
+FEEDBACK = str(Path(BENCH_DIR) / '_audit_feedback.jsonl')
 
 
 def main():

@@ -6,6 +6,7 @@
 原则（Ntense/Chanl 2026）：改动不过回归不上线；每个生产失败应转化为这里的一个检查项。
 """
 import os, sys, subprocess, json, urllib.request
+from pathlib import Path
 
 BENCH = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(BENCH)
@@ -17,9 +18,10 @@ def find_asset(name):
             return p
     return os.path.join(BENCH, name)
 TPL = find_asset('chat_template_zh.jinja')
-AGENTS = r'C:\Users\Ad\.dsh\AGENTS.md'
-PLUG = r'C:\Users\Ad\.dsh\profiles\desktop\node_modules'
-CORDIS = r'C:\Users\Ad\.dsh\profiles\desktop\cordis.patch.yml'
+USERPROFILE = os.environ.get('USERPROFILE') or r'C:\Users\Ad'
+AGENTS = str(Path(USERPROFILE) / '.dsh' / 'AGENTS.md')
+PLUG = str(Path(USERPROFILE) / '.dsh' / 'profiles' / 'desktop' / 'node_modules')
+CORDIS = str(Path(USERPROFILE) / '.dsh' / 'profiles' / 'desktop' / 'cordis.patch.yml')
 
 results = []
 def check(name, ok, detail=''):

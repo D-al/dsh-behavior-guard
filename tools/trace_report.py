@@ -10,8 +10,10 @@ import json
 import os
 import sys
 from collections import Counter, defaultdict
+from pathlib import Path
 
-TRACE = r'D:\Brain\workspace\bench\_trace.jsonl'
+BENCH_DIR = os.environ.get('BENCH_DIR') or r'D:\Brain\workspace\bench'
+TRACE = str(Path(BENCH_DIR) / '_trace.jsonl')
 
 
 def load():
@@ -38,7 +40,7 @@ def main():
         return
 
     # 数据充足性提示（避免把"机制已装但无数据"误判为坏了）
-    feedback = r'D://Brain//workspace//bench//_audit_feedback.jsonl'
+    feedback = str(Path(BENCH_DIR) / '_audit_feedback.jsonl')
     import os as _os
     n_fb = sum(1 for _ in open(feedback, encoding='utf-8')) if _os.path.exists(feedback) else 0
     n_llm = sum(1 for r in rows if r.get('kind') == 'llm')

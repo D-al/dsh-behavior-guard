@@ -20,9 +20,11 @@ import json
 import os
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
 
-BANK = r'D:\Brain\workspace\bench\critbank.json'
-STATE = r'D:\Brain\workspace\bench\_critbank_state.json'
+BENCH_DIR = os.environ.get('BENCH_DIR') or r'D:\Brain\workspace\bench'
+BANK = str(Path(BENCH_DIR) / 'critbank.json')
+STATE = str(Path(BENCH_DIR) / '_critbank_state.json')
 RETIRE_DAYS = 30
 HARMFUL_MARGIN = 2
 

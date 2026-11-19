@@ -20,8 +20,10 @@ import os
 import re
 import sys
 from collections import defaultdict
+from pathlib import Path
 
-TRACE = r'D:\Brain\workspace\bench\_trace.jsonl'
+BENCH_DIR = os.environ.get('BENCH_DIR') or r'D:\Brain\workspace\bench'
+TRACE = str(Path(BENCH_DIR) / '_trace.jsonl')
 OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '_skill_drafts')
 
 

@@ -4,13 +4,15 @@
 用法: python bench/build_b12244.py configure|build
 """
 import os, subprocess, sys
+from pathlib import Path
 
 MSVC = r"D:\VS2022\BuildTools\VC\Tools\MSVC\14.44.35207"
 SDK = r"C:\Program Files (x86)\Windows Kits\10"
 SDKVER = "10.0.26100.0"
 NINJA = r"D:\VS2022\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja"
 CUDA = r"D:\CUDA\v12.5"
-CMAKE = r"C:\Users\Ad\.workbuddy\binaries\python\envs\default\Lib\site-packages\cmake\data\bin\cmake.exe"
+USERPROFILE = os.environ.get('USERPROFILE') or r'C:\Users\Ad'
+CMAKE = str(Path(USERPROFILE) / '.workbuddy' / 'binaries' / 'python' / 'envs' / 'default' / 'Lib' / 'site-packages' / 'cmake' / 'data' / 'bin' / 'cmake.exe')
 SRC = r"D:\llama-b12244-src"
 BLD = r"D:\llama-b12244-src\build"
 

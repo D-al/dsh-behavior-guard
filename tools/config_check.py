@@ -16,12 +16,15 @@ v2（2026-11-18）：从"env vs INI"扩展为全栈四处一致性：
 import os
 import re
 import sys
+from pathlib import Path
 
-ENV = r'D:\Brain\dsh-data\profiles\desktop\.env.llama'
-INI = r'D:\Brain\workspace\bench\llama-router-preset.ini'
-CORDIS = r'D:\Brain\dsh-data\profiles\desktop\cordis.patch.yml'
-AGENTS = r'D:\Brain\dsh-data\AGENTS.md'
-SKILLS_DIR = r'D:\Brain\workspace\bench\skills'
+DSH_HOME = os.environ.get('DSH_HOME') or r'D:\Brain\dsh-data'
+BENCH_DIR = os.environ.get('BENCH_DIR') or r'D:\Brain\workspace\bench'
+ENV = str(Path(DSH_HOME) / 'profiles' / 'desktop' / '.env.llama')
+INI = str(Path(BENCH_DIR) / 'llama-router-preset.ini')
+CORDIS = str(Path(DSH_HOME) / 'profiles' / 'desktop' / 'cordis.patch.yml')
+AGENTS = str(Path(DSH_HOME) / 'AGENTS.md')
+SKILLS_DIR = str(Path(BENCH_DIR) / 'skills')
 
 
 def env_key_for(ini_key: str) -> str:

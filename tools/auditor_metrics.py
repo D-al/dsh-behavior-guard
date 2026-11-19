@@ -10,8 +10,10 @@ import json
 import os
 import sys
 from collections import defaultdict
+from pathlib import Path
 
-path = sys.argv[1] if len(sys.argv) > 1 else r'D:\Brain\workspace\bench\_audit_feedback.jsonl'
+BENCH_DIR = os.environ.get('BENCH_DIR') or r'D:\Brain\workspace\bench'
+path = sys.argv[1] if len(sys.argv) > 1 else str(Path(BENCH_DIR) / '_audit_feedback.jsonl')
 if not os.path.exists(path):
     print('尚无审计干预记录:', path)
     sys.exit(0)

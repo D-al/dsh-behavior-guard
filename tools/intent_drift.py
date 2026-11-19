@@ -20,9 +20,12 @@ import os
 import re
 import sys
 import glob
+from pathlib import Path
 
-SESS_ROOT = r'D:\Brain\dsh-data\sessions\--C-Users-Ad-Documents-deepseek-harness-default-workspace--'
-OUT = r'D:\Brain\workspace\bench\_intent_drift.json'
+DSH_HOME = os.environ.get('DSH_HOME') or r'D:\Brain\dsh-data'
+BENCH_DIR = os.environ.get('BENCH_DIR') or r'D:\Brain\workspace\bench'
+SESS_ROOT = str(Path(DSH_HOME) / 'sessions' / '--C-Users-Ad-Documents-deepseek-harness-default-workspace--')
+OUT = str(Path(BENCH_DIR) / '_intent_drift.json')
 
 STOP = set('帮我 请你 一个 这个 一下 什么 怎么 可以 是否 以及 然后 现在 需要 给个 展示 一下'.split())
 

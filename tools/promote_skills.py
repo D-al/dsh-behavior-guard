@@ -44,7 +44,7 @@ def scan_injection(txt):
 import sys
 from datetime import datetime, timezone
 
-BENCH = r'D:\Brain\workspace\bench'
+BENCH = os.environ.get('BENCH_DIR') or r'D:\Brain\workspace\bench'
 SKILLS = os.path.join(BENCH, 'skills')
 PENDING = os.path.join(BENCH, '_skill_drafts', 'pending')
 REJECTED = os.path.join(BENCH, '_skill_drafts', 'rejected')

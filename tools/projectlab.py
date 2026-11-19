@@ -23,6 +23,7 @@ import sys
 import time
 import urllib.request
 import threading
+from pathlib import Path
 
 import yaml
 
@@ -37,7 +38,9 @@ TEMPERATURE = float(os.environ.get("QL_TEMP", "0.6"))
 SEED = int(os.environ["QL_SEED"]) if os.environ.get("QL_SEED") else None
 # 路由模式下必须显式指定模型，否则会用「当前已加载的那个」——容易跑到错误权重上。
 MODEL_ID = os.environ.get("QL_MODEL", "Qwen3.6-35B-A3B-UD-Q4_K_XL")
-ROOT = r"D:\Brain\workspace\bench\projectlab_sandbox"
+BENCH_DIR = os.environ.get('BENCH_DIR') or r'D:\Brain\workspace\bench'
+USERPROFILE = os.environ.get('USERPROFILE') or r'C:\Users\Ad'
+ROOT = str(Path(BENCH_DIR) / 'projectlab_sandbox')
 
 
 class _L(yaml.SafeLoader):
@@ -48,7 +51,7 @@ _L.add_multi_constructor('tag:yaml.org,2002:js', lambda l, s, n: None)
 
 
 def persona_for(cwd):
-    cfg = yaml.load(open(r"C:\Users\Ad\.dsh\profiles\desktop\cordis.patch.yml",
+    cfg = yaml.load(open(str(Path(USERPROFILE) / '.dsh' / 'profiles' / 'desktop' / 'cordis.patch.yml'),
                          encoding="utf-8").read(), Loader=_L)
     for e in cfg:
         if isinstance(e, dict) and e.get("id") == "preset-cordis":

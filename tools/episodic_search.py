@@ -18,9 +18,11 @@ import os
 import re
 import sys
 from datetime import datetime
+from pathlib import Path
 
 MEM_DIR = r'D:\Brain\workspace\memory'
-EVENTS = r'D:\Brain\workspace\bench\EVENTS.md'
+BENCH_DIR = os.environ.get('BENCH_DIR') or r'D:\Brain\workspace\bench'
+EVENTS = str(Path(BENCH_DIR) / 'EVENTS.md')
 
 
 def parse_logs():
