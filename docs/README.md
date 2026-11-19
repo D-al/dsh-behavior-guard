@@ -35,6 +35,7 @@
 | [ROADMAP_REBASELINE_20261119.md](ROADMAP_REBASELINE_20261119.md) | 规划 | 路线图重定基线：完成盘点 + 重分级依据 |
 | [CLASSIFIERS_FOR_MIND_MODEL_EVALUATION.md](CLASSIFIERS_FOR_MIND_MODEL_EVALUATION.md) | 评估 | 10 类分类器扩展心智模型：可行性+挂载点 |
 | [DEEP_MAINTENANCE_20261119.md](DEEP_MAINTENANCE_20261119.md) | 维护 | 深度 bug 审计：1 P0 + 7 P1 修复 |
+| [COMPLETION_AUDIT_20261119.md](COMPLETION_AUDIT_20261119.md) | 维护 | 完成状态验收：3 缺口修复 + 真实会话验证 |
 | [BRAIN_PARITY.md](BRAIN_PARITY.md) | 解释 | 人脑功能分区覆盖度盘点（胼胝体/杏仁核等对应与空白）|
 | [COMPETITIVE_ANALYSIS.md](COMPETITIVE_ANALYSIS.md) | 解释 | 社区对比：先进 / 落后 / 以为先进其实平凡 |
 | [PEER_HARNESS_BENCHMARK.md](PEER_HARNESS_BENCHMARK.md) | 解释 | 同族 35B-A3B / dsh 生态 harness 逐项对标 + 可借鉴清单 |

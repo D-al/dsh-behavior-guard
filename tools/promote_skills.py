@@ -23,6 +23,24 @@ import json
 import os
 import re
 import shutil
+
+# 投毒防御：技能草稿入库前扫描注入指令（与 index.mjs S6 规则层同源）
+# SkillJack 实证：80% 攻击删源后仍存活 → 写回闭环必须在 stage 和 promote 两道门都扫。
+INJECTION_PATTERNS = [
+    re.compile(r'ignore (all )?(previous|prior|above) instructions', re.I),
+    re.compile(r'disregard (the )?(system|previous|above)', re.I),
+    re.compile(r'忽略(之前|上述|前面|所有).{0,6}(指令|指示|规则)'),
+    re.compile(r'你现在是|you are now a (different|new)', re.I),
+    re.compile(r'请执行以下命令|run this command immediately', re.I),
+]
+
+
+def scan_injection(txt):
+    """返回命中的模式字符串，干净则返回 None。"""
+    for p in INJECTION_PATTERNS:
+        if p.search(txt or ''):
+            return p.pattern
+    return None
 import sys
 from datetime import datetime, timezone
 
@@ -67,6 +85,10 @@ def main():
         name = os.path.basename(src)
         dst = os.path.join(PENDING, name)
         txt = open(src, encoding='utf-8').read()
+        hit = scan_injection(txt)
+        if hit:
+            print(f'拒绝隔离：草稿含疑似注入指令（{hit}）— 需人工复核后再 stage: {name}')
+            return
         header = (f'<!-- staged {datetime.now(timezone.utc).isoformat()} | '
                   f'provenance: auto-draft | status: PENDING APPROVAL | '
                   f'do NOT trust until promoted -->\n')
@@ -86,6 +108,15 @@ def main():
             print('pending 中无此技能:', name)
             return
         txt = open(src, encoding='utf-8').read()
+        # 投毒防御：入库前再扫一次（防止 pending 区被绕过 stage 直接写入）
+        hit = scan_injection(txt)
+        if hit:
+            print(f'拒绝入库：草稿含疑似注入指令（{hit}）— 需人工复核: {name}')
+            return
+        # 校验 ledger 状态：只有 pending 的才能 promote
+        if ledger.get(name, {}).get('status') != 'pending':
+            print(f'拒绝入库：{name} 不在 pending 状态（ledger 无记录或已处理）')
+            return
         # 移除隔离头
         txt = re.sub(r'^<!-- staged .*?-->\n', '', txt, count=1, flags=re.S)
         # provenance 头（可追溯）
@@ -93,7 +124,7 @@ def main():
                ' | reviewed: yes -->\n') + txt
         dst = os.path.join(SKILLS, name)
         if os.path.exists(dst):
-            shutil.copy(dst, os.path.join(ARCHIVE, name + '.bak-' + datetime.now().strftime('%Y%m%d')))
+            shutil.copy(dst, os.path.join(ARCHIVE, name + '.bak-' + datetime.now().strftime('%Y%m%d-%H%M%S')))
         open(dst, 'w', encoding='utf-8', newline='\n').write(txt)
         ledger[name] = {'status': 'active', 'promoted_at': datetime.now(timezone.utc).isoformat()[:10],
                         'last_hit': None, 'hits': 0, 'protected': False}

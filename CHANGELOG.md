@@ -1,3 +1,23 @@
+## [2.25.0] - 2026-11-19 19:20（完成状态验收审计：3 缺口修复 + 真实会话验证）
+
+### Docs + Sync-only（验收审计，docs/COMPLETION_AUDIT_20261119.md）
+- **三层交叉验证**（运行版代码 / 真实测试 / 真实产物+真实会话）所有"已完成"声明：
+  - JS 侧 10 项机制全 PASS，权威源码与运行版 SHA256 一致。
+  - Python 侧抓到并修 3 个"宣称完成但没落地"：
+    ① **投毒防御修复只改了 bench 副本、权威仓库 tools/promote_skills.py 没同步** → 已同步；
+    ② `test_injection_scan.mjs` ⑥ 断言没跟上 P1-3 行为变更 → 实际 158/1 而文档写 158/0 → 断言更新为 7/7，全量 **160/0**；
+    ③ ROADMAP §1 现在时数字过期（6970/4簇 → 8147/6簇）→ 已更新。
+- **真实会话验证**（用户授权启动 dsh）：
+  - S6 注入检测真实 trace 17 次；S9 `review_state`/`review_echo` 首次真实触发；
+  - **S8 `_audit_feedback.jsonl` 真实落盘首条**：`{gate:repeated-failure, badNow:1, effective:false, stepNow:6}`
+    → S8/S9 从"仅单测"升级为"真实路径验证完成"。
+- **差点误报的纠正**：角色 LLM 整体成功率看似灾难（audit 9.7%/critic 0%），按 sid 分组后确认
+  失败全部来自 `sid=s1` 单测伪造数据，真实会话 audit 5/5、corrector 4/4 成功。
+- 看门狗空转再次复现并按已知修法恢复（RestartDsh 卡 Running + llama 进程 0）。
+
+### Note
+- 本版本无生产 JS 代码改动，仅同步权威仓库脚本 + 测试断言 + 文档。
+
 ## [2.24.0] - 2026-11-19 19:00（M4 落地 + 深度维护 + 分类器调研 + 路线图重排）
 
 ### Added / Fixed
