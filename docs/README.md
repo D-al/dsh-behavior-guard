@@ -46,6 +46,7 @@
 | [AUTONOMY_GAP_20261120.md](AUTONOMY_GAP_20261120.md) | 评估 | 心智模型"学会自己走路"现状 L1 与三级差距 |
 | [WALKING_PLAN_20261120.md](WALKING_PLAN_20261120.md) | 方案 | **学会自己走路 6 阶执行阶梯**（用现有器官逐步自主化）|
 | [GROWTH_CARD_DESIGN_20261120.md](GROWTH_CARD_DESIGN_20261120.md) | 设计 | 能力阶梯成长卡片：what/why/解锁/好处/代价/坑/反思 |
+| [CONSISTENCY_VERDICT_20261120.md](CONSISTENCY_VERDICT_20261120.md) | 事故自审 | GitHub/权威/生产一致性 verdict + 守卫机制 + agent 教训 |
 | [BRAIN_PARITY.md](BRAIN_PARITY.md) | 解释 | 人脑功能分区覆盖度盘点（胼胝体/杏仁核等对应与空白）|
 | [COMPETITIVE_ANALYSIS.md](COMPETITIVE_ANALYSIS.md) | 解释 | 社区对比：先进 / 落后 / 以为先进其实平凡 |
 | [PEER_HARNESS_BENCHMARK.md](PEER_HARNESS_BENCHMARK.md) | 解释 | 同族 35B-A3B / dsh 生态 harness 逐项对标 + 可借鉴清单 |

@@ -5,6 +5,7 @@
 # ⚠ 状态真相源在 ROADMAP.md 的 <!-- ROADMAP_GRAPH_BEGIN v1 --> 块内——不要手改本文件的 status。
 # 用户目标：把路线图切成 agent 能自己一步步爬的、可读的形式，让它顺着成长。
 # 设计：docs/GROWTH_CARD_DESIGN_20261120.md；执行器：tools/roadmap_check.py
+# 一致性教训：docs/CONSISTENCY_VERDICT_20261120.md
 # ============================================================
 
 meta:
@@ -134,6 +135,7 @@ items:
   - evidence_cited 埋点必须由本任务一起做，否则判据永远 FAIL（鸡生蛋）
   - 检索只进控制回合，不占运行时注入通道（ADR-0017：FEP 曾挤掉 D5 额度）
   - 过滤测试 sid，否则检索到 s1 假经验
+  - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection:
   - 注入的 3 条里有几条真被后续动作引用？没被引用的为什么没用？
   - 有没有"想起来的经验是错的/过时的"？怎么进可控遗忘？
@@ -171,6 +173,7 @@ items:
   - 只做局部信号，别碰长轨迹因果归因（Jev 实测≈随机）
   - 判据产物 eval_fsm.py/_fsm_eval.json 由本任务自己生成
   - AUROC<0.85 不算完成，别降标准
+  - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection:
   - FSM 预警的误报是什么模式？误报比漏报更伤吗？
   - 哪些失败签名是 FSM 抓不到、必须交主模型的？
@@ -210,6 +213,7 @@ items:
   - 改 index.mjs 的 bdi 状态结构，不在白名单细粒度 target 内 → 人工确认
   - 复用现有 mind_state kind 埋点，别新造 kind
   - 用户意图多轮冲突时以最新指令为准（ADR-0014 不质疑式干预）
+  - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection:
   - 三槽里哪一槽最常在压缩后丢失？
   - 有没有把用户临时指令误当长期意图的情况？
@@ -237,6 +241,7 @@ items:
   - 8G 显存硬约束：先验证 86M CPU 分类器，别直接上 embedding
   - GLiClass 英文为主，中文表现未验证
   - 共享一个编码器，不为每意图训独立模型
+  - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection:
   - 中文意图分类的置信度分布如何？低置信阈值定多少合适？
   - 分类器错了有没有被三角色拦住？
@@ -270,6 +275,7 @@ items:
   caveats:
   - append-only 历史语义，fork 不能改写既有记录（ADR-0013）
   - 不付 KV 后缀税——靠追加不靠改写
+  - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection:
   - fork 后旧节点的经验有没有被正确继承？
   - 有没有因为 parent 指针错而 rewind 到错误节点？
@@ -294,6 +300,7 @@ items:
   caveats:
   - ⛔ 用户拍板项，agent 不得自主决定
   - 不动则保持现状，别为了改而改
+  - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection: []
   abort_if: 无（人工决策项，不自主执行）
   preconditions:
@@ -316,6 +323,7 @@ items:
   caveats:
   - 降级项：0.6B 已证伪（4-6s 比文献慢 10×）
   - 必须 86M CPU 延迟<500ms + A/B 端到端提速才上
+  - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection: []
   abort_if: 无（前置未满足，manual-blocked）
   preconditions:
@@ -340,6 +348,7 @@ items:
   caveats:
   - 必须先阈值重标定，FPR 98% 的坑不能再踩
   - 规则层已在线，实测误报率>2% 才做模型层
+  - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection: []
   abort_if: 无（manual-blocked）
 - id: L2
@@ -361,6 +370,7 @@ items:
   caveats:
   - 高成本：迁移+跑基准
   - 长期优先，不插队
+  - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection: []
   abort_if: 无（长期人工排期）
   preconditions:
@@ -385,6 +395,7 @@ items:
   - 只做单次蒸馏 n=1（递归自噬第 9 代会退化成野兔清单）
   - 保留 UNCERTAIN 样本
   - 长轨迹因果归因仍交主模型
+  - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection: []
   abort_if: 无（依赖 M8 完成后人工评估）
 - id: L1
@@ -409,6 +420,7 @@ items:
   - 需 M1+M3+M9 先完成
   - 误报不能侵占注入通道（ADR-0017）
   - 断言精度/召回必须可测
+  - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection: []
   abort_if: 无（长期，依赖三个前置）
   instrumentation_needed:
@@ -432,6 +444,7 @@ items:
   caveats:
   - GLiClass 英文为主，中文表现必须先验证
   - 8G 可行性待证
+  - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection: []
   abort_if: 无（探索项）
   preconditions:
@@ -454,6 +467,7 @@ items:
   caveats:
   - 降级：0.6B 已证伪，须换 86M 且召回 A/B≥80%
   - 未命中只记 trace 不拦截
+  - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection: []
   abort_if: 无（降级观望）
   preconditions:
@@ -477,6 +491,7 @@ items:
   caveats:
   - 调研完成，待决定是否落 ADR
   - 观望
+  - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection: []
   abort_if: 无（观望）
   preconditions:
@@ -499,6 +514,7 @@ items:
   caveats:
   - '#29307 未合并，本地 2 行补丁还在'
   - 不插队
+  - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection: []
   abort_if: 无（等上游）
   preconditions:
@@ -522,6 +538,7 @@ items:
   caveats:
   - 先小规模对照，不占正式坑位
   - 与 D4 交付闸门同源
+  - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection: []
   abort_if: 无（探索）
   instrumentation_needed:
@@ -555,6 +572,7 @@ autonomy_rungs:
   caveats:
   - 黑名单要覆盖 s1/outcome-/budget-*/b7332eb6 等
   - 只过滤不删数据本体（可逆）
+  - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection:
   - 过滤后真实数据占比多少？还有哪种假数据没被黑名单抓到？
   - 有没有真实 sid 被误过滤？
@@ -581,6 +599,7 @@ autonomy_rungs:
   - 对 §7 归档 16 项回测必须 100% PASS、对未完成项 0 误报才准开 --apply
   - 主观 DoD（M5/M7）标 manual-only
   - 判据指向真实产物，过滤测试 sid
+  - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection:
   - 回测里有没有"判据 PASS 但其实没做"的假阳性？
   - 哪些判据太松/太紧，需要调阈值？
@@ -603,6 +622,7 @@ autonomy_rungs:
   - 必须写权威源 CAPABILITY_LADDER.yaml，不写 p/bench 副本
   - 写回前 git diff --check
   - 主观项不勾选
+  - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection:
   - 自动勾选有没有和人的判断冲突过？
   - diff 审阅里人最常改哪类勾选？
@@ -625,6 +645,7 @@ autonomy_rungs:
   - 只执行队列内任务，绝不碰队列外
   - 限单次预算（35B 每步 11s）
   - 白名单含 index.mjs 细粒度项需 A3.5 先完成
+  - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection:
   - 队列里的任务我完成率多少？失败的是哪类？
   - 有没有越界执行过队列外任务？
@@ -650,6 +671,7 @@ autonomy_rungs:
   - 廉价 e2e = node --check + 全量 test_*.mjs + config_check.py
   - 排除 verify_agent.py（35B 600s）
   - 快照落权威源外的 archive/
+  - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection:
   - diff 校验拦住过哪种绕过？
   - 回滚触发过几次，都是什么原因？
@@ -675,6 +697,7 @@ autonomy_rungs:
   - 做旁路决策器，不改 D1-D5 判定本体（禁改面）
   - 先只做 D1（最明确）
   - 命中写结构化 trace
+  - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection:
   - meta_decision 跳过后再没重复探测的比例多少？
   - 有没有误跳过本该继续的动作？
@@ -703,6 +726,7 @@ autonomy_rungs:
   - 只在白名单+预算内
   - 保留人工验证基线，定期 diff 防语义漂移
   - L5 自我改写目标永不做
+  - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection:
   - 一周里我沉淀了几条可复用经验？爬后面的任务是否真的更快了？
   - 有没有"越爬越偏"的漂移迹象？
