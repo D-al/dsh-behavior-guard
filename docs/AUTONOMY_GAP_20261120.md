@@ -21,8 +21,8 @@
 | ② 自主执行 | ✅ **强** | harness 本体（L0-L3/D1-D5/Critic/验收员）+ 工具面，已由人给任务时全自动跑完 |
 | ③ 自主验证 | ✅ **已具备** | gate 11/11 单测、真实 trace 证据分层、`verify-on-edit`、Critic 产物评审；但**没和路线图条目绑定** |
 | ④ 写回路线图 | ❌ **完全缺失** | grep 所有 .py/.mjs：无一处写 ROADMAP.md；勾选全人工 |
-| ⑤ 决定下一步 | 🟡 **局部有** | 控制回合（control_turn 真实触发 19 次）+ todo 闹钟是元决策，但只管"当前任务内怎么走"，不管"下一个任务是什么" |
-| ⑥ 常驻循环 | ❌ **未启动** | P3 常态化按 ADR-0018 明确不启动；自进化候选目录只有 1 个 11-19 的文件，之后再无动静 |
+| ⑤ 决定下一步 | 🟡 **局部有** | 控制回合（实测 trace `control_turn` **229 次**，文档写作时为 19 次）+ todo 闹钟是 prompt 层软反思，代码**不做 if/else 换任务**；只管"当前任务内"，无 abandon/skip/换任务路径 |
+| ⑥ 常驻循环 | ❌ **自进化未启动** | `learn_watcher.py` 常驻（Startup 每 30s、实测 **1936 runs**）但只消费 trace；**自进化 P3 按 ADR-0018 明确不启动**，候选目录只有 1 个 11-19 的文件 |
 
 **能力阶梯：L0 全人工 → L1 人工给任务+自动执行+人工验收 → L2 自动验收写回 → L3 自动选任务 → L4 常驻闭环 → L5 自我修正路线图本身。当前 = L1（偏 L0/L1 之间，因为连验收报告也是人要我写的）。**
 
@@ -99,4 +99,9 @@
 2. **多副本陷阱**：`sync-to-profile.ps1` 是单向复制；写回必须明确写**权威源文件**（publish），写 bench 副本会在重装后丢失——这正是本项目反复踩的三副本不同步。
 3. **人工判据不能自动勾选**：M5「用户拍板」、M7「降级/观望」、M1「被主动引用>0次」属人工或需埋点，应标记"待人工核验"而非自动 `[x]`。
 
-**文档状态提醒**：本评估（AUTONOMY_GAP）目前尚未被 CHANGELOG/ROADMAP 引用，按知识资产沉淀规则（ROADMAP.md:32-35）应正式纳入治理链——本次对话结束前完成。
+**文档状态**：已纳入治理链（ROADMAP §知识资产 + CHANGELOG 2.26.4，commit `04310ab`）。
+
+## 6. 审计抓到的两个"宣称 vs 实际"缺口（自主化的隐藏地雷）
+
+1. **"35B 当 proposer" 是文档谎言**：`SELF_HARNESS_PLAN.md:53` / `S1_SELF_HARNESS_P0P1_RESULT.md:37` 都写"本地 35B 作 proposer"，但 `surfaces.json:3` 实际写 `proposer_model: workbuddy`，`self_harness_proposer.py:4` 注释亦承认"由 WorkBuddy agent 手工做"；真实候选 `candidate-1.json:7` 模型字段是 `WorkBuddy(claude-opus)`。本机 35B **从未担任过 proposer**——跑通协议 ≠ 35B 能自我改进。
+2. **"写入目标"缺端到端验证**：`surfaces.json:9-16` editable 白名单包含 `index.mjs`（harness 主脑）与 `critbank.json`；`self_harness_gate.py:31-52` 的 `accept()` 只做统计门禁（accept/reject/no-op），**不跑 e2e、不做风险分级、无回滚入口**。也就说：目前机制允许 agent 改自己的大脑，但没人验证改完会不会变傻。这是"学会走路"前必须先补的安全地基——比 L2/L3 的功能推进优先级更高。
