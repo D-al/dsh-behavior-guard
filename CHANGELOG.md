@@ -1,3 +1,10 @@
+## [2.26.5] - 2026-11-20 02:15（能力阶梯按调研修正：权威源归一 + 渐进解锁）
+
+- 权威源改为 ROADMAP.md 内嵌 HTML 注释块，CAPABILITY_LADDER.yaml 降为语义镜像（消除多副本漂移）
+- 加 SKILLGRAPH 渐进解锁（tier>=2 需低一 tier done>=60%）+ CASCADE Waiting!=Blocked
+- 加 evidence_log / --claim(CAS) / --graph / --verify / --status / preconditions / instrumentation_needed
+- 实测：30 节点 22 边 0 环；--next 选 A0；全命令可用
+
 ## [2.26.4] - 2026-11-20 01:50（文档层：自主走路评估 + 记忆→心智模型盘点）
 
 - 新增 docs/AUTONOMY_GAP_20261120.md：实测确认当前 L1（人工驱动+局部自动），

@@ -1,16 +1,10 @@
 # ============================================================
-# CAPABILITY LADDER — agent 自读能力阶梯 / 成长手册（机器可读 + 人类可读）
+# CAPABILITY LADDER — agent 自读能力阶梯 / 成长手册（语义镜像）
 # ============================================================
-# 用户目标（2026-11-20）：把路线图切成"它能一步步爬上去的、它自己可读的形式"，
-# 让 agent 顺着这条路自己成长；每张卡片回答 what/why/unlocks/benefit/cost/caveats/reflection。
-# 设计说明：docs/GROWTH_CARD_DESIGN_20261120.md
-#
-# 读法：
-#   agent  → tools/roadmap_check.py 解析本文件 → --next 选卡 → 跑 verify → 写回 status
-#   人     → 读 ROADMAP.md（人类视图）；本文件是机器真相源
-# 权威源：CAPABILITY_LADDER.yaml（不是 ROADMAP.md，不是 p/bench 副本）
-# 判据原则：ADR-0012 零 LLM——文件/trace/单测/gate；过滤测试 sid
-# 安全：autonomous=true 必须 verify 全确定性 + risk=low；闸门上移未取消
+# ⚠ 本文件是【语义镜像】，供 agent 读完整成长卡片(what/why/benefit/caveats/reflection)。
+# ⚠ 状态真相源在 ROADMAP.md 的 <!-- ROADMAP_GRAPH_BEGIN v1 --> 块内——不要手改本文件的 status。
+# 用户目标：把路线图切成 agent 能自己一步步爬的、可读的形式，让它顺着成长。
+# 设计：docs/GROWTH_CARD_DESIGN_20261120.md；执行器：tools/roadmap_check.py
 # ============================================================
 
 meta:
@@ -144,6 +138,8 @@ items:
   - 注入的 3 条里有几条真被后续动作引用？没被引用的为什么没用？
   - 有没有"想起来的经验是错的/过时的"？怎么进可控遗忘？
   abort_if: D5 审计额度被挤占，或长任务 token 增幅>10% 且无质量提升
+  instrumentation_needed:
+  - trace kind evidence_cited（本任务埋点）
 - id: M8
   title: 轨迹 FSM 监控器
   tier: 1
@@ -179,6 +175,8 @@ items:
   - FSM 预警的误报是什么模式？误报比漏报更伤吗？
   - 哪些失败签名是 FSM 抓不到、必须交主模型的？
   abort_if: held-out AUROC<0.85 反复达不到，或预警侵入运行时注入通道
+  instrumentation_needed:
+  - tools/eval_fsm.py（新建）+ _fsm_eval.json
 - id: M3
   title: 用户意图 BDI 三槽
   tier: 2
@@ -216,6 +214,8 @@ items:
   - 三槽里哪一槽最常在压缩后丢失？
   - 有没有把用户临时指令误当长期意图的情况？
   abort_if: bdi 结构改动导致现有 control_turn/FEP 断言回归
+  instrumentation_needed:
+  - tools/test_bdi_slots.mjs（新建）；复用 mind_state kind
 - id: M9
   title: 意图分类器
   tier: 2
@@ -241,6 +241,11 @@ items:
   - 中文意图分类的置信度分布如何？低置信阈值定多少合适？
   - 分类器错了有没有被三角色拦住？
   abort_if: 86M CPU 延迟>500ms 或中文准确率不达 92%
+  preconditions:
+  - 'P-ZH-VALIDATION: 中文表现验证'
+  - 'P-86M-EMBEDDING: 8G 显存可行性'
+  instrumentation_needed:
+  - tools/test_intent_classifier.mjs（新建）
 - id: M2
   title: 会话树实时化
   tier: 2
@@ -269,6 +274,8 @@ items:
   - fork 后旧节点的经验有没有被正确继承？
   - 有没有因为 parent 指针错而 rewind 到错误节点？
   abort_if: parent 指针写入导致历史 trace 被改写或 KV 后缀税回升
+  instrumentation_needed:
+  - tools/test_session_tree.mjs（新建）
 - id: M5
   title: 工具面结构改造
   tier: 3
@@ -289,6 +296,8 @@ items:
   - 不动则保持现状，别为了改而改
   reflection: []
   abort_if: 无（人工决策项，不自主执行）
+  preconditions:
+  - 'P-USER-DECISION: 用户拍板哪些工具进内核'
 - id: M7
   title: 格式修复器（降级）
   tier: 3
@@ -309,6 +318,9 @@ items:
   - 必须 86M CPU 延迟<500ms + A/B 端到端提速才上
   reflection: []
   abort_if: 无（前置未满足，manual-blocked）
+  preconditions:
+  - 'P-86M-LATENCY: 86M CPU 延迟<500ms'
+  - 'P-AB-SPEEDUP: A/B 端到端提速'
 - id: S6_model
   title: S6 模型层升级
   tier: 3
@@ -351,6 +363,8 @@ items:
   - 长期优先，不插队
   reflection: []
   abort_if: 无（长期人工排期）
+  preconditions:
+  - 'P-SWEBENCH: 迁移 SWE-bench Verified 子集'
 - id: L6
   title: 专属误差预测器
   tier: 4
@@ -397,6 +411,8 @@ items:
   - 断言精度/召回必须可测
   reflection: []
   abort_if: 无（长期，依赖三个前置）
+  instrumentation_needed:
+  - tools/test_world_model.mjs（新建）
 - id: L8
   title: 多标签心智编码器
   tier: 4
@@ -418,6 +434,8 @@ items:
   - 8G 可行性待证
   reflection: []
   abort_if: 无（探索项）
+  preconditions:
+  - 'P-ZH-VALIDATION: GLiClass 中文表现'
 - id: L5
   title: 小模型 Critic 预警（降级）
   tier: 4
@@ -438,6 +456,9 @@ items:
   - 未命中只记 trace 不拦截
   reflection: []
   abort_if: 无（降级观望）
+  preconditions:
+  - 'P-86M: 换 86M 分类器'
+  - 'P-RECALL-AB: 召回 A/B>=80%'
 - id: L3
   title: 脑功能分区空白区
   tier: 4
@@ -458,6 +479,8 @@ items:
   - 观望
   reflection: []
   abort_if: 无（观望）
+  preconditions:
+  - 'P-ADR-DECISION: 是否落 ADR'
 - id: L4
   title: 独立轨道（上游 PR）
   tier: 4
@@ -478,6 +501,9 @@ items:
   - 不插队
   reflection: []
   abort_if: 无（等上游）
+  preconditions:
+  - 'P-UPSTREAM-PR: autoparser #29307 合并'
+  - 'P-LLAMACPP-V1: v1.0.0 升级'
 - id: L7
   title: FAKEOK 抑制（探索）
   tier: 4
@@ -498,6 +524,8 @@ items:
   - 与 D4 交付闸门同源
   reflection: []
   abort_if: 无（探索）
+  instrumentation_needed:
+  - tools/test_fakeok.mjs（新建）
 autonomy_rungs:
 - id: A0
   title: 数据可信（sid 黑名单）
@@ -651,6 +679,8 @@ autonomy_rungs:
   - meta_decision 跳过后再没重复探测的比例多少？
   - 有没有误跳过本该继续的动作？
   abort_if: 误跳过率>10%
+  instrumentation_needed:
+  - trace kind meta_decision（旁路决策器写）
 - id: A5
   title: 自己走（常驻闭环）
   deps:

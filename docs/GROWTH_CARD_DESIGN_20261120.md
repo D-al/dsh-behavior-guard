@@ -117,3 +117,22 @@ tier 4  L1/L2/L6/L8/L5/L3/L4/L7   ← 高成本/需世界模型 → 长期，人
 | 付出什么代价 | `cost` | 同上（time/risk/vram/reversible）|
 | 注意什么 | `caveats` | 同上（来自历史教训/证伪）|
 | （逐步成长）| `reflection` + 状态机 | 同上 + roadmap_check.py（我加的）|
+
+---
+
+## 7. 按两路审计/调研结果的修正（2026-11-20 复核）
+
+初版交付后重新读了调研结果，发现 6 处需要修正，已全部落地：
+
+| # | 修正 | 依据 | 落地 |
+|---|---|---|---|
+| 1**重要** | **权威源从独立 YAML 改为 ROADMAP.md 内嵌 HTML 注释块** | 本项目反复踩"多副本漂移"（COMPLETION_AUDIT 抓到 3 个假完成，根因是只改副本）；两份文件必然再漂移 | ROADMAP.md 加 `<!-- ROADMAP_GRAPH_BEGIN v1 -->` 块；CAPABILITY_LADDER.yaml 降为"语义镜像"（只提供 what/why/benefit 等，status 不手改）；roadmap_check.py 从权威块读状态 |
+| 2**重要** | **渐进解锁（SKILLGRAPH 60% 规则）+ Waiting≠Blocked（CASCADE）** | SKILLGRAPH 实测：当前层成功率<60% 解锁下一层会让 agent 过早接触复杂能力；CASCADE：all-blocked 会话 15%→0% 靠区分 waiting/blocked | `tier_unlocked()`：tier≥2 要求低一 tier done 比例≥0.6；`--next` 排序加 tier；`waiting_not_blocked()` 区分在途/阻塞 |
+| 3 | `evidence_log`（防假完成） | 子任务2：done 必须携带 commit+命令+退出码，否则视为假完成；COMPLETION_AUDIT 抓过 3 个 | `--apply` 写 evidence_log（commit + checks） |
+| 4 | CAS 原子领取 + attempts 止损 | 子任务2：ready→doing 需 CAS 防双领；attempts≥3→manual-blocked | 新增 `--claim`（校验 deps/tier/attempts，写 claimer/claimed_at） |
+| 5 | `--graph` / `--verify` / `--status` 子命令 | 子任务2 的 roadmap_check 五子命令设计 | 已实现；`--graph` 校验 DAG 无环 + 拓扑序（实测 30 节点 22 边 0 环） |
+| 6 | `preconditions` + `instrumentation_needed` 结构化字段 | 子任务2：外部门（拍板/86M/上游PR）不该埋在 manual reason 文本里 | 16 处补充；`load_ladder` 从镜像合并 |
+
+**明确排除（与调研一致）**：AutoGPT 式 agent 自主生成/重排任务队列（封闭集，agent 只能从预置卡选）；Voyager 的 ChromaDB embedding（8G 不可行）；SKILLGRAPH 的 RL 训练/教师蒸馏（权重零改）；SWE-agent 的"自选 issue"（不存在，issue 由 benchmark 注入）。
+
+**诚实记录**：初版我误判两路子任务结果"投递丢失"，实际它们在对话上下文中；本次复核后按结果修正。

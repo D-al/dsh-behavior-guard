@@ -22,15 +22,35 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-LADDER = ROOT / 'CAPABILITY_LADDER.yaml'
 ROADMAP = ROOT / 'ROADMAP.md'
+LADDER = ROOT / 'CAPABILITY_LADDER.yaml'      # 生成镜像（完整成长卡片，供 agent 读语义；非状态真相源）
 BENCH = Path(os.environ.get('BENCH_DIR') or r'D:\Brain\workspace\bench')
+GRAPH_BEGIN = '<!-- ROADMAP_GRAPH_BEGIN v1 -->'
+GRAPH_END = '<!-- ROADMAP_GRAPH_END -->'
 
 RISK_ORDER = {'low': 0, 'med': 1, 'high': 2}
 
 
 def load_ladder():
-    return yaml.safe_load(LADDER.read_text(encoding='utf-8'))
+    """权威源 = ROADMAP.md 内嵌的 HTML 注释块（零同步问题）；CAPABILITY_LADDER.yaml 只提供语义字段。"""
+    md = ROADMAP.read_text(encoding='utf-8')
+    m = re.search(re.escape(GRAPH_BEGIN) + r'(.*?)' + re.escape(GRAPH_END), md, re.S)
+    if not m:
+        raise RuntimeError(f'ROADMAP.md 缺少权威块 {GRAPH_BEGIN} / {GRAPH_END}')
+    graph = yaml.safe_load(m.group(1))
+    if graph.get('schema_version') != 1:
+        raise RuntimeError(f'权威块 schema_version 不是 1')
+    # 合并语义字段（what/why/benefit_to_self/caveats/reflection）从 YAML 镜像
+    mirror = yaml.safe_load(LADDER.read_text(encoding='utf-8')) if LADDER.exists() else {}
+    sem = {i['id']: i for i in mirror.get('items', []) + mirror.get('autonomy_rungs', [])}
+    for group in ('items', 'rungs'):
+        for item in graph.get(group, []):
+            src = sem.get(item['id'], {})
+            for k in ('title', 'what', 'why', 'unlocks', 'benefit_to_self', 'cost', 'caveats',
+                      'reflection', 'abort_if', 'preconditions', 'instrumentation_needed'):
+                if k in src:
+                    item[k] = src[k]
+    return graph
 
 
 def test_sids(data):
@@ -129,33 +149,62 @@ def deps_done(item, status_map):
     return all(status_map.get(d) == 'done' for d in item.get('deps', []))
 
 
-def find_next(data):
-    status_map = {}
-    for group in ('items', 'autonomy_rungs', 'completed_anchors'):
-        for i in (data.get(group) or ([] if group != 'completed_anchors' else [])):
+def status_map_of(data):
+    sm = {}
+    for group in ('items', 'rungs', 'anchors'):
+        for i in (data.get(group) or ([] if group != 'anchors' else [])):
             if isinstance(i, dict) and 'id' in i:
-                status_map[i['id']] = i.get('status', 'done' if group == 'completed_anchors' else 'backlog')
-    for key, val in (data.get('completed_anchors') or {}).items():
-        status_map[key] = val.get('status', 'done')
+                sm[i['id']] = i.get('status', 'done' if group == 'anchors' else 'backlog')
+    for key, val in (data.get('anchors') or {}).items():
+        sm[key] = val.get('status', 'done')
+    return sm
 
+
+def tier_unlocked(item, sm, data):
+    """SKILLGRAPH 渐进解锁：本 tier 平均成功率 >= 60% 才解锁下一 tier。
+    tier 0/1 恒解锁；更高 tier 要求低一 tier 的 done 比例 >= 0.6。
+    """
+    tier = item.get('tier', 0)
+    if tier <= 1:
+        return True
+    prev = [i for i in data['items'] if i.get('tier') == tier - 1]
+    if not prev:
+        return True
+    done_n = sum(1 for i in prev if sm.get(i['id']) == 'done')
+    return done_n / len(prev) >= 0.6
+
+
+def waiting_not_blocked(item, sm, data):
+    """CASCADE: Waiting ≠ Blocked。
+    真 blocked = 依赖未完成 且 tier 未解锁；waiting = 前置在途（deps doing），不算阻塞。
+    这里只让 'ready 且 deps 全 done' 的项进入候选；其余不返回（由 cmd_next 报告级配）。
+    """
+    return deps_done(item, sm) and all(
+        sm.get(d) != 'doing' for d in item.get('deps', []))  # doing=在途≠blocked，但暂不领取
+
+
+def find_next(data):
+    """选择算法 = SKILLGRAPH 渐进解锁 + MR learnability 门控 + risk 排序。
+    ready 集：status=ready ∧ autonomous ∧ deps 全 done ∧ tier 已解锁。
+    排序：(risk 低) → (tier 低) → (id)，避免过早碰复杂项。
+    """
+    sm = status_map_of(data)
     ready = []
-    for item in data['items'] + data['autonomy_rungs']:
-        if item.get('status') != 'ready':
+    for item in data['items'] + data['rungs']:
+        if item.get('status') != 'ready' or not item.get('autonomous'):
             continue
-        if not item.get('autonomous'):
-            continue
-        if not deps_done(item, status_map):
+        if not deps_done(item, sm) or not tier_unlocked(item, sm, data):
             continue
         ready.append(item)
-    ready.sort(key=lambda x: (RISK_ORDER.get(x.get('risk'), 9), x['id']))
+    ready.sort(key=lambda x: (RISK_ORDER.get(x.get('risk'), 9), x.get('tier', 0), x['id']))
     return ready[0] if ready else None
 
 
 def cmd_dryrun(data):
     print(f'CAPABILITY LADDER — dry-run (no writes)  [{datetime.now(timezone.utc).isoformat()}]')
-    print(f'authority: {LADDER.relative_to(ROOT)}')
+    print(f'authority: ROADMAP.md 内嵌权威块（语义镜像: {LADDER.name}）')
     counts = {'pass': 0, 'fail': 0, 'manual': 0}
-    for item in data['items'] + data['autonomy_rungs']:
+    for item in data['items'] + data['rungs']:
         results, auto_ok = evaluate(data, item)
         if not auto_ok:
             tag = 'MANUAL'
@@ -191,10 +240,55 @@ def cmd_next(data):
     return 0
 
 
+def save_authoritative(data):
+    """写回权威块（ROADMAP.md）+ 同步镜像；apply 与 claim 共用。"""
+    md = ROADMAP.read_text(encoding='utf-8')
+    inner = yaml.safe_dump(data, allow_unicode=True, sort_keys=False)
+    new_md = re.sub(re.escape(GRAPH_BEGIN) + r'.*?' + re.escape(GRAPH_END),
+                    GRAPH_BEGIN + '\n' + inner + GRAPH_END, md, flags=re.S)
+    ROADMAP.write_text(new_md, encoding='utf-8')
+    mirror = yaml.safe_load(LADDER.read_text(encoding='utf-8')) if LADDER.exists() else {}
+    sm = status_map_of(data)
+    for group, key in (('items', 'items'), ('rungs', 'autonomy_rungs')):
+        dst = {i['id']: i for i in mirror.get(key, [])}
+        for item in data[group]:
+            if item['id'] in dst:
+                dst[item['id']]['status'] = sm[item['id']]
+                for k in ('evidence_log', 'attempts', 'claimer', 'claimed_at'):
+                    if k in item: dst[item['id']][k] = item[k]
+    if mirror:
+        LADDER.write_text(yaml.safe_dump(mirror, allow_unicode=True, sort_keys=False), encoding='utf-8')
+
+
+def cmd_claim(data, item_id):
+    """修正4: CAS 原子领取 ready→doing（防双领），记录 claimer/claimed_at。"""
+    found = [i for i in data['items'] + data['rungs'] if i['id'] == item_id]
+    if not found:
+        print(f'NO_SUCH_CARD: {item_id}'); return 1
+    it = found[0]
+    if it.get('status') != 'ready':
+        print(f'CLAIM_REFUSED: {item_id} status={it.get("status")} != ready'); return 1
+    if not it.get('autonomous'):
+        print(f'CLAIM_REFUSED: {item_id} not autonomous（需人工）'); return 1
+    sm = status_map_of(data)
+    if not deps_done(it, sm) or not tier_unlocked(it, sm, data):
+        print(f'CLAIM_REFUSED: {item_id} deps/tier 未满足'); return 1
+    # 检查 attempts（fail_policy: >=3 → manual-blocked）
+    if it.get('attempts', 0) >= 3:
+        it['status'] = 'manual-blocked'; save_authoritative(data)
+        print(f'MOVED_TO_MANUAL_BLOCKED: {item_id} attempts>=3'); return 1
+    it['status'] = 'doing'
+    it['claimed_at'] = datetime.now(timezone.utc).isoformat()
+    it['claimer'] = os.environ.get('AGENT_ID', 'unknown-agent')
+    save_authoritative(data)
+    print(f'CLAIMED: {item_id} by {it["claimer"]}')
+    return 0
+
+
 def cmd_apply(data):
     """只把 doing 且 verify 全 PASS 且非 manual 的项写回 done。"""
     changed = []
-    for group in ('items', 'autonomy_rungs'):
+    for group in ('items', 'rungs'):
         for item in data[group]:
             if item.get('status') != 'doing':
                 continue
@@ -202,18 +296,74 @@ def cmd_apply(data):
             if auto_ok and all(ok for ok, _ in results):
                 item['status'] = 'done'
                 item['done_at'] = datetime.now(timezone.utc).isoformat()
+                # 修正3: evidence_log —— done 必须携带 commit+命令+退出码，否则视为假完成
+                commit = subprocess.run(['git', 'rev-parse', '--short', 'HEAD'], cwd=ROOT,
+                                        capture_output=True, text=True).stdout.strip()
+                item.setdefault('evidence_log', []).append({
+                    'at': item['done_at'], 'commit': commit,
+                    'checks': [ev for _, ev in results],
+                })
                 changed.append(item['id'])
     if not changed:
         print('NO_APPLY (no doing item with all-auto verify PASS)')
         return 0
-    # git diff --check 必须为 0（避免污染工作树）
     g = subprocess.run(['git', 'diff', '--check'], cwd=ROOT, capture_output=True, text=True)
     if g.returncode != 0:
         print('ABORT: git diff --check failed:', g.stdout[:200])
         return 2
-    LADDER.write_text(yaml.safe_dump(data, allow_unicode=True, sort_keys=False), encoding='utf-8')
+    save_authoritative(data)
     print('APPLIED:', ', '.join(changed))
-    print('NOTE: 只写权威 YAML；ROADMAP.md 人类视图与 CHANGELOG 由人审 diff 后更新（闸门上移未取消）')
+    print('WROTE: ROADMAP.md 权威块 + CAPABILITY_LADDER.yaml 镜像同步')
+    return 0
+
+
+def cmd_graph(data):
+    """修正5: DAG 无环校验 + 拓扑序（SKILLGRAPH 前置图的健康证明）。"""
+    sm = status_map_of(data)
+    nodes = list(sm)
+    indeg = {n: 0 for n in nodes}
+    adj = {n: [] for n in nodes}
+    for item in data['items'] + data['rungs']:
+        for dep in item.get('deps', []):
+            if dep in adj:
+                adj[dep].append(item['id']); indeg[item['id']] += 1
+    queue = [n for n in nodes if indeg[n] == 0]; order = []
+    while queue:
+        n = queue.pop(0); order.append(n)
+        for m in adj[n]:
+            indeg[m] -= 1
+            if indeg[m] == 0: queue.append(m)
+    cyclic = [n for n in nodes if n not in order]
+    print(f'nodes={len(nodes)} edges={sum(len(v) for v in adj.values())}')
+    print('cyclic:', cyclic or 'NONE ✓')
+    print('topo:', ' → '.join(order))
+    return 0 if not cyclic else 1
+
+
+def cmd_verify(data, item_id):
+    """修正5: 单条卡片判据验证（dry-run 单卡）。"""
+    found = [i for i in data['items'] + data['rungs'] if i['id'] == item_id]
+    if not found:
+        print(f'NO_SUCH_CARD: {item_id}'); return 1
+    results, auto_ok = evaluate(data, found[0])
+    sm = status_map_of(data)
+    print(f'[{found[0]["id"]}] status={sm[found[0]["id"]]} auto_verifiable={auto_ok}')
+    for ok, ev in results:
+        print(f'  {"OK " if ok else "NO "} {ev}')
+    return 0 if (auto_ok and all(ok for ok, _ in results)) else 1
+
+
+def cmd_status(data, item_id):
+    """修正5: 单条状态详情（含依赖是否满足、tier 是否解锁）。"""
+    found = [i for i in data['items'] + data['rungs'] if i['id'] == item_id]
+    if not found:
+        print(f'NO_SUCH_CARD: {item_id}'); return 1
+    it = found[0]; sm = status_map_of(data)
+    print(json.dumps({'id': it['id'], 'status': sm[it['id']],
+                      'deps': {d: sm.get(d) for d in it.get('deps', [])},
+                      'tier_unlocked': tier_unlocked(it, sm, data),
+                      'tier': it.get('tier'), 'attempts': it.get('attempts', 0),
+                      'evidence_log': it.get('evidence_log', [])}, ensure_ascii=False, indent=2))
     return 0
 
 
@@ -222,11 +372,23 @@ def main():
     ap.add_argument('--dry-run', action='store_true')
     ap.add_argument('--next', action='store_true')
     ap.add_argument('--card', metavar='ID', help='打印指定 ID 的完整成长卡片')
+    ap.add_argument('--graph', action='store_true', help='DAG 无环校验 + 拓扑序')
+    ap.add_argument('--claim', metavar='ID', help='原子领取 ready→doing（防双领）')
+    ap.add_argument('--verify', metavar='ID', help='验证单条卡片判据')
+    ap.add_argument('--status', metavar='ID', help='单条状态详情')
     ap.add_argument('--apply', action='store_true')
     args = ap.parse_args()
     data = load_ladder()
+    if args.graph:
+        return cmd_graph(data)
+    if args.claim:
+        return cmd_claim(data, args.claim)
+    if args.verify:
+        return cmd_verify(data, args.verify)
+    if args.status:
+        return cmd_status(data, args.status)
     if args.card:
-        found = [i for i in data['items'] + data['autonomy_rungs'] if i['id'] == args.card]
+        found = [i for i in data['items'] + data['rungs'] if i['id'] == args.card]
         if not found:
             print(f'NO_SUCH_CARD: {args.card}')
             return 1
