@@ -88,6 +88,21 @@ README 原文：
 
 **当前状态：配置已回滚，系统健康；documentsDirectory 尚未生效。**
 
+### 补充：第二次实测（带 YAML 语法验证）——确认是本机硬失败
+
+子任务从 asar 确认了 row id/name 正确、Config schema 正确，并给出"用单引号包路径"的写法。第二次重试：
+
+1. 用 Python yaml（含 `!!js` 自定义 constructor）验证 patch：**parse OK，15 顶层条目唯一，config = `{documentsDirectory: 'D:/Brain/workspace', documentsLookupTimeoutMs: 10000}`** —— 语法完全正确。
+2. 标准流程重启（先 Stop-ScheduledTask 回 Ready、杀残留进程、再 Start）。
+3. 结果：**dsh 进程消失、8081 down、无 host crash 日志**；回滚后立即恢复（pid 20892 稳定 15s，bridge OK pid 24216）。
+
+**结论（本机实证优先于源码推断）**：
+
+- `documentsDirectory` 配置在源码层存在且 schema 正确，但在**本机 profile patch 注入即崩**——两次实测（无引号 + 有引号）都如此，与 YAML 写法无关。
+- 最可能原因：patch 对该 row 是**整段替换 config**，覆盖了 base bundle 中该插件挂载必需的其他字段；或本机 dsh 构建对该 config 的校验路径有额外要求。未继续深挖（收益低、风险高）。
+- **决策：放弃"配置注入"路线，保留已完成的 D 盘镜像 + 同步脚本作为低风险交付**。若将来真要改默认工作区根，正路是全新安装时设配置 / 用 UI directory picker 新建工作区，而不是在运行中的 profile patch 上注入。
+- 教训再验证一次：**"源码说可以" ≠ "本机实际能跑"**——这是本项目反复出现的主题（参见 `!!js [...]`、pnpm 覆盖、Force kill finally）。
+
 ---
 
 ## 4. 方案对比（用户已选"配置 + 新建 D 盘工作区"）
