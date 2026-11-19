@@ -105,9 +105,14 @@ def read_new(path, offset):
 
 def run_script(name, args=None):
     cmd = list(SCRIPTS[name]) + (args or [])
+    # 2026-11-19：用 python.exe 调子脚本时，subprocess.run 默认弹 cmd 窗口。
+    # 本 watcher 每 30s 跑 mind_state、每 20 轮（≈10min）跑 5 个索引/诊断脚本，
+    # 每次都闪一个黑窗口 → 用户看到"每隔一段时间弹几个一闪而过的命令行"。
+    # 与 freeze_watch.py 一致，显式 CREATE_NO_WINDOW（Linux 上忽略）。
+    flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=60,
-                           encoding='utf-8', errors='replace')
+                           encoding='utf-8', errors='replace', creationflags=flags)
         return r.returncode == 0, (r.stdout or '').strip()
     except Exception as e:
         log(f'[script:{name}] ERROR {e}')

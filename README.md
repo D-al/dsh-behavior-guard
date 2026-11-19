@@ -3,7 +3,7 @@
 > **合成心智（Synthetic Mind）**：用一个 35B 本地模型 + 一套确定性脚手架，合成比模型本身可靠得多的心智——**模型权重一个字节没动，变的是它外面的脑区**。
 
 本仓库是 **Single Source of Truth**：插件代码 + 生产配置 + 10 个技能卡 + 23 个分析脚本 + 决策档案 + 一键安装。
-当前 **v2.25.0**（2026-11-19）。仓库名沿用历史名 `dsh-behavior-guard`，npm 包名/插件 id 为 `dsh-agent-harness`。
+当前 **v2.26.0**（2026-11-19）。仓库名沿用历史名 `dsh-behavior-guard`，npm 包名/插件 id 为 `dsh-agent-harness`。
 
 ---
 
@@ -77,7 +77,7 @@
 
 ---
 
-## 路线图（Now/Next/Later，重排于 v2.14.0，维护于 v2.25.0）
+## 路线图（Now/Next/Later，重排于 v2.14.0，维护于 v2.26.0）
 
 > 完整、可验证的目标（每条带完成标准 DoD + 性价比）见 [ROADMAP.md](ROADMAP.md)。这里只列骨架。
 > **先做哪个？看 [ROADMAP §2 性价比速查](ROADMAP.md#2-性价比速查先做哪个)**（收益/成本/解锁排序）。
@@ -138,7 +138,7 @@ git clone https://github.com/D-al/dsh-behavior-guard.git && cd dsh-behavior-guar
 | [docs/GPU_ENGINE_GUARD.md](docs/GPU_ENGINE_GUARD.md) | 3D/Copy 引擎争抢诊断 + 主动降帧守护（tools/gpu_engine_guard.py）|
 
 ## 版本历史
-完整版本历史 → [CHANGELOG.md](CHANGELOG.md)。当前 **v2.25.0**（完成状态验收审计，详见 CHANGELOG）。
+完整版本历史 → [CHANGELOG.md](CHANGELOG.md)。当前 **v2.26.0**（修复周期性 cmd 弹窗，详见 CHANGELOG）。
 
 ## License
 MIT

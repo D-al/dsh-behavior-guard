@@ -1,3 +1,20 @@
+## [2.26.0] - 2026-11-19 19:30（修复周期性 cmd 窗口闪现）
+
+### Fixed（用户报告的系统问题）
+- **根因**：`learn_watcher.py` 常驻（每 30s 一轮），`run_script()` 用 `python.exe` 起子进程时
+  **没设 `CREATE_NO_WINDOW`** → 每次调用弹一个 cmd 窗口，脚本瞬间结束就消失。
+  每 30s 弹 1 个，deep 巩固层（每 20 轮≈10min）一口气弹 5~6 个，完全吻合"每隔一段时间弹几个一闪而过"。
+- **修复**：`run_script()` 的 `subprocess.run` 加 `creationflags=CREATE_NO_WINDOW`；
+  **权威仓库 tools/ 与 bench/ 两副本都改**（SHA 一致，吸取上次只改副本的教训）。
+  `freeze_watch.py` 本来就带 NOWIN，无需改。
+- **运行态**：旧 watcher 杀掉，改用无窗口计划任务 `LearnWatchDaemon`（pythonw + 登录触发）重启；
+  Startup 的 `LearnWatch.vbs` 改名 `.disabled` 避免双实例。
+- **验证**：70 秒采样（覆盖 2 周期）新增 conhost 窗口 = **0**；watcher 每 30s 稳定跑；单实例。
+- 诊断文档：`docs/POPUP_CONSOLE_FIX_20261119.md`。
+
+### Note
+- 教训：pythonw 父进程无窗口 ≠ 子进程无窗口；守护进程起子进程必须显式 CREATE_NO_WINDOW。
+
 ## [2.25.0] - 2026-11-19 19:20（完成状态验收审计：3 缺口修复 + 真实会话验证）
 
 ### Docs + Sync-only（验收审计，docs/COMPLETION_AUDIT_20261119.md）
