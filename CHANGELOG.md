@@ -1,3 +1,27 @@
+## [2.24.0] - 2026-11-19 19:00（M4 落地 + 深度维护 + 分类器调研 + 路线图重排）
+
+### Added / Fixed
+- **M4 注入预算 token 化**（`tools/test_injection_budget.mjs` 5/5）：
+  `estimateInjectionTokens()`（CJK 1 token/字、其余 4 字符/token）、createMessage 记账、
+  workspaceSnapshot 暴露 `injectionTokensUsed`、次数+token 双闸门；安全注入双豁免（ADR-0017）。
+- **深度维护**（`docs/DEEP_MAINTENANCE_20261119.md`）：两路只读审计（JS 2147 行 + Python 工具链），
+  修 **1 P0 + 7 P1 + 3 P2**：
+  - P0：安全注入被 shared 次数闸门静默吞掉（与 token 闸门语义矛盾）→ 加 `!pendingInject` 豁免。
+  - P1：verifyRan 宽正则（裸 `-c`/`python -m`）收敛；learnSinceTs 改 session 级（跨轮沉淀不再丢）；
+    安全检测达上限后仍记 trace 只是不 steer（并移除误判合法 `<system-reminder>` 的模式）；
+    weakness_miner verify_on_stop 全量漏检（聚类 4→6 簇）；promote_skills 加注入扫描（投毒缺口）；
+    gate 方差门槛生效；surface_check 禁改面对齐 + patch 校验；reviewCycles 新问题重置；
+    proposer uuid 命名 + 异常兜底。
+- **分类器调研**（`docs/CLASSIFIERS_FOR_MIND_MODEL_EVALUATION.md`）：10 类分类器实证；
+  关键负面（Jev 自测：难度路由 51.3%≈随机、长轨迹归因 0.56≈随机；Prompt-Guard 默认 FPR 98%）。
+  TOP5：轨迹 FSM / 注入 Tier-2 / 意图 embedding+LR / NLI 事实性 / 多标签编码器。
+- ROADMAP 重排：**梳理逻辑关系链**（§2.1），M4 归档，新增 **M8 轨迹 FSM**（第二位，L6 前置）、
+  **M9 意图分类器**（依赖 M3）、**L8 多标签心智编码器**；M1 升为下一波首项。
+
+### Note
+- JS 158 PASS / 0 FAIL；gate 11/11；投毒扫描 3/3；weakness_miner 6 簇。
+- 唯一 FAIL：regression_check 渲染模板断言因 8081/dsh 服务未运行（urlopen 10061）——环境问题，未强行重启。
+
 ## [2.23.0] - 2026-11-19 14:45（路线图重定基线：短期全完成，重排中期优先级）
 
 ### Docs-only

@@ -36,6 +36,11 @@ def accept(baseline, candidate):
     if any(len(baseline.get(s, [])) < acc['min_repeats'] or len(candidate.get(s, [])) < acc['min_repeats']
            for s in acc['splits']):
         return {'decision': 'no-op', 'reason': 'insufficient repeats'}
+    # P1：基线方差门槛必须生效——基线自身噪声 >10% 时，任何"提升"都不可信（论文 P0 前置）
+    noisy = {s: variance_ok(baseline[s]) for s in acc['splits']}
+    bad = [s for s, (ok, spread) in noisy.items() if not ok]
+    if bad:
+        return {'decision': 'no-op', 'reason': f'baseline variance >{acc["max_pass_rate_variance"]:.0%} on {bad} — 先降噪声', 'variance': {s: v[1] for s, v in noisy.items()}}
     b_means = {s: statistics.mean(baseline[s]) for s in acc['splits']}
     c_means = {s: statistics.mean(candidate[s]) for s in acc['splits']}
     degraded = [s for s in acc['splits'] if c_means[s] < b_means[s] - 1e-9]
@@ -53,8 +58,12 @@ def surface_check(surface_id, modified_paths):
     allowed = {x['id'] for x in s['editable']}
     if surface_id not in allowed:
         return {'allowed': False, 'reason': f'unknown surface {surface_id}'}
-    forbidden_markers = ['approval-delegate', 'L0-L3', 'verifyRan', 'GWT', 'FEP', 'AGENTS.md']
-    hits = [m for m in forbidden_markers if any(m in str(p) for p in modified_paths)]
+    # P1：与 surfaces.json 的 forbidden_always 对齐（原 6 个标记漏了 D1-D5/CritBank/权重等）
+    forbidden_markers = ['approval-delegate', 'L0-L3', 'verifyRan', 'GWT', 'FEP', 'AGENTS.md',
+                         'CritBank', 'protected', 'D1-D5', 'turn-guard', 'llama-server', '权重',
+                         '权限预设', 'GWT/FEP']
+    blob = ' '.join(str(p) for p in modified_paths)
+    hits = [m for m in forbidden_markers if m.lower() in blob.lower()]
     if hits:
         return {'allowed': False, 'reason': f'forbidden surfaces touched: {hits}'}
     return {'allowed': True, 'reason': 'ok'}
