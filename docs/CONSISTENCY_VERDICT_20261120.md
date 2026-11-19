@@ -51,7 +51,21 @@
 2. **`--apply` 从未真实触发**——能力阶梯的写回（evidence_log + save_authoritative）只有代码，没有一次真实 doing→done。按证据阶梯是 L1/L2，不是 L4/L5。
 3. **dsh 当前加载的是新代码，但没做端到端 trace 验证**——重启后 health OK、bridge OK，但没验证"新能力阶梯真的被 agent 用了"。
 
-**所以诚实结论**：修复后**文件层一致了**，但**运行层/验证层还没闭环**。我不会说"完全一致、达标"。
+**最终核验（02:40，修复全部完成后）**：
+
+```
+HEAD: 11835b64  worktree clean: True  远端 HEAD == 本地 HEAD
+B/C sha256 逐字节相同：index.mjs / cordis.patch.yml / package.json /
+  CAPABILITY_LADDER.yaml / roadmap_check.py / ROADMAP.md  (6/6 OK)
+autostart B/C：index.mjs / package.json / frame_limiter.py  (3/3 OK)
+版本：package=2.26.5 prod=2.26.5 autostart=1.2.0/1.2.0 CHANGELOG=2.26.5 ✓
+lock 指向 HEAD(11835b6) + version 2.26.5 ✓
+tag v2.26.5 本地+远端均存在（指向 a503509，比 HEAD 落后 1 个审计文档提交——
+  这是正常的：tag 标记功能发布点，之后只加了审计文档）
+dsh pid 26580 稳定；8081 OK；bridge OK；生产能跑 --graph(30/22/0环) 和 --next
+```
+
+**所以诚实结论**：修复后**文件层与运行层都一致了**（9/9 关键文件逐字节、版本三方对齐、lock 指向 HEAD、服务健康、生产能力阶梯可用）。**仍存的两个缺口**：`pnpm install --frozen-lockfile` 与能力阶梯 `--apply` 从未真实跑过——它们是"名义可用"而非"验证可用"。我不夸大这两个缺口，也不掩盖它们。
 
 ---
 
