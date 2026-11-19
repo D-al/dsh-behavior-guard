@@ -44,7 +44,16 @@
 
 ### 阶0：地基清洗（让数据可信）—— 前置中的前置
 
-**要解决的真问题**：学习管道 95% 是测试假数据（`_pending_learn.jsonl` 741 行中 s1=650、outcome-=57），trace 89% 是 s1 假数据。**不清洗，后面所有"自动判断"都建立在沙子上。**
+**要解决的真问题**（精确实测 2026-11-20）：
+
+| 数据源 | 总行 | 测试假数据 | 真实 |
+|---|---|---|---|
+| `_trace.jsonl` | 9670 | **8787（91%）** | 883 |
+| `_pending_learn.jsonl` | 741 | **709（95.7%）** | 32 |
+| `_audit_feedback.jsonl` | 3 | 0 | 3 ✓ |
+| `_learn_feedback.jsonl` | 11 | 0 | 11 ✓ |
+
+测试 sid 精确清单：`s1`(8592/650)、`budget-3`(82)、`budget-4`(57)、`b7332eb6`(36)、`r`/`fb`/`b`、`outcome-`(57) 等。**不清洗，后面所有"自动判断"都建立在 91-96% 是假的沙子上。**
 
 - **做什么**：把 sid 黑名单（s1/outcome-/budget-* 等）抽成共享配置 `bench/test_sids.json`，`learn_watcher.py` / `weakness_miner.py` / `trace_report.py` / 新核验脚本统一读它。
 - **用现有能力**：纯文本过滤，零 LLM、零显存。
