@@ -27,7 +27,9 @@
 
 - **JudgeBench (arXiv 2406.19314)**：小模型 judge 与人类一致率仅 **45–60%**，随机基线 50%——接近抛硬币。
 - **Stronger judges are more robust (arXiv 2411.13268)**：小 judge 存在**冗长偏见 + 自我增强偏见**；**LLM-as-judge 要可靠，参数量必须 ≥ 被评模型**。
-- **Multi-agent 失败模式 (arXiv 2505.17469)**：42 个真实系统归纳出 **"错误验证放大"**——弱 verifier 放行强 actor 的错误，比不用 verifier 更糟。
+- **Multi-agent 失败模式 MAST (arXiv 2503.13657)**：分析 7 个主流 MAS 框架的 1600+ 条标注轨迹，
+  归纳出 **14 种失败模式 / 3 大类**（系统设计、agent 间失配、**任务验证**）——其中"任务验证"类直接对应
+  弱 verifier 放行强 actor 错误的问题。注：初稿曾误引为 2505.17469，已按原文核实更正。
 - **"LLMs as Judges Are Not Always Reliable" (EMNLP Findings)**：模型扩大后方差降、与人类一致率升；小模型做不到。
 - **Shrinking AI Model Can Boost Performance (arXiv 2508.18748)**：反例只出现在**简单 narrow task**，且"质疑能力"反而下降——评审恰是需要质疑的任务。
 - **社区共识**：AgentLite 明确 "evaluator using a stronger model than the actor"；ChatDev 用更弱的模型做角色时会退化。
@@ -90,6 +92,6 @@
 - FrugalGPT: https://arxiv.org/abs/2306.05148
 - JudgeBench: https://arxiv.org/abs/2406.19314
 - Stronger judges robust: https://arxiv.org/abs/2411.13268
-- Multi-agent failure taxonomy: https://arxiv.org/abs/2505.17469
+- Multi-agent failure taxonomy (MAST): https://arxiv.org/abs/2503.13657
 - Shrinking model boost: https://arxiv.org/abs/2508.18748
 - Qwen3 tech report: https://arxiv.org/abs/2505.09388
