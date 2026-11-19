@@ -42,6 +42,7 @@
 | [REAL_TRACE_ACCEPTANCE_20261120.md](REAL_TRACE_ACCEPTANCE_20261120.md) | 验收 | 真实 trace 验收路线图承诺（排除 89% 单测假数据） |
 | [POSTMORTEM_20261120.md](POSTMORTEM_20261120.md) | 复盘/铁律 | 本次平台整治事故的 12 条可复用经验（证据分层/三副本/被证伪方向） |
 | [WORKSPACE_PATH_AUDIT_20261120.md](WORKSPACE_PATH_AUDIT_20261120.md) | 源码核查 | dsh 默认工作区路径：documentsDirectory 正规配置 + 会话归属机制纠错 |
+| [MEMORY_TO_MIND_MODEL_20261120.md](MEMORY_TO_MIND_MODEL_20261120.md) | 盘点 | 三层长期记忆→心智模型可迁移资产（含硬件可实现性）|
 | [BRAIN_PARITY.md](BRAIN_PARITY.md) | 解释 | 人脑功能分区覆盖度盘点（胼胝体/杏仁核等对应与空白）|
 | [COMPETITIVE_ANALYSIS.md](COMPETITIVE_ANALYSIS.md) | 解释 | 社区对比：先进 / 落后 / 以为先进其实平凡 |
 | [PEER_HARNESS_BENCHMARK.md](PEER_HARNESS_BENCHMARK.md) | 解释 | 同族 35B-A3B / dsh 生态 harness 逐项对标 + 可借鉴清单 |
