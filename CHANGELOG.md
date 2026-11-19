@@ -1,3 +1,27 @@
+## [2.22.0] - 2026-11-19 14:30（短期收尾：S1 Self-Harness + S4 A/B + S7 CPU 基准）
+
+### Added（三个剩余短期目标，均带诚实边界）
+- **S1 Self-Harness P0-P2**（docs/S1_SELF_HARNESS_P0P1_RESULT.md）：
+  - P0：`surfaces.json` 白名单（6 可编辑面 + 8 类禁改安全面）+ `tools/self_harness_gate.py`
+    （论文 accept/reject/no-op 规则 + 方差<10% + 面校验，--self-test 11/11）。
+  - P1：`bench/weakness_miner.py` 从真实 6970 行 trace 精确匹配聚类出 4 个失败簇
+    （tool_failure 213 / audit 89 / corrector 81 / critic 68）+ 13 条 recovered_friction protected。
+  - P2：`bench/self_harness_proposer.py` **35B 真实提案跑通**——产出白名单内 patch、
+    对应 tool_failure、面校验通过，落隔离目录不自动部署。又遇 thinking token 坑（600→1200）。
+  - P3 常态化按 ADR-0018 不启动；双 split 真实评测（2-4h）本轮未跑。
+- **S4 自适应 A/B**（docs/S4_ADAPTIVE_AB_RESULT.md）：写透明代理 `bench/adaptive_proxy.py`
+  注入 harness 的 ⑦ 提示，P3 各跑 1 次。off=FAIL(189s,4172tok) / on=PASS(301s,4168tok)。
+  **token 未降 → 按 DoD 保持 adaptiveThinkEnabled=false**；单次结果有噪声，不冒充机制有效。
+  P4/P5 各 2 次未跑（成本过高），标部分完成。
+- **S7 CPU 小模型基准**（docs/S7_SMALL_MODEL_BENCH_RESULT.md）：下载 Qwen3-0.6B-Q8_0（610MB），
+  独立 8090 纯 CPU 实例实测：分类 4.2s / 格式 6.0s，JSON 5/5（**必须 max_tokens≥512，
+  否则思维链吃光 content**；enable_thinking=false 在本引擎不生效）。0.6B 不适合实时外设；
+  S6 模型层须用 86M 分类器。ECE/Brier 校准未做（诚实标注）。
+
+### Note
+- 全量 154 JS PASS + 11 gate PASS + 30 回归 PASS；短期目标全部标记完成（S1/S4 部分完成已标注）。
+- Thinking token 陷阱第三次出现（Critic S5-② / 小模型 S7 / proposer P2）→ 已成本项目已知模式。
+
 ## [2.21.0] - 2026-11-19 14:00（落地短期前三：S8 自校准 + S9 反馈环 + S6 注入检测）
 
 ### Fixed / Added

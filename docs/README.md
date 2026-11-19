@@ -29,6 +29,9 @@
 | [HETEROGENEOUS_MODELS_EVALUATION.md](HETEROGENEOUS_MODELS_EVALUATION.md) | 评估 | 大小模型分工：判断类角色证伪 |
 | [PERIPHERAL_MODELS_EVALUATION.md](PERIPHERAL_MODELS_EVALUATION.md) | 评估 | 超小模型当周围神经（感知/路由/反射）：方向成立 |
 | [FEEDBACK_LOOP_AND_DISTILLATION_EVALUATION.md](FEEDBACK_LOOP_AND_DISTILLATION_EVALUATION.md) | 评估 | 前馈误差放大/NSED/主模型弱点/学生蒸馏三问 |
+| [S1_SELF_HARNESS_P0P1_RESULT.md](S1_SELF_HARNESS_P0P1_RESULT.md) | 结果 | Self-Harness P0-P2：白名单/门禁/35B 真提案 |
+| [S4_ADAPTIVE_AB_RESULT.md](S4_ADAPTIVE_AB_RESULT.md) | 结果 | 自适应 A/B 实测：token 未降故不开 |
+| [S7_SMALL_MODEL_BENCH_RESULT.md](S7_SMALL_MODEL_BENCH_RESULT.md) | 结果 | 0.6B CPU 基准：4-6s，不适合实时外设 |
 | [BRAIN_PARITY.md](BRAIN_PARITY.md) | 解释 | 人脑功能分区覆盖度盘点（胼胝体/杏仁核等对应与空白）|
 | [COMPETITIVE_ANALYSIS.md](COMPETITIVE_ANALYSIS.md) | 解释 | 社区对比：先进 / 落后 / 以为先进其实平凡 |
 | [PEER_HARNESS_BENCHMARK.md](PEER_HARNESS_BENCHMARK.md) | 解释 | 同族 35B-A3B / dsh 生态 harness 逐项对标 + 可借鉴清单 |
