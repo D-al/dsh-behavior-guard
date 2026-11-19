@@ -40,6 +40,7 @@
 | [DSH_SOURCE_AUDIT_20261119.md](DSH_SOURCE_AUDIT_20261119.md) | 评估 | dsh 开源源码核查：DSH_HOME/插件/卸载机制 |
 | [DSH_PLATFORM_REPAIR_20261120.md](DSH_PLATFORM_REPAIR_20261120.md) | 维护 | 平台层整治：插件升级/会话依赖/junction |
 | [REAL_TRACE_ACCEPTANCE_20261120.md](REAL_TRACE_ACCEPTANCE_20261120.md) | 验收 | 真实 trace 验收路线图承诺（排除 89% 单测假数据） |
+| [POSTMORTEM_20261120.md](POSTMORTEM_20261120.md) | 复盘/铁律 | 本次平台整治事故的 12 条可复用经验（证据分层/三副本/被证伪方向） |
 | [BRAIN_PARITY.md](BRAIN_PARITY.md) | 解释 | 人脑功能分区覆盖度盘点（胼胝体/杏仁核等对应与空白）|
 | [COMPETITIVE_ANALYSIS.md](COMPETITIVE_ANALYSIS.md) | 解释 | 社区对比：先进 / 落后 / 以为先进其实平凡 |
 | [PEER_HARNESS_BENCHMARK.md](PEER_HARNESS_BENCHMARK.md) | 解释 | 同族 35B-A3B / dsh 生态 harness 逐项对标 + 可借鉴清单 |
