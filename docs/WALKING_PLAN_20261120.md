@@ -97,13 +97,21 @@
 
 ### 阶3.5：安全地基（必须与阶3同时或之前完成）
 
-**审计抓到的地雷**：白名单允许改 `index.mjs`（harness 主脑），gate 只做统计、不跑 e2e、无回滚。**让 agent 改自己的大脑却没人验证改完会不会变傻，是"学会走路"前必须先补的。**
+**治理缺口是真的，但我原先的字面断言写错了，按实物更正**（2026-11-20 审计）：
 
-- **做什么**：① 把可编辑面分级——`index.mjs`/`critbank.json` 从"可改"降为"需额外 e2e + 人工确认"；② gate 增加廉价 e2e（全量 `test_*.mjs` 160 PASS + `regression_check.py` 29 门禁 + `config_check.py`，都是零 LLM、秒级），不用 `verify_agent.py`（35B 600s）；③ 改动前 cp 原文件到带时间戳隔离目录，e2e 失败自动恢复并记 trace。
-- **用现有能力**：已有测试套件 + git + cp。
-- **完成判据**（零 LLM）：故意注入一个破坏 index.mjs 的候选，确认 gate reject + 文件自动恢复 + trace 记录。
-- **人做什么**：定义分级规则（一次性）。
-- **风险**：这是治理设计，不是技术问题；优先级高于阶3的功能推进。
+- ❌ 我原先写"白名单含 `index.mjs` 和 `critbank.json` 可改"——**与实物不符**。`surfaces.json` 的 editable 只有 6 个**细粒度 target**：3 个 prompt 文案（CONTROL/CRITIC/VERIFY）、2 个阈值（`adaptiveSimpleThreshold`/`mindStateLoopThreshold`）、1 个 skill 草稿目录。`critbank.json` 在 `forbidden_always`（8 类禁改面之一）。
+- ✅ **但缺口仍在**：`surface_check()`（gate 55-69 行）只把 `modified_paths` 拼成字符串匹配禁改关键词，**不做真实 diff 语义校验**——绕过只是改个措辞/换个文件路径写法就可能漏检。而且无 e2e、无回滚。
+
+- **做什么（审计给的三件胶水，零新智能）**：
+  ① `surface_check` 从字符串匹配升级为**真实 diff 校验**（候选 vs 基线，命中非白名单行即 `allowed:false`）+ 面分级（prompt=低 / threshold=中 / 功能逻辑=高需 e2e+人工）；
+  ② 加 `deploy_with_rollback(target, candidate)` 包装：改动前 cp 到 `archive/snapshots/<timestamp>/`，跑**廉价 e2e** 失败则自动恢复 + `trace({kind:'rollback'})`；
+  ③ 廉价 e2e 最小集合 = `node --check index.mjs` + 全量 `tools/test_*.mjs` + `config_check.py`（**唯一真正覆盖主脑行为的是 test_*.mjs，不可省**）。
+- **口径更正**：`self_harness_gate.py self_test` 实物是 **10 项**（ROADMAP 写 11/11 需更正）；`regression_check.py` 实为 **30 项**（非 29）且依赖 8081、只做语法检查不覆盖主脑 → 不进 e2e 必选集。`package.json` 无 `scripts` 字段，**没有一键全量命令**——阶3.5 应顺手补一个 `tools/run_all.sh`。
+- **明确排除** `verify_agent.py`（35B + 600s 超时，非确定性）。
+- **完成判据**（零 LLM）：故意注入一个改了非白名单行的候选，确认真实 diff 校验 reject；再注入一个破坏 index.mjs 语法的候选，确认 e2e 失败 + 文件自动恢复 + trace 记录。
+- **人做什么**：定义面分级规则（一次性）。优先级高于阶3功能推进。
+
+**阶4 治理冲突提醒**：`surfaces.json:53` 把 D1-D5 门控判定逻辑列为禁改面。阶4 不要改判定本体，应做**旁路决策器**（读现成信号 → 写 `meta_decision` trace → 发 skip），绕开禁改面；且信号目前只在 `info()` 日志里，需补结构化 trace。
 
 ### 阶4：会转弯（任务内元决策代码化）
 
