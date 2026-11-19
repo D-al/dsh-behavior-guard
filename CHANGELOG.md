@@ -1,3 +1,30 @@
+## [2.26.1] - 2026-11-20 00:20（dsh 平台层整治：插件升级 v2.26.0 + 会话依赖治理）
+
+### 背景
+用户报告：插件装上去卸不掉、版本与 GitHub 不一致、提示 pnpm 不行、资产靠 junction 虚拟映射、
+依赖人机会话。并指出 dsh 开源、应扒源码确认机制。
+
+### 已完成
+- **权威源码核查**（docs/DSH_SOURCE_AUDIT_20261119.md）：扒 deepseek-ai/deepseek-harness@dsh-v0.2.2-rc.3
+  官方 README 确认 `resolveDshHome()` 优先级（显式 > $DSH_HOME > ~/.dsh）、profile 在 $DSH_HOME/profiles/、
+  插件由 bundles+包内 patch 挂载、shell 自动获得 DSH_HOME。用户级 DSH_HOME=D://Brain//dsh-data 已设。
+- **插件升级到 v2.26.0**：从 GitHub commit 89f4d89 下载 tarball（144 文件含全套 docs/skills/tools/config）
+  覆盖 node_modules/dsh-agent-harness；pnpm-lock.yaml 4 处 commit + integrity + version 2.3.0→2.26.0。
+- **会话桥恢复**：重建 dsh-session-bridge / dsh-approval-delegate 两个 link junction，
+  dsh 重启后 descriptor 刷新（pid 5832/port 64002），bridge health OK。
+- **会话依赖治理**：治理文档同步到 p/bench（真实文件）；新建 setup/sync-to-profile.ps1 幂等同步脚本；
+  导出 LearnWatchDaemon.xml；移走 0 字节空 FreezeWatch.xml。
+- **平台整治全记录**：docs/DSH_PLATFORM_REPAIR_20261120.md。
+
+### 未完成（诚实记录）
+- junction 消灭：.dsh 可由 DSH_HOME 取代待重启验证；登录态 junction 需 --user-data-dir 方案（调研中）；
+  WorkBuddyWorkSpace 两个 junction 影响当前工具链；default-workspace 是真身不动。
+- pnpm .modules.yaml 不完整（node_modules 有被锁的 autostart 残留目录），下次 install 可能重装。
+- 一键卸载脚本待 junction 整治后做。
+
+### Note
+- 版本 2.26.1 标记平台配置层变更（不改 harness 代码）。
+
 ## [2.26.0] - 2026-11-19 19:30（修复周期性 cmd 窗口闪现）
 
 ### Fixed（用户报告的系统问题）
