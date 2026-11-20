@@ -92,6 +92,23 @@
         "改 D1-D5 判定逻辑、GWT/FEP 通道、verify 闸门",
         "把 s1/outcome- 等测试 sid 计入检索结果"
       ]
+    },
+    {
+      "id": "SURF-FSM-SIGNAL",
+      "kind": "local-signal-integration",
+      "target": "index.mjs:FSM_SIGNAL / fsmSignal / parts.push",
+      "allows": [
+        "控制回合/工具结果处读取 FSM 局部失败信号(eval_fsm.py 产出的 _fsm_eval.json)",
+        "新增 trace({kind:'fsm_signal'}) 埋点",
+        "在控制回合 parts.push 中展示 FSM 预警文案(局部信号，非指令)"
+      ],
+      "forbids": [
+        "改 D1-D5 判定逻辑、Critic/审计门控",
+        "改运行时注入通道(ADR-0017:学习信号不占D5额度)",
+        "改白名单/阈值/频次参数",
+        "把 FSM 长轨迹因果归因当结论(只做局部可观察信号, Jev 0.56≈随机)",
+        "AUROC<0.85 时宣称完成"
+      ]
     }
   ],
   "forbidden_always": [
