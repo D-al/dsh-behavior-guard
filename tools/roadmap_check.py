@@ -119,8 +119,13 @@ def check_one(v, data):
         if kinds == 'test_pass':
             proc = subprocess.run(v['cmd'], shell=True, cwd=ROOT,
                                   capture_output=True, text=True, timeout=300)
-            # 兼容两种 PASS 输出：裸 'PASS xxx'（test_*.mjs）与 '[PASS  ] ID ...'（本工具 dry-run）
-            passes = len(re.findall(r'^(?:PASS|\[PASS\s*\])', proc.stdout, re.M))
+            # 兼容四种通过输出：
+            #   'PASS xxx'（我们自己的 test_*.mjs）
+            #   '[PASS  ] ID ...'（本工具 dry-run）
+            #   '✅ xxx'（dsh agent 自主写的测试用 ✅ 作通过标记，2026-11-21 实测）
+            #   '[OK] xxx'（部分 python 验收脚本）
+            # 这些都是"一条断言通过"的明确标记，与 PASS 等价；不认汇总文字，避免假绿。
+            passes = len(re.findall(r'^(?:PASS|\[PASS\s*\]|✅|\[OK\])', proc.stdout, re.M))
             ok = proc.returncode == 0 and passes >= v.get('min', 1)
             return ok, f'rc={proc.returncode} PASS={passes}'
 
