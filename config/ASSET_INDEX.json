@@ -1,0 +1,139 @@
+{
+  "_schema": 1,
+  "_purpose": "资产调度索引：agent 运行时查'我有什么资产、在哪、何时用'。人读版见 lineage/ASSET_MAP.md",
+  "_rule": "新增对合成心智有价值的资产时，必须在此登记；否则等于没接入神经系统",
+  "assets": [
+    {
+      "id": "identity.lineage",
+      "kind": "knowledge",
+      "path": "lineage/",
+      "when_to_use": "问'我是谁/为什么这么做/认知怎么演化'时；写决策前查先例",
+      "authority": "append-only家谱",
+      "files": [
+        "README.md",
+        "ORIGIN.md",
+        "DECISION_LEDGER.md",
+        "DECISION_CHAIN.md",
+        "DECISION_AGENCY.md",
+        "EPISTEMOLOGY.md",
+        "IDENTITY.md",
+        "ASSET_MAP.md"
+      ],
+      "last_verified": "2026-11-20"
+    },
+    {
+      "id": "evidence.citation_ledger",
+      "kind": "data",
+      "path": "config/citation_ledger.json",
+      "when_to_use": "任何决策引用外部论文/社区/issue前；写ADR的Evidence段时",
+      "authority": "引用真假的唯一台账",
+      "last_verified": "2026-11-20"
+    },
+    {
+      "id": "evidence.citation_guard",
+      "kind": "guard",
+      "path": "tools/citation_guard.py",
+      "when_to_use": "决策文档写完自动跑（已接run_all）；引用幻觉证据即FAIL",
+      "authority": "机器判据，高于记忆和自觉",
+      "last_verified": "2026-11-20"
+    },
+    {
+      "id": "evidence.arxiv_verified_raw",
+      "kind": "data",
+      "path": "data/evidence/arxiv_verified_20261120.json",
+      "when_to_use": "需要复核某篇arXiv的真实标题/摘要时（86篇原始API返回）",
+      "authority": "arXiv官方API直连原始证据",
+      "last_verified": "2026-11-20"
+    },
+    {
+      "id": "evidence.tool.verify_arxiv_api",
+      "kind": "tool",
+      "path": "tools/evidence/verify_arxiv_api.py",
+      "when_to_use": "新增/复核引用时批量拉权威源；不用逐篇WebFetch",
+      "authority": "证据生产工具（从cleanup目录收编，2026-11-20）",
+      "last_verified": "2026-11-20"
+    },
+    {
+      "id": "evidence.tool.extract_citations",
+      "kind": "tool",
+      "path": "tools/evidence/extract_citations.py",
+      "when_to_use": "审计全项目引用时先跑它建清单",
+      "authority": "证据生产工具",
+      "last_verified": "2026-11-20"
+    },
+    {
+      "id": "evidence.tool.rw_funnel",
+      "kind": "tool",
+      "path": "tools/evidence/rw_funnel.py",
+      "when_to_use": "诊断读写能力（read→write转化率、读循环）时",
+      "authority": "识字率量化工具",
+      "last_verified": "2026-11-20"
+    },
+    {
+      "id": "evidence.tool.scan_citation_patterns",
+      "kind": "tool",
+      "path": "tools/evidence/scan_citation_patterns.py",
+      "when_to_use": "扫可疑引用数字模式（百分比+模型名组合）",
+      "authority": "证据生产工具",
+      "last_verified": "2026-11-20"
+    },
+    {
+      "id": "organs.deterministic_guards",
+      "kind": "mechanism",
+      "path": "index.mjs + config/GUARD_MANIFEST.yaml",
+      "when_to_use": "运行时自动（L0-L3/D1-D5/verify-on-edit/控制回合）",
+      "authority": "合成心智的免疫系统",
+      "last_verified": "2026-11-20"
+    },
+    {
+      "id": "knowledge.skills",
+      "kind": "knowledge",
+      "path": "skills/",
+      "when_to_use": "任务命中技能卡场景时（7个卡）",
+      "authority": "可复用行为模式",
+      "last_verified": "2026-11-20"
+    },
+    {
+      "id": "knowledge.critbank",
+      "kind": "data",
+      "path": "config/critbank.json",
+      "when_to_use": "审计/评审命中教训时（9条）",
+      "authority": "本机教训库",
+      "last_verified": "2026-11-20"
+    },
+    {
+      "id": "growth.capability_ladder",
+      "kind": "knowledge",
+      "path": "CAPABILITY_LADDER.yaml",
+      "when_to_use": "选下一步/爬能力阶梯时；python tools/roadmap_check.py --next",
+      "authority": "25张成长卡的单一真相源",
+      "last_verified": "2026-11-20"
+    },
+    {
+      "id": "baseline.performance",
+      "kind": "knowledge",
+      "path": "docs/history/tuning/ + 项目MEMORY.md",
+      "when_to_use": "判断加速是否有效/显存是否够时（20K decode 27.2 t/s等）",
+      "authority": "本机实测基线",
+      "last_verified": "2026-11-18"
+    },
+    {
+      "id": "work.contract",
+      "kind": "knowledge",
+      "path": "lineage/WORKING_CONTRACT.md",
+      "when_to_use": "派子任务/长任务盯梢/决策要沉淀时",
+      "authority": "用户长期规则的项目级版本",
+      "status": "built",
+      "last_verified": "2026-11-20"
+    },
+    {
+      "id": "skill.literacy",
+      "kind": "knowledge",
+      "path": "skills/literacy.md",
+      "when_to_use": "读写任务：决策读什么/写什么 + 准确执行时",
+      "authority": "用户'识字率'类比的可复用框架",
+      "status": "built",
+      "last_verified": "2026-11-20"
+    }
+  ]
+}

@@ -2,7 +2,8 @@
 
 > **合成心智（Synthetic Mind）**：用一个 35B 本地模型 + 一套确定性脚手架，合成比模型本身可靠得多的心智——**模型权重一个字节没动，变的是它外面的脑区**。
 
-本仓库是 **Single Source of Truth**：插件代码 + 生产配置 + 10 个技能卡 + 23 个分析脚本 + 决策档案 + 一键安装。
+本仓库是 **Single Source of Truth**：插件代码 + 生产配置 + 11 个技能卡 + 47 个分析脚本（含 4 个证据生产工具）+ 决策档案 + 认知谱系 + 一键安装。
+> 资产盘点与调度见 [资产地图](lineage/ASSET_MAP.md)；新增资产须登记 [资产索引](config/ASSET_INDEX.json)，否则等于没接入。
 当前 **v2.26.2**（2026-11-19）。仓库名沿用历史名 `dsh-behavior-guard`，npm 包名/插件 id 为 `dsh-agent-harness`。
 
 ---
@@ -17,7 +18,8 @@
 | **想看脑功能分区对照** | [覆盖度盘点](docs/BRAIN_PARITY.md)（人脑分区 → 我们的机制 → 空白区）|
 | **想看 harness 自进化方案** | [Self-Harness 落地方案](docs/SELF_HARNESS_PLAN.md)（短期①的实现路径）|
 | **我是 agent，想自己成长 / 找下一件可做的事** | [能力阶梯](CAPABILITY_LADDER.yaml)（机器可读成长卡片：what/why/解锁/好处/代价/坑/反思）+ `python tools/roadmap_check.py --next` 选下一项、`--card M1` 读任意卡片、`--dry-run` 验判据。设计见 [成长卡片说明](docs/GROWTH_CARD_DESIGN_20261120.md)|
-| **我是谁、我从哪里来、为什么相信这些** | [认知谱系](lineage/README.md)（独立于路线图/操作手册的身份家谱：五层依赖链演化史 ORIGIN + 51 个决策的依据与严格性评级 DECISION_LEDGER + 认识论与三次危机 EPISTEMOLOGY + 身份锚 IDENTITY）|
+| **我是谁、我从哪里来、为什么相信这些** | [认知谱系](lineage/README.md)（独立于路线图/操作手册的身份家谱：五层依赖链演化史 ORIGIN + 51 个决策的依据与严格性评级 DECISION_LEDGER + 三层决策链 + 决策主体与最优性 + 认识论 + 身份锚）|
+| **我有哪些资产、在哪、何时调用** | [资产地图](lineage/ASSET_MAP.md)（人读）+ [资产索引](config/ASSET_INDEX.json)（机器可读）：15 项资产的调度中枢，含证据生产工具与工作契约 [技能卡](skills/literacy.md)（读写识字率）|
 | **想确认 GitHub/权威/生产是否一致** | `python tools/consistency_guard.py`（零 LLM 守卫，exit 0/1/2；清单 `config/GUARD_MANIFEST.yaml`，设计见 [守卫设计](docs/CONSISTENCY_GUARD_DESIGN_20261120.md)）|
 | **窗口一开 GPU 就卡死** | [3D/Copy 争抢诊断与降帧](docs/GPU_ENGINE_GUARD.md)（含守护脚本）|
 | **为什么压缩后重复干活/看不到角色** | [压缩与角色诊断](docs/COMPACTION_AND_ROLES_DIAGNOSIS.md)（含存档去重修复）|

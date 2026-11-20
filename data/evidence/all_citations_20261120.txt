@@ -1,0 +1,185 @@
+=== arXiv 编号 ===
+2303.11366     docs\MIND_GAPS_RESEARCH.md
+2305.17390     docs\PERIPHERAL_MODELS_EVALUATION.md
+2306.05148     docs\HETEROGENEOUS_MODELS_EVALUATION.md, docs\PERIPHERAL_MODELS_EVALUATION.md
+2307.03172     docs\FILE_RW_CAPABILITY_PLAN_20261120.md
+2307.11909     docs\MIND_GAPS_RESEARCH.md
+2307.16789     docs\FILE_RW_CAPABILITY_PLAN_20261120.md
+2308.05342     docs\MIND_GAPS_RESEARCH.md
+2310.01798     decisions\0014-reject-forced-choice-injection.md, docs\FILE_RW_CAPABILITY_PLAN_20261120.md, docs\MANUALS.md, docs\MIND_GAPS_RESEARCH.md
+2310.08560     docs\MANUALS.md
+2404.02258     docs\PERIPHERAL_MODELS_EVALUATION.md
+2406.04692     docs\HETEROGENEOUS_MODELS_EVALUATION.md
+2406.12045     docs\FILE_RW_CAPABILITY_PLAN_20261120.md
+2406.16657     docs\FILE_RW_CAPABILITY_PLAN_20261120.md
+2406.18665     docs\HETEROGENEOUS_MODELS_EVALUATION.md
+2406.19314     docs\HETEROGENEOUS_MODELS_EVALUATION.md
+2408.03910     docs\FILE_RW_CAPABILITY_PLAN_20261120.md
+2410.10934     docs\MANUALS.md, docs\MIND_GAPS_RESEARCH.md, index.mjs
+2410.14684     docs\FILE_RW_CAPABILITY_PLAN_20261120.md
+2411.13268     docs\HETEROGENEOUS_MODELS_EVALUATION.md
+2503.03459     docs\BRAIN_PARITY.md
+2503.13657     docs\FEEDBACK_LOOP_AND_DISTILLATION_EVALUATION.md, docs\HETEROGENEOUS_MODELS_EVALUATION.md, docs\MANUALS.md
+2504.01990     docs\BRAIN_PARITY.md
+2504.19413     docs\MIND_GAPS_RESEARCH.md
+2505.03275     docs\MANUALS.md
+2505.09388     docs\HETEROGENEOUS_MODELS_EVALUATION.md
+2505.17469     docs\FEEDBACK_LOOP_AND_DISTILLATION_EVALUATION.md
+2505.24298     docs\MIND_GAPS_RESEARCH.md
+2506.13331     docs\BRAIN_PARITY.md
+2508.18192     docs\BRAIN_PARITY.md
+2508.18748     docs\HETEROGENEOUS_MODELS_EVALUATION.md
+2508.21433     docs\MANUALS.md, docs\MD_SYSTEM_PLAN.md
+2510.06599     docs\HETEROGENEOUS_MODELS_EVALUATION.md
+2510.12487     CAPABILITY_LADDER.yaml, ROADMAP_GRAPH.md, config\AGENTS.md, docs\EDIT_PROTOCOL_S14_20261120.md
+2601.02553     docs\MIND_GAPS_RESEARCH.md
+2601.16863     CHANGELOG.md, docs\FEEDBACK_LOOP_AND_DISTILLATION_EVALUATION.md
+2602.02475     docs\MANUALS.md, docs\MIND_GAPS_RESEARCH.md, tools\trace_timeline.py
+2602.12106     docs\MIND_GAPS_RESEARCH.md
+2602.23681     docs\MANUALS.md
+2603.24639     docs\MEMORY_TO_MIND_MODEL_20261120.md
+2603.25150     docs\MIND_GAPS_RESEARCH.md
+2603.25158     docs\MANUALS.md, docs\MD_SYSTEM_PLAN.md, tools\skill_draft.py
+2604.11465     README.md, docs\MANUALS.md, skills\roles.md, tools\audit_session.py
+2604.15097     docs\MEMORY_TO_MIND_MODEL_20261120.md
+2604.16004     config\rubrics\critic_v2.json, docs\MANUALS.md
+2605.01403     docs\MANUALS.md
+2605.02077     docs\MIND_GAPS_RESEARCH.md
+2605.06165     docs\MANUALS.md
+2605.10686     docs\MIND_GAPS_RESEARCH.md
+2605.11970     docs\MIND_GAPS_RESEARCH.md
+2605.16281     docs\MIND_GAPS_RESEARCH.md
+2605.25163     docs\MIND_GAPS_RESEARCH.md
+2606.03557     docs\PERIPHERAL_MODELS_EVALUATION.md
+2606.06079     docs\MANUALS.md, tools\skill_draft.py
+2606.09498     CHANGELOG.md, ROADMAP.md, decisions\0018-self-harness-two-stage.md, docs\PEER_HARNESS_BENCHMARK.md
+2606.10821     docs\MIND_GAPS_RESEARCH.md
+2606.13317     docs\MANUALS.md, tools\skill_draft.py
+2606.15971     docs\MIND_GAPS_RESEARCH.md
+2606.16360     docs\MANUALS.md
+2606.29713     config\rubrics\critic_v2.json, docs\MANUALS.md, docs\MIND_GAPS_RESEARCH.md
+2607.02021     docs\MIND_GAPS_RESEARCH.md
+2607.11423     docs\MEMORY_TO_MIND_MODEL_20261120.md
+2607.16072     CAPABILITY_LADDER.yaml, ROADMAP_GRAPH.md, config\AGENTS.md, docs\EDIT_PROTOCOL_S14_20261120.md
+2608.14111     docs\MIND_GAPS_RESEARCH.md
+2608.14905     docs\MANUALS.md
+2608.20256     docs\MANUALS.md
+2608.22134     docs\MIND_GAPS_RESEARCH.md
+2608.23651     config\critbank.json, docs\MANUALS.md
+2608.23670     docs\CLASSIFIERS_FOR_MIND_MODEL_EVALUATION.md
+2608.27167     docs\MANUALS.md
+2608.29168     docs\MANUALS.md
+2609.00006     ROADMAP.md, docs\COMPETITIVE_ANALYSIS.md, docs\MIND_GAPS_RESEARCH.md
+2609.05274     docs\MANUALS.md, index.mjs
+2609.30293     docs\MANUALS.md
+2609.32520     config\critbank.json, docs\MANUALS.md
+2609.38108     config\critbank.json, docs\MANUALS.md, skills\todo-discipline.md
+2609.38147     CHANGELOG.md, docs\MANUALS.md
+2610.05223     docs\MANUALS.md, docs\MIND_GAPS_RESEARCH.md
+2610.12668     docs\MANUALS.md, index.mjs, tools\crit_revision.py
+2610.22984     docs\AUTONOMY_GAP_20261120.md, docs\MEMORY_TO_MIND_MODEL_20261120.md
+2610.23599     docs\MANUALS.md
+2610.24453     docs\MANUALS.md
+2610.28393     docs\MANUALS.md
+2610.34724     docs\MANUALS.md
+2610.41124     docs\MANUALS.md
+2611.03852     docs\MANUALS.md
+2611.10982     docs\MANUALS.md
+
+共 86 个 arXiv 编号
+
+=== GitHub issue/PR 完整URL ===
+29307    README.md, docs\MANUALS.md
+50469    ROADMAP.md, decisions\0019-gpu-engine-guard.md, docs\GPU_ENGINE_GUARD.md
+
+=== 裸 issue# 引用 ===
+Code#26996                   docs\EDIT_PROTOCOL_S14_20261120.md, docs\FILE_RW_CAPABILITY_PLAN_20261120.md
+Electron#50469               decisions\0019-gpu-engine-guard.md, docs\GPU_ENGINE_GUARD.md
+F#5                          docs\CLASSIFIERS_FOR_MIND_MODEL_EVALUATION.md
+F#98                         CAPABILITY_LADDER.yaml, CHANGELOG.md
+T#98                         docs\CLASSIFIERS_FOR_MIND_MODEL_EVALUATION.md
+aider#625                    docs\FILE_RW_CAPABILITY_PLAN_20261120.md
+opencode#42908               docs\FILE_RW_CAPABILITY_PLAN_20261120.md
+
+=== 外部URL（去重，最多80条）===
+https://aclanthology.org/2026.acl-long.277.pdf
+https://adr.github.io/madr/
+https://agentlenshq.com/blogs/01a68fd1-76e8-4c11-b41f-f1535456ae36
+https://aiagentmemory.org/articles/ai-memory-injection
+https://aiforautomation.io/news/2026-03-18-letta-code-memory-first-ai-coding-agent-remembers
+https://aifrontierpost.com/articles/synthetic-data-research-debate
+https://api.emergentmind.com/topics/n-way-self-evaluating-deliberation-nsed
+https://arxiv.org/abs/2303.11366
+https://arxiv.org/abs/2305.17390
+https://arxiv.org/abs/2306.05148
+https://arxiv.org/abs/2307.11909
+https://arxiv.org/abs/2308.05342
+https://arxiv.org/abs/2310.08560
+https://arxiv.org/abs/2404.02258
+https://arxiv.org/abs/2406.04692
+https://arxiv.org/abs/2406.18665
+https://arxiv.org/abs/2406.19314
+https://arxiv.org/abs/2410.10934
+https://arxiv.org/abs/2411.13268
+https://arxiv.org/abs/2503.13657
+https://arxiv.org/abs/2504.19413
+https://arxiv.org/abs/2505.03275
+https://arxiv.org/abs/2505.09388
+https://arxiv.org/abs/2505.24298
+https://arxiv.org/abs/2508.18748
+https://arxiv.org/abs/2508.21433
+https://arxiv.org/abs/2601.02553
+https://arxiv.org/abs/2601.16863
+https://arxiv.org/abs/2602.02475
+https://arxiv.org/abs/2602.12106
+https://arxiv.org/abs/2602.23681
+https://arxiv.org/abs/2603.25150
+https://arxiv.org/abs/2603.25158
+https://arxiv.org/abs/2604.11465
+https://arxiv.org/abs/2604.16004
+https://arxiv.org/abs/2605.02077
+https://arxiv.org/abs/2605.06165
+https://arxiv.org/abs/2605.10686
+https://arxiv.org/abs/2605.11970
+https://arxiv.org/abs/2605.16281
+https://arxiv.org/abs/2605.25163
+https://arxiv.org/abs/2606.06079
+https://arxiv.org/abs/2606.09498
+https://arxiv.org/abs/2606.10821
+https://arxiv.org/abs/2606.13317
+https://arxiv.org/abs/2606.15971
+https://arxiv.org/abs/2606.16360
+https://arxiv.org/abs/2606.29713
+https://arxiv.org/abs/2607.02021
+https://arxiv.org/abs/2607.16072
+https://arxiv.org/abs/2608.14111
+https://arxiv.org/abs/2608.14905
+https://arxiv.org/abs/2608.20256
+https://arxiv.org/abs/2608.22134
+https://arxiv.org/abs/2608.23651
+https://arxiv.org/abs/2608.23670
+https://arxiv.org/abs/2608.27167
+https://arxiv.org/abs/2608.29168
+https://arxiv.org/abs/2609.00006
+https://arxiv.org/abs/2609.05274
+https://arxiv.org/abs/2609.30293
+https://arxiv.org/abs/2609.32520
+https://arxiv.org/abs/2609.38108
+https://arxiv.org/abs/2609.38147
+https://arxiv.org/abs/2610.05223
+https://arxiv.org/abs/2610.12668
+https://arxiv.org/abs/2610.23599
+https://arxiv.org/abs/2610.24453
+https://arxiv.org/abs/2610.28393
+https://arxiv.org/abs/2610.34724
+https://arxiv.org/abs/2610.41124
+https://arxiv.org/abs/2611.03852
+https://arxiv.org/abs/2611.10982
+https://arxiv.org/html/2511.22047
+https://arxiv.org/html/2601.11783
+https://arxiv.org/html/2606.03557v2
+https://arxiv.org/pdf/2508.07662.pdf
+https://arxiv.org/pdf/2602.18922
+https://avchauzov.github.io/blog/2026/intent-routing-architecture-tradeoffs
+https://bessavagner.com/blog/sub-second-llm-triage
+共 123 个唯一URL
