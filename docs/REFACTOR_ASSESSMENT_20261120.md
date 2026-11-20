@@ -108,3 +108,27 @@
 每阶段独立可验证可回滚，符合"承重决策用户拍板"的身份纪律。
 
 > 等待用户拍板：是否执行阶段 1？
+
+## 9. 阶段 1 执行进展（2026-11-21 00:08）
+
+用户已拍板执行阶段 1。实测后**修正了拆分粒度**（这是评估时未测到的深度）：
+
+| 评估时的假设 | 实测后修正 |
+|---|---|
+| "40+ 逻辑块抽成 6 组 handler" | ❌ 不可行：块深度共享闭包（s/cfg/trace）+ 大量 `return` 提前退出，
+  抽函数必改控制流 → 违反行为等价铁律 |
+| — | ✅ 实际结构：**24 个纯函数已在 apply() 外**（作者已部分模块化），
+  apply() 内只剩 15 个嵌套函数（都依赖闭包）|
+| — | ✅ 可行粒度：**逐个外置嵌套函数为顶层函数 + cfg/runtime 显式注入 + 局部别名保调用点零改动** |
+
+**试点已完成并验证**：`resolveSafePath` → `resolveSafePathWithCfg`
+- 函数体逐字搬移（git diff 确认唯一差异是 cfg 参数化）
+- 我搬移时手滑多加了一个全角冒号判断 → **当场发现并修正**（这正是行为等价验证的价值：
+  证明"逐字搬移"也必须 diff 核对，不能凭记忆）
+- 验证：node --check OK / run_all 18/18 / self_harness 14/14
+
+**剩余工作**（15 个嵌套函数中，按依赖从少到多）：
+`claimedPaths` 类纯计算 → `stateOf` 类需 state 注入 → `callLLM/runAudit/runCritic` 类需 trace+cfg 注入。
+每个函数：搬移 → diff 核对 → 门禁 → commit（可逐个回滚）。
+
+**黄金基线**：`data/baseline/trace_pre_refactor_20261121.jsonl`（3.5MB）+ `trace_report_pre_refactor.txt`。

@@ -711,8 +711,34 @@ function blocksText(content) {
   return ''
 }
 
+// ── 安全路径解析（重构阶段1试点：从 apply 内提出，cfg 显式注入；2026-11-21）──
+// 行为等价：原函数体逐字搬移，仅把闭包 cfg 改成参数；apply 内用同名别名保持调用点零改动。
+function resolveSafePathWithCfg(rawPath, cfg) {
+  if (typeof rawPath !== 'string' || !rawPath.trim()) return null
+  let p = rawPath.trim().replace(/\\/g, '/')
+  // 剥掉可选的 file:// 前缀与两侧引号
+  p = p.replace(/^file:\/\//, '').replace(/^["']|["']$/g, '')
+  const isAbs = /^[a-zA-Z]:\//.test(p) || p.startsWith('//')
+  let full
+  if (isAbs) {
+    full = p
+  } else {
+    full = cfg.workspaceRoot.replace(/\/$/, '') + '/' + p
+  }
+  const norm = path.normalize(full).replace(/\\/g, '/')
+  // 路径逃逸校验：归一化后必须仍在某个允许根内
+  const allowed = cfg.allowedRoots.some((r) => {
+    const nr = path.normalize(r).replace(/\\/g, '/').replace(/\/$/, '')
+    return norm === nr || norm.startsWith(nr + '/')
+  })
+  if (!allowed) return null
+  return norm
+}
+
 export function apply(ctx, config) {
   const cfg = { ...DEFAULTS, ...TURN_GUARD_DEFAULTS }
+  // 重构阶段1：cfg 注入别名（调用点零改动，行为等价）
+  const resolveSafePath = (p) => resolveSafePathWithCfg(p, cfg)
   // P0 修复：配置合并必须【先于】所有依赖配置的初始化（trace / SKILLS 原先读的是默认值，
   // 导致 skillsEnabled:false / 自定义 tracePath 等覆盖彻底失效）。
   // raw 只覆盖显式给出且非 undefined/null 的键——避免 null 覆盖让 `>= null` 恒真等隐性 bug。
@@ -1467,27 +1493,7 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
   // 边界：仅只读（read/glob 的受限子集）；路径必须落在 allowedRoots 内；
   //       写操作永远走 v2 指令注入（守卫 L1 哲学：写必须由主模型做且可验证）。
 
-  function resolveSafePath(rawPath) {
-    if (typeof rawPath !== 'string' || !rawPath.trim()) return null
-    let p = rawPath.trim().replace(/\\/g, '/')
-    // 剥掉可选的 file:// 前缀与两侧引号
-    p = p.replace(/^file:\/\//, '').replace(/^["']|["']$/g, '')
-    const isAbs = /^[a-zA-Z]:\//.test(p) || p.startsWith('//')
-    let full
-    if (isAbs) {
-      full = p
-    } else {
-      full = cfg.workspaceRoot.replace(/\/$/, '') + '/' + p
-    }
-    const norm = path.normalize(full).replace(/\\/g, '/')
-    // 路径逃逸校验：归一化后必须仍在某个允许根内
-    const allowed = cfg.allowedRoots.some((r) => {
-      const nr = path.normalize(r).replace(/\\/g, '/').replace(/\/$/, '')
-      return norm === nr || norm.startsWith(nr + '/')
-    })
-    if (!allowed) return null
-    return norm
-  }
+  // resolveSafePath 已外置为顶层 resolveSafePathWithCfg + 上方 cfg 注入别名（重构阶段1）
 
   function executeReadOnly(pkg) {
     try {
