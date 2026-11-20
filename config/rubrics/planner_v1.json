@@ -1,5 +1,5 @@
 {
-  "_note": "Planner 检查 rubric（P2 用）。社区依据：MetaGPT SOP——规划者产物必须是'步骤+每步完成标准'，不是散文。改这里即改'验收标准是否可验证'的判据。",
+  "_note": "Planner 检查 rubric（P2 用）。社区依据：MetaGPT SOP——规划者产物必须是'步骤+每步完成标准'，不是散文。改这里即改'验收标准是否可验证'的判据。 新增 assumption_disclosure（2026-11-20 35B决策复盘：假设S6_rule已满足但那卡不存在）。",
   "version": "planner-v1",
   "name": "验收标准可验证性",
   "rules": [
@@ -14,6 +14,12 @@
       "requirement": "有明确的'不做什么'边界",
       "bad_example": "做个硬件监视器（无限范围）",
       "good_example": "只做 Windows，只读指标，不写系统配置"
+    },
+    {
+      "id": "assumption_disclosure",
+      "requirement": "任何\"假设/外部/待确认\"的前提必须显式列为未验证假设，并给出\"若假设不成立\"的分支；不得用\"假设已满足\"一句话抹平并继续给确定结论",
+      "bad_example": "S6 依赖 S6_rule（外部），假设已满足则随时可做（实际 S6_rule 不存在）",
+      "good_example": "S6 依赖 S6_rule：未验证该卡是否存在。若存在且 done→可推进；若不存在→需先补卡或改依赖"
     }
   ],
   "verdict_rules": {
