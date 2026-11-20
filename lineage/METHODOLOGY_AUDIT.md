@@ -146,8 +146,37 @@ Nygard 原文说 ADR 的目的正是避免新人"blindly accept / blindly change
 - **决策主体**（用户拍板 / 用户+助手实测 / 用户+助手共创 / 项目所有者确认）是**另一维度**，见 DECISION_AGENCY.md
 - 理由：医学证据分级里没有"患者拍板"这一级——把权力归属混进证据强度是概念错误
 
+## 5.5 一次真实的流程错误：先引用后核实（2026-11-21 00:21）
+
+用户指出："即使没拿到结果，你也应该去核实返回的上下文。"
+
+**事件**：我在第 8 章写 W1/W3/W6 时，把 Mosier 1998 / Fischhoff 1975 /
+Nickerson 1998 / Piper Alpha 标成"B 类已核实研究"——但**第一路调研子任务结果我从未收到**，
+是凭记忆写的，然后标了"已核实"。这是**先断言后验证**——即使结论碰巧对，流程是错的。
+
+**用户的纠正完全正确**：这正是我们花一整天清理的幻觉引用模式，只不过对象是方法论依据而非论文。
+
+**真正核实后的结果**（本次 WebFetch/WebSearch 逐条）：
+
+| 引用 | 判定 | 精确核实 |
+|---|---|---|
+| Mosier 1998 automation bias | ✅ 真实且精确 | Mosier, Skitka, Heers & Burdick (1998), *Int'l J. Aviation Psychology* 8(1) 47-63, DOI 10.1207/s15327108ijap0801_3。**phantom memory 术语真实**——飞行员错误"记得"不存在的告警。"内化的问责感降低错误"精确对应我们的 PASS-显依据改进 |
+| Fischhoff 1975 后见之明 | ✅ 真实 | Fischhoff (1975) *JEP:HPP* 1(3) 288-299；Fischhoff & Beyth (1975) OBHP 13 1-16；"creeping determinism"准确 |
+| Nickerson 1998 确认偏误 | ✅ 真实 | *Review of General Psychology* 2(2) 175-220, DOI 10.1037/1089-2680.2.2.175 |
+| **Piper Alpha = checklist fatigue** | ❌ **误用** | 事故真实（1988，167死），但 Cullen Report 根因是**交接班沟通失败 + permit-to-work 被习惯性偏离**，**不是"清单疲劳"**。我把真实事件错误归因到未核实的心理学概念 |
+
+**处置**：
+1. 三条真实引用保留（现在**真正核实过**，可正当标 verified）
+2. **删除 Piper Alpha 归因**；W6 只引 automation bias 的"惯例化"维度
+3. **新增纪律**（写进 WORKING_CONTRACT）：**"已核实"标签只能在核实动作完成后打，不许先写后补**——
+   citation_guard 只查论文引用，管不到方法论依据，只能靠纪律
+
+**讽刺但真实**：审计方法论自己在犯被审计的错误——恰好证明 W1/W3 不是抽象理论，
+是审计者本人的实际失效模式。
+
 ## 6. 变更记录（实时更新）
 
+- 2026-11-21 00:21 用户纠正"没拿到结果也要核实上下文"——发现并修正 §5.5 流程错误
 - 2026-11-21 00:28 广泛调研优劣并落地：4项改进（guard listed降WARN/PASS显真实标题/ADR反证必填/一页纸卡）；补AI agent场景调研（DGM/RAGAs/LLM-judge偏见一手核实）
 
 - 2026-11-21 00:07 初版：逐条自审，识别 B2/B3 为自创阈值
@@ -191,12 +220,12 @@ Nygard 原文说 ADR 的目的正是避免新人"blindly accept / blindly change
 
 | # | 劣势 | 类型 | 危害 | 处置 |
 |---|---|---|---|---|
-| W1 | **自动化偏见**：PASS 连续绿灯 → 人停止看原始证据，PASS 本身被当"已核实"证据 | B 类研究（Mosier 1998/phantom memory）+ A 类自审 | 高 | ✅ 已落地：PASS 强制显示真实标题+核实日期 |
+| W1 | **自动化偏见**：PASS 连续绿灯 → 人停止看原始证据，PASS 本身被当"已核实"证据 | B 类✅已核实（Mosier 1998 phantom memory, DOI 10.1207/s15327108ijap0801_3）+ A 类自审 | 高 | ✅ 已落地：PASS 强制显示真实标题+核实日期 |
 | W2 | **listed 假绿灯**：只核标题的引用拿 verified 同样的 PASS | A 类实测（guard 源码+实测）| 高 | ✅ 已落地：listed → WARN |
-| W3 | **确认偏误/后见之明**：决策记录只写支持证据 → 事后合理化 | B 类（Fischhoff 1975/Nickerson 1998）| 高 | ✅ 已落地：ADR 模板加 Counter-evidence 必填段 |
+| W3 | **确认偏误/后见之明**：决策记录只写支持证据 → 事后合理化 | B 类✅已核实（Fischhoff 1975 JEP:HPP 1(3) / Nickerson 1998 RGP 2(2)）| 高 | ✅ 已落地：ADR 模板加 Counter-evidence 必填段 |
 | W4 | **仪式成本**：方法论 987 行，agent 不可能每次全读 | A 类实测（wc -l）| 中 | ✅ 已落地：QUICK_DECISION_CARD 一页纸薄入口 |
 | W5 | **阈值伪精确**："≥2"给人科学定律错觉 | A 类自审 + 学界无依据 | 中 | ✅ 已在 §0 降级标注为约定 |
-| W6 | **清单疲劳**：guard 若长期全绿，WARN 会被习惯性忽略 | B 类研究（checklist fatigue）| 中 | ⚠️ 缓释中：WARN 现在带具体原因，不再是空标记 |
+| W6 | **惯例化忽视**：guard 若长期全绿，WARN 会被习惯性忽略 | B 类✅已核实（Mosier 1998 的 automation bias 惯例化维度；原引 Piper Alpha=checklist fatigue 已证误用删除，见 §5.5）| 中 | ⚠️ 缓释中：WARN 现在带具体原因，不再是空标记 |
 | W7 | **无预测力**：不能预测哪个决策会成功，只能审计依据清晰度 | 逻辑（规范性框架本质）| 低（定位问题）| 已在 §0 诚实定位为"纪律非理论" |
 
 ### 7.3 本次直接落地的改进（4 项）
