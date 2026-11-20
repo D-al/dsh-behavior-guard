@@ -10,20 +10,18 @@
 import subprocess
 import sys
 
-# 12 张归档 done card 对应的真实测试脚本（与 ROADMAP_GRAPH.md 里的 verify.cmd 一致）
+# 归档回测的真实测试脚本（标签=脚本名，避免卡名与脚本不匹配；2026-11-20 清理过期 S_* 标签）
 TESTS = [
-    ('S_GWT',      ['node', 'tools/test_gwt_fep.mjs']),
-    ('S_FEP',      ['node', 'tools/test_gwt_fep.mjs']),
-    ('S_SCOPE',    ['node', 'tools/test_short_term_goals.mjs']),
-    ('S_CRITIC',   ['node', 'tools/test_short_term_goals.mjs']),
-    ('S_ARCHIVE',  ['node', 'tools/test_archive_dedup.mjs']),
-    ('S_ROLE',     ['node', 'tools/test_role_fixes.mjs']),
-    ('S_TRACE',    ['node', 'tools/test_trace_context.mjs']),
-    ('S_SECURITY', ['node', 'tools/test_security_boundary.mjs']),
-    ('S_OUTCOME',  ['node', 'tools/test_outcome.mjs']),
-    ('S_REVIEW',   ['node', 'tools/test_review_loop.mjs']),
-    ('S_INJECT',   ['node', 'tools/test_injection_scan.mjs']),
-    ('S_BUDGET',   ['node', 'tools/test_injection_budget.mjs']),
+    ('test_gwt_fep',  ['node', 'tools/test_gwt_fep.mjs']),
+    ('test_short_term_goals',  ['node', 'tools/test_short_term_goals.mjs']),
+    ('test_archive_dedup',  ['node', 'tools/test_archive_dedup.mjs']),
+    ('test_role_fixes',  ['node', 'tools/test_role_fixes.mjs']),
+    ('test_trace_context',  ['node', 'tools/test_trace_context.mjs']),
+    ('test_security_boundary',  ['node', 'tools/test_security_boundary.mjs']),
+    ('test_outcome',  ['node', 'tools/test_outcome.mjs']),
+    ('test_review_loop',  ['node', 'tools/test_review_loop.mjs']),
+    ('test_injection_scan',  ['node', 'tools/test_injection_scan.mjs']),
+    ('test_injection_budget',  ['node', 'tools/test_injection_budget.mjs']),
 ]
 
 PY = sys.executable

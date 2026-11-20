@@ -925,8 +925,8 @@ rungs:
     path: tools/roadmap_check.py
   - kind: test_pass
     cmd: D:/Python/python.exe -B tools/backtest_archive.py
-    min: 13
-    note: 独立归档回测13项全过（零递归；原 dry-run 判据会自引用）
+    min: 11
+    note: 独立归档回测11项全过(10个唯一测试脚本+graph可加载;标签=脚本名，零递归)
   title: 会记路（机器判据 + dry-run 核验）
   what: 给路线图补机器判据 + roadmap_check.py dry-run 核验
   why: 路线图已可机器写回(--apply)，但人工勾选仍占多数，autonomous 地基待补
