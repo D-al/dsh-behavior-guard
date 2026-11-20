@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>A1_6 推卡实时看板</title>
+<style>
+  :root { --bg:#1e1e1e; --card:#2d2d2d; --fg:#e0e0e0; --dim:#9aa0a6; --ok:#4caf50; --warn:#ff9800; --bad:#f44336; --blue:#4fc3f7; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:16px; background:var(--bg); color:var(--fg); font-family:ui-monospace,Consolas,monospace; }
+  h1 { font-size:18px; margin:0 0 12px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin-bottom:12px; }
+  .card { background:var(--card); border-radius:8px; padding:12px 14px; border-left:3px solid var(--blue); }
+  .card.warn { border-left-color:var(--warn); } .card.bad { border-left-color:var(--bad); } .card.ok { border-left-color:var(--ok); }
+  .label { font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:.05em; }
+  .value { font-size:22px; font-weight:bold; margin-top:4px; }
+  .sub { font-size:11px; color:var(--dim); margin-top:3px; }
+  pre { background:#252525; border-radius:6px; padding:10px; font-size:11px; line-height:1.5; overflow:auto; max-height:300px; white-space:pre-wrap; word-break:break-all; }
+  .banner { padding:10px 14px; border-radius:6px; font-weight:bold; margin-bottom:12px; }
+  .banner.ok { background:#1b3a1b; color:#8bc34a; } .banner.bad { background:#3a1b1b; color:#ff6b6b; } .banner.warn { background:#3a2e1b; color:#ffb74d; }
+  .pill { display:inline-block; padding:2px 7px; border-radius:10px; font-size:11px; margin:2px 3px 2px 0; background:#3a3a3a; }
+  .pill.yes { background:#1b3a1b; color:#8bc34a; } .pill.no { background:#3a2e1b; color:#ffb74d; }
+</style>
+</head>
+<body>
+<h1>A1_6 推卡实时看板 <span id="clock" style="color:#888;font-size:12px;font-weight:normal"></span></h1>
+<div id="banner" class="banner ok">加载中…</div>
+<div class="grid">
+  <div class="card" id="c-token"><div class="label">token 活性（唯一可靠判据）</div><div class="value" id="token">—</div><div class="sub" id="token-sub">n_decoded / 5秒采样</div></div>
+  <div class="card" id="c-sess"><div class="label">并行会话数</div><div class="value" id="sess">—</div><div class="sub" id="sess-sub">running=true 的会话</div></div>
+  <div class="card" id="c-art"><div class="label">产物落盘</div><div class="value" id="art">—/4</div><div class="sub" id="art-sub"></div></div>
+  <div class="card" id="c-tool"><div class="label">近12条工具调用</div><div class="value" id="tool" style="font-size:15px">—</div><div class="sub" id="tool-sub">read≥5 且无 write = 循环警报</div></div>
+</div>
+<div class="grid">
+  <div style="grid-column:1/-1"><div class="label">实时事件流（近8条）</div><pre id="events">—</pre></div>
+</div>
+<script>
+async function tick(){
+  try{
+    const r = await fetch('_a16_status.json?t='+Date.now());
+    const d = await r.json();
+    document.getElementById('clock').textContent = '数据时间 '+d.ts;
+    // token
+    const dec = d.slots.decoded, grow = d.token_growing;
+    document.getElementById('token').textContent = dec ?? 'err';
+    document.getElementById('token-sub').textContent = (d.slots.processing?'推理中':'空闲')+' · task '+d.slots.task+' · '+(grow?'✅ 增长中':'⚠ 未增长');
+    document.getElementById('c-token').className = 'card '+(grow?'ok':'warn');
+    // sessions
+    const sn = d.sessions.running_count;
+    document.getElementById('sess').textContent = sn;
+    document.getElementById('sess-sub').textContent = sn>1?'⚠ 检测到并行':(sn===1?'正常：只有 A1_6':'无会话');
+    document.getElementById('c-sess').className = 'card '+(sn>1?'bad':sn===1?'ok':'warn');
+    // artifacts
+    const a = d.artifacts, keys = ['test','doc','reflection','index_future_claim'];
+    const have = keys.filter(k=>a[k]).length;
+    document.getElementById('art').textContent = have+'/4';
+    document.getElementById('art-sub').innerHTML = keys.map(k=>`<span class="pill ${a[k]?'yes':'no'}">${k}</span>`).join('');
+    document.getElementById('c-art').className = 'card '+(have===4?'ok':'');
+    // tools
+    const tc = d.tool_counts||{};
+    document.getElementById('tool').innerHTML = Object.entries(tc).map(([k,v])=>`<span class="pill">${k}×${v}</span>`).join('');
+    const readN = (tc.read||0)+(tc.grep||0), writeN = (tc.write||0)+(tc.edit||0);
+    document.getElementById('tool-sub').textContent = `read/grep=${readN} write/edit=${writeN}`;
+    document.getElementById('c-tool').className = 'card '+((readN>=5&&writeN===0)?'bad':'');
+    // events
+    document.getElementById('events').textContent = (d.recent_events||[]).join('\n')||'（无）';
+    // banner
+    const b = document.getElementById('banner');
+    let alerts=[];
+    if(sn>1) alerts.push('并行会话>1');
+    if(readN>=5&&writeN===0) alerts.push('读循环: read/grep≥5 且无 write');
+    if(have===4) { b.className='banner ok'; b.textContent='✅ A1_6 产物齐全 — 等待 commit/push'; }
+    else if(alerts.length){ b.className='banner bad'; b.textContent='⚠️ 重大情况: '+alerts.join(' | ')+' — 建议主代理刹车'; }
+    else { b.className='banner ok'; b.textContent='▶ A1_6 推进中 — token '+(grow?'增长':'停滞')+' · 产物 '+have+'/4'; }
+  }catch(e){ document.getElementById('banner').className='banner warn'; document.getElementById('banner').textContent='采集器未启动或数据不可读: '+e.message; }
+}
+tick(); setInterval(tick, 3000);
+</script>
+</body>
+</html>

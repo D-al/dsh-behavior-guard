@@ -590,7 +590,9 @@ const DEFAULT_WRITE_TOOLS = [
   'write', 'edit', 'apply_patch', 'multi_edit', 'create_file',
   'str_replace', 'write_file', 'notebook_edit'
 ]
-const WRITE_CLAIM = /已(?:经)?(?:写入|保存|创建|生成|更新|落盘|建好|写好|放在)|保存到|写入到|写到了|生成到|written to|saved to|created file/i
+const WRITE_CLAIM = /已(?:经)?(?:写入|保存|创建|生成|更新|落盘|建好|写好|放在)|保存到|写入到|写到了|生成到|written to|saved to|.created file/i
+const FUTURE_CLAIM = /(?:现在|接下来|下面|马上|立即)(?:要|了|就|正在)?[：:]?\s*(?:写|创建|生成|编写|实现|建立)[^\n]*?[`\u201c\u2018]?([A-Za-z]:[\\/][^\s`"'））,，。；;、]{4,}|[./][^\s`"'））,，。；;、]+\.py|[./][^\s`"'））,，。；;、]+\.mjs|[./][^\s`"'））,，。；;、]+\.md)/i
+const WILL_CLAIM = /(?:我将|I'll)\s+(?:要\s+)?(?:写|创建|生成|编写|实现)[^\n]{0,60}?[`"']?([A-Za-z]:[\\/][^\s`"'））,，。；;、]{4,}|[./][^\s`"'））,，。；;、]+\.py|[./][^\s`"'））,，。；;、]+\.mjs|[./][^\s`"'））,，。；;、]+\.md)/i
 const PATH_RE = /(?:[A-Za-z]:[\\/][^\s`"'））,，。；;、]+|\.\.?[\\/][^\s`"'））,，。；;、]+)/g
 
 function deepFreeze(value) {
@@ -617,10 +619,14 @@ function summarizeAssistant(message) {
   }
   return { body: body.trim(), toolCalls }
 }
+const CLAIM_PATTERNS = [WRITE_CLAIM, FUTURE_CLAIM, WILL_CLAIM]
+
 function claimedPaths(body) {
   const found = new Set()
   for (const line of body.split(/\r?\n/)) {
-    if (!WRITE_CLAIM.test(line)) continue
+    let matched = false
+    for (const pat of CLAIM_PATTERNS) { if (pat.test(line)) { matched = true; break } }
+    if (!matched) continue
     const matches = line.match(PATH_RE)
     if (!matches) continue
     for (const raw of matches) {
