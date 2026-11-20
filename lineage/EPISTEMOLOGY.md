@@ -11,11 +11,19 @@
 | **E1** | 本机实测（单次/少次） | 真实 trace/事件/产物，非推测 | read→write 转化 18.2%；write 0% 失败率 |
 | **E2** | 已核实外部论文 | 四层判据 L1-L4 全过，摘要支持结论 | RoPE 复制缺陷（2607.16072）、Diff-XYZ（2510.12487）|
 | **E3** | 已核实社区实践 | 官方博客/issue 原文核实 | Anthropic 10+ tools、Claude Code #26996 |
-| **E4** | 用户拍板 | 价值判断，不给 agent 自主权 | 工具面收敛 M5、温度按模型配 |
-| **E5** | 经验判断 | 无证据，基于风险偏好的默认选择 | ADR-0014 撤销强制二选一（降级后）|
+| **E4** | 经验判断 | 无证据，基于风险偏好的默认选择 | ADR-0014 撤销强制二选一（降级后）|
 | **❌** | 幻觉/误用 | 编号真但内容假，或真论文不支持该主张 | 18 篇幻觉 + 6 篇误用（见引用审计）|
 
-**铁律**：决策的依据级别必须显式标注；E5 不许冒充 E0；❌ 不许作为依据。
+**⚠️ 2026-11-21 方法论自审修订**：原 E4=用户拍板已从证据分级移出——
+"决策主体"（用户拍板/共创/agent执行）是**另一维度**，见 `DECISION_AGENCY.md`；
+把权力归属混进证据强度是概念错误（医学分级里没有"患者拍板"这一级）。原 E5 顺延为 E4。
+
+**铁律**：决策的依据级别必须显式标注；E4 不许冒充 E0；❌ 不许作为依据。
+
+> **工具定位（牛津 CEBM 官方权威表述，2026-11-21 WebFetch 核实）**：
+> "no evidence ranking system or decision tool can be used without a healthy dose of judgement and thought"
+> "The Levels is NOT intended to provide you with a definitive judgment"
+> 分级是 shortcut 不是真理——E0 不代表绝对正确，仍需连续采样等纪律。完整自审见 `METHODOLOGY_AUDIT.md`。
 
 ## 2. 三次认识论危机（我们的"认知免疫系统"是怎么长出来的）
 
