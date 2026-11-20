@@ -970,10 +970,10 @@ items:
   rank_derived: true
 - id: M10
   title: 会话生命周期治理（刹车）
-  what: 给 bridge 加 stop/abort 命令、给 freeze_watch 加会话级无进展检测，让 observer 能可靠停止僵尸会话
-  why: 2026-11-20 僵尸会话在"已停止"后复活并改坏 index.mjs（语法垃圾）；bridge 8 命令无 stop、dsh API 全 404、看门狗只盯
-    llama 冻死
-  benefit_to_self: 自治闭环终于有刹车——不用靠人工发极简 STOP + 肉眼复查工作树
+  what: bridge cancel 命令（已做）+ 开新会话前硬件三层检查 + 并行时子任务分盯+汇总呈递协议；freeze_watch 加会话级无进展检测
+  why: 2026-11-20 僵尸会话复活改坏 index.mjs；我误判"dsh 无终止 API"（只查 REST 404，实际走 cordis sessionController.cancel）；双会话并行险些
+    again
+  benefit_to_self: 有硬刹车（不靠模型自愿 STOP）+ 不再双会话并行 + 并行时有组织地分盯
   caveats:
   - 不能误杀正常推理中的会话（必须有明确的无进展判据）
   - 停止必须是幂等的、可复查的
@@ -1297,3 +1297,4 @@ autonomy_rungs:
   advice: 机制可观测性，A1_6之后做
   rank_hint: normal
   rank_derived: false
+  status: ready

@@ -879,15 +879,16 @@ items:
   verify:
   - kind: file_grep
     path: bench/dsh-session-bridge/bridge.mjs
-    regex: case 'stop'|case 'abort'
+    regex: case 'cancel'
     min: 1
   - kind: file_grep
-    path: bench/freeze_watch.py
-    regex: session.*(stall|zombie|僵尸)|会话.*(停|僵)
+    path: bench/dsh-session-bridge/index.mjs
+    regex: sessionController.*cancel|ctrl.cancel
     min: 1
-    flags: IGNORECASE
   - kind: file_exists
-    path: docs/SESSION_LIFECYCLE_20261120.md
+    path: docs/SESSION_BRAKE_20261120.md
+  - kind: file_exists
+    path: docs/MECHANISM_TRIGGER_AUDIT_20261120.md
   what: 给 bridge 加 stop/abort 命令、给 freeze_watch 加会话级无进展检测，让 observer 能可靠停止僵尸会话
   why: 2026-11-20 僵尸会话在"已停止"后复活并改坏 index.mjs（语法垃圾）；bridge 8 命令无 stop、dsh API 全 404、看门狗只盯
     llama 冻死
@@ -1195,4 +1196,12 @@ rungs:
   - kind: test_pass
     cmd: D:/Python/python.exe -B tools/test_review_trace.py
     min: 1
+  what: 给 Critic/Planner 调用加专属 trace 打点（rubric_version/dimensions_checked/verdict），让每个评审机制有可审计的触发证据
+  why: 2026-11-20 审计发现：新加的 Critic第6维/Planner假设披露确实进了 prompt，但 callLLM 只记 kind=llm，无法证明评审真的用了新维度——违反证据分层铁律
+  benefit_to_self: 机制上线后能回答"它今天到底触发了吗、拦了什么"——不再靠"代码里写了"自我安慰
+  cost: 中
+  caveats:
+  - 打点必须含 verdict 和具体维度，不能只记"调用过"造成另一种假绿
+  - trace 写失败不能影响主评审流程
+  abort_if: 无法在不改 callLLM 签名的前提下拿到 rubric 版本与维度判定
 <!-- ROADMAP_GRAPH_END -->

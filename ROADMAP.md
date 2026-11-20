@@ -42,7 +42,7 @@
 > | **outcome_all 结果反馈捕获 / 确定性门控 / 三角色 / P0-P2 心智拼图** | ✅ done | 证据见 `evidence_log` + `docs/reflection-outcome_all.md` |
 > | **M1 情景检索进主循环** | ✅ done | 证据见 `evidence_log` + `docs/reflection-M1.md` |
 > | **M8 轨迹 FSM 监控器** | ✅ done | 证据见 `evidence_log` + `docs/reflection-M8.md` |
-> | **下一项** | 🟢 A1_6 | `A1_6` 已 ready，可 `--claim` |
+> | **下一项** | 🟢 A1_7 | `A1_7` 已 ready，可 `--claim` |
 >
 > 机器真相 = [ROADMAP_GRAPH.md](ROADMAP_GRAPH.md)；本表由 `--apply` 自动写，人读与机器不漂移。
 <!-- HUMAN_PROGRESS_END -->
@@ -88,7 +88,7 @@ v2.24 同时做了**深度维护**：修 1 个 P0（安全注入被次数闸门�
 > 机器判据见 `--card <ID>`；每行 `分` = 性价比分数，`桶` = rank_hint（见卡片字段）。
 > ⚠️ 全局铁律（所有卡通用，故不再逐条重复）：说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 ≠ 进程活着。
 
-**`A1_6` 守卫 L1 补将来时承诺检测** · 分 `1.333` · 状态 `ready` · 桶 `normal`
+**`A1_6` 守卫 L1 补将来时承诺检测** · 分 `1.333` · 状态 `doing` · 桶 `normal`
 - **性价比**：收益 高 / 成本 中 / 建议 防线的防线，比A1_5更优先
 - **依赖→解锁**：A1 → —
 - **做什么**：把 guardDecide 的 L1 从只校验过去时声明（已写入X）扩展到将来时承诺（现在写X/接下来创建X），要求承诺的产物在本轮真实产生
