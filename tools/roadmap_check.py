@@ -27,6 +27,8 @@ LADDER = ROOT / 'CAPABILITY_LADDER.yaml'      # 生成镜像（完整成长卡�
 BENCH = Path(os.environ.get('BENCH_DIR') or r'D:\Brain\workspace\bench')
 GRAPH_BEGIN = '<!-- ROADMAP_GRAPH_BEGIN v1 -->'
 GRAPH_END = '<!-- ROADMAP_GRAPH_END -->'
+HUMAN_BEGIN = '<!-- HUMAN_PROGRESS_BEGIN v1'
+HUMAN_END = '<!-- HUMAN_PROGRESS_END -->'
 
 RISK_ORDER = {'low': 0, 'med': 1, 'high': 2}
 
@@ -247,6 +249,26 @@ def save_authoritative(data):
     # 用 lambda 返回替换文本：直接传字符串会让 re.sub 把内文里的 \B 等当转义序列（实测 bug）
     new_md = re.sub(re.escape(GRAPH_BEGIN) + r'.*?' + re.escape(GRAPH_END),
                     lambda _m: GRAPH_BEGIN + '\n' + inner + GRAPH_END, md, flags=re.S)
+    # 同步人类可读进度表（设计稿承诺：机器块与人类视图不再漂移）
+    sm = status_map_of(data)
+    autonomy = [i for i in data['rungs']]
+    done = [i for i in autonomy if sm.get(i['id']) == 'done']
+    nxt = find_next(data)
+    rows = '\n'.join(
+        f'> | **{i["id"]} {i.get("title", "")}** | ✅ done | 证据见 `evidence_log` + `docs/reflection-{i["id"]}.md` |'
+        for i in done
+    ) or '> | （尚无已完成卡片） | — | — |'
+    next_line = (f'> | **下一项** | ⏸ 空 | `--next` 无 autonomous ready 项，剩余需人工开闸 |'
+                 if not nxt else
+                 f'> | **下一项** | 🟢 {nxt["id"]} | `{nxt["id"]}` 已 ready，可 `--claim` |')
+    human = (f'{HUMAN_BEGIN}：由 roadmap_check.py --apply 自动生成，勿手改 -->\n'
+             f'> ### 🟢 自主化进度（自动同步）\n>\n'
+             f'> | 卡片 | 状态 | 完成证据 |\n> |---|---|---|\n{rows}\n{next_line}\n>\n'
+             f'> 机器真相 = 上方 ROADMAP_GRAPH 块；本表由 `--apply` 自动写，人读与机器不漂移。\n'
+             f'{HUMAN_END}')
+    if HUMAN_BEGIN in new_md and HUMAN_END in new_md:
+        pat = re.escape(HUMAN_BEGIN) + r'[^\n]*-->' + r'.*?' + re.escape(HUMAN_END)
+        new_md = re.sub(pat, lambda _m: human, new_md, flags=re.S)
     ROADMAP.write_text(new_md, encoding='utf-8')
     mirror = yaml.safe_load(LADDER.read_text(encoding='utf-8')) if LADDER.exists() else {}
     sm = status_map_of(data)

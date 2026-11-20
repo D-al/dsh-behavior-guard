@@ -36,10 +36,13 @@ else
     echo "[skip] node not found in PATH"
 fi
 
-# Check 2: Python config_check.py
-PYTHON="${PYTHON:-python3}"
-if [ -z "${PYTHON+x}" ] || ! command -v "$PYTHON" >/dev/null 2>&1; then
+# Check 2: Python config_check.py — try python3 first, fallback to python
+if command -v python3 >/dev/null 2>&1; then
+    PYTHON="python3"
+elif command -v python >/dev/null 2>&1; then
     PYTHON="python"
+else
+    PYTHON=""
 fi
 if command -v "$PYTHON" >/dev/null 2>&1; then
     run_test "config-check" "$PYTHON \"$ROOT/tools/config_check.py\""
