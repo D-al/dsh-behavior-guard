@@ -431,6 +431,12 @@ function checkSyntax(filePath) {
       JSON.parse(readFileSync(p, 'utf8'))
       return null
     }
+    // .mjs/.js 用 node --check（2026-11-20 补：压缩后 edit 的 old_string 被截断成半句，
+    // 工具部分匹配成功，中文字符串残片漏进 index.mjs 造成语法垃圾——node --check 能直接抓住）
+    if (lower.endsWith('.mjs') || lower.endsWith('.js')) {
+      execFileSync('node', ['--check', p], { timeout: 8000, windowsHide: true, encoding: 'utf8', stdio: ['ignore', 'ignore', 'pipe'] })
+      return null
+    }
     if (lower.endsWith('.py')) {
       // 用 python 编译检查（1 次进程，~80ms）
       const r = execFileSync('D:/Python/python.exe', ['-c', 'import py_compile,sys;py_compile.compile(sys.argv[1],doraise=True)', p], { timeout: 8000, windowsHide: true, encoding: 'utf8', stdio: ['ignore', 'ignore', 'pipe'] })
