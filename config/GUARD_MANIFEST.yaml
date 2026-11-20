@@ -12,6 +12,7 @@ repos:
       - cordis.patch.yml
       - surfaces.json
       - ROADMAP.md
+      - ROADMAP_GRAPH.md
       - CAPABILITY_LADDER.yaml
       - tools/roadmap_check.py
       - tools/frame_limiter.py

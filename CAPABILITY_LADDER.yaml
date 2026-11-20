@@ -5,18 +5,6 @@ meta:
   human_view: ROADMAP.md
   reader: tools/roadmap_check.py
   judge_principle: ADR-0012 确定性优先；零 LLM；过滤测试 sid
-  test_sids:
-  - s1
-  - outcome-
-  - budget-1
-  - budget-2
-  - budget-3
-  - budget-4
-  - b7332eb6
-  - r
-  - fb
-  - b
-  - inject-test
 state_machine:
   states:
   - backlog

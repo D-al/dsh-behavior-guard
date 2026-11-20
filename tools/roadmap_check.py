@@ -22,8 +22,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-ROADMAP = ROOT / 'ROADMAP.md'
-LADDER = ROOT / 'CAPABILITY_LADDER.yaml'      # 生成镜像（完整成长卡片，供 agent 读语义；非状态真相源）
+ROADMAP = ROOT / 'ROADMAP.md'                 # 人类可读视图（§1-§8 + 自动进度表），机器不写正文
+GRAPH_FILE = ROOT / 'ROADMAP_GRAPH.md'        # 机器权威块唯一真相源（agent 读写状态）
+LADDER = ROOT / 'CAPABILITY_LADDER.yaml'      # 语义镜像（what/why/caveats 等，非状态真相源）
 BENCH = Path(os.environ.get('BENCH_DIR') or r'D:\Brain\workspace\bench')
 GRAPH_BEGIN = '<!-- ROADMAP_GRAPH_BEGIN v1 -->'
 GRAPH_END = '<!-- ROADMAP_GRAPH_END -->'
@@ -34,11 +35,11 @@ RISK_ORDER = {'low': 0, 'med': 1, 'high': 2}
 
 
 def load_ladder():
-    """权威源 = ROADMAP.md 内嵌的 HTML 注释块（零同步问题）；CAPABILITY_LADDER.yaml 只提供语义字段。"""
-    md = ROADMAP.read_text(encoding='utf-8')
+    """权威源 = ROADMAP_GRAPH.md 里的 HTML 注释块；CAPABILITY_LADDER.yaml 只提供语义字段。"""
+    md = GRAPH_FILE.read_text(encoding='utf-8')
     m = re.search(re.escape(GRAPH_BEGIN) + r'(.*?)' + re.escape(GRAPH_END), md, re.S)
     if not m:
-        raise RuntimeError(f'ROADMAP.md 缺少权威块 {GRAPH_BEGIN} / {GRAPH_END}')
+        raise RuntimeError(f'{GRAPH_FILE.name} 缺少权威块 {GRAPH_BEGIN} / {GRAPH_END}')
     graph = yaml.safe_load(m.group(1))
     if graph.get('schema_version') != 1:
         raise RuntimeError(f'权威块 schema_version 不是 1')
@@ -56,8 +57,20 @@ def load_ladder():
 
 
 def test_sids(data):
-    # 兼容两处：CAPABILITY_LADDER.yaml 用 meta.test_sids；ROADMAP 机器块历史用顶层 test_sids。
-    # 以前只读 meta 导致 ROADMAP 为源时过滤集为空（2026-11-20 审计抓到的承重 bug）。
+    """测试 sid 黑名单：唯一真相源 = test_sids.json（A0 交付物）。
+
+    历史遗留三处副本（GRAPH 顶层/meta、LADDER meta）已归一；保留 fallback 是为了
+    旧生产副本未同步时不至于把真实 sid 当测试过滤掉（fail-safe：宁可少过滤不多过滤）。
+    2026-11-20 审计抓到的承重 bug：以前只读 meta，以 ROADMAP 为源时过滤集为空。
+    """
+    sid_file = ROOT / 'test_sids.json'
+    if sid_file.exists():
+        try:
+            sids = json.loads(sid_file.read_text(encoding='utf-8')).get('sids')
+            if isinstance(sids, list) and sids:
+                return set(sids)
+        except Exception:
+            pass
     return set((data.get('meta') or {}).get('test_sids') or data.get('test_sids') or [])
 
 
@@ -206,7 +219,7 @@ def find_next(data):
 
 def cmd_dryrun(data):
     print(f'CAPABILITY LADDER — dry-run (no writes)  [{datetime.now(timezone.utc).isoformat()}]')
-    print(f'authority: ROADMAP.md 内嵌权威块（语义镜像: {LADDER.name}）')
+    print(f'authority: {GRAPH_FILE.name}（语义镜像: {LADDER.name}；人读视图: {ROADMAP.name}）')
     counts = {'pass': 0, 'fail': 0, 'manual': 0}
     for item in data['items'] + data['rungs']:
         results, auto_ok = evaluate(data, item)
@@ -245,13 +258,19 @@ def cmd_next(data):
 
 
 def save_authoritative(data):
-    """写回权威块（ROADMAP.md）+ 同步镜像；apply 与 claim 共用。"""
-    md = ROADMAP.read_text(encoding='utf-8')
+    """写回机器权威块（ROADMAP_GRAPH.md）+ 人类进度表（ROADMAP.md）+ 语义镜像；apply/claim 共用。
+
+    三处写操作物理隔离：agent 的 --apply 只碰机器文件与 HUMAN 块，不会误伤 §1-§8 叙述。
+    """
+    gm = GRAPH_FILE.read_text(encoding='utf-8')
     inner = yaml.safe_dump(data, allow_unicode=True, sort_keys=False)
     # 用 lambda 返回替换文本：直接传字符串会让 re.sub 把内文里的 \B 等当转义序列（实测 bug）
-    new_md = re.sub(re.escape(GRAPH_BEGIN) + r'.*?' + re.escape(GRAPH_END),
-                    lambda _m: GRAPH_BEGIN + '\n' + inner + GRAPH_END, md, flags=re.S)
+    new_gm = re.sub(re.escape(GRAPH_BEGIN) + r'.*?' + re.escape(GRAPH_END),
+                    lambda _m: GRAPH_BEGIN + '\n' + inner + GRAPH_END, gm, flags=re.S)
+    GRAPH_FILE.write_text(new_gm, encoding='utf-8')
     # 同步人类可读进度表（设计稿承诺：机器块与人类视图不再漂移）
+    md = ROADMAP.read_text(encoding='utf-8')
+    new_md = md
     sm = status_map_of(data)
     # 人工视图必须同时列自主化阶(A)与心智器官(M/L)——只看 rungs 会漏掉 M1 这类已完成卡
     all_cards = list(data['rungs']) + list(data['items'])
@@ -267,7 +286,7 @@ def save_authoritative(data):
     human = (f'{HUMAN_BEGIN}：由 roadmap_check.py --apply 自动生成，勿手改 -->\n'
              f'> ### 🟢 自主化进度（自动同步）\n>\n'
              f'> | 卡片 | 状态 | 完成证据 |\n> |---|---|---|\n{rows}\n{next_line}\n>\n'
-             f'> 机器真相 = 文末「附录 A」权威块；本表由 `--apply` 自动写，人读与机器不漂移。\n'
+             f'> 机器真相 = [ROADMAP_GRAPH.md](ROADMAP_GRAPH.md)；本表由 `--apply` 自动写，人读与机器不漂移。\n'
              f'{HUMAN_END}')
     if HUMAN_BEGIN in new_md and HUMAN_END in new_md:
         pat = re.escape(HUMAN_BEGIN) + r'[^\n]*-->' + r'.*?' + re.escape(HUMAN_END)
@@ -339,7 +358,7 @@ def cmd_apply(data):
         return 2
     save_authoritative(data)
     print('APPLIED:', ', '.join(changed))
-    print('WROTE: ROADMAP.md 权威块 + CAPABILITY_LADDER.yaml 镜像同步')
+    print(f'WROTE: {GRAPH_FILE.name} 权威块 + {ROADMAP.name} 人类进度表 + {LADDER.name} 镜像同步')
     return 0
 
 

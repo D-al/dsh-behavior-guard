@@ -14,7 +14,7 @@ if (-not (Test-Path $SRC)) { throw "权威仓库不存在: $SRC" }
 if (-not (Test-Path $DST)) { New-Item -ItemType Directory -Path $DST -Force | Out-Null }
 
 # 顶层治理文档
-foreach ($f in @('ROADMAP.md','CHANGELOG.md','README.md')) {
+foreach ($f in @('ROADMAP.md','ROADMAP_GRAPH.md','CHANGELOG.md','README.md')) {
     Copy-Item (Join-Path $SRC $f) (Join-Path $DST $f) -Force
     Write-Host "[同步] $f"
 }
