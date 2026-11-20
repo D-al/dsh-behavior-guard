@@ -1093,6 +1093,14 @@
       "verified_at": "2026-11-21",
       "decision_uses": [],
       "note": "子任务WebFetch核实:门控单调改善需rank-alignment/no-inversion;上下文漂移下基于结构性信号(观测计数)的门控违反单调性次数≈随机弃权。用于解释step>=4误判"
+    },
+    {
+      "id": "arxiv:2610.30284",
+      "status": "verified",
+      "real_title": "SWE-Verifier: Selective Verification for Cost-Efficient Coding Agents",
+      "verified_at": "2026-11-21",
+      "decision_uses": [],
+      "note": "主代理WebFetch核实:Qwen3.5-4B verifier选择性验证,SWE-bench 75.47→77.20(+1.73pp)@1.09x成本,只验证<4%步骤;全step验证2.03x成本反不提升。用于新卡选择性验证"
     }
   ]
 }

@@ -368,11 +368,11 @@ items:
   - 'P-AB-SPEEDUP: A/B 端到端提速'
   benefit: 中
   cost: 低
-  advice: 降级：收益存疑，先验证 86M
+  advice: ⛔ 降级：0.6B 生成式已证伪(4-6s)；86M 判别式未验证，先走 M9
   rank: 7
   rank_derived: false
   unlocks: *id007
-  rank_hint: explore
+  rank_hint: last
 - id: S6_model
   title: S6 模型层升级
   tier: 3
@@ -397,11 +397,11 @@ items:
   abort_if: 无（manual-blocked）
   benefit: 中高
   cost: 中
-  advice: FPR 98% 教训：不标定不上
+  advice: ⛔ 保持 blocked：FPR 98% 不可用，且 8G 显存硬约束
   rank: 8
   rank_derived: false
   unlocks: *id008
-  rank_hint: blocked
+  rank_hint: last
 - id: L2
   title: 标准化 eval
   tier: 4
@@ -980,9 +980,9 @@ items:
   - 停止必须是幂等的、可复查的
   abort_if: 停止机制误杀正常会话，或 dsh 侧根本没有可用的会话控制通道
   rank: 2
-  benefit: 高
+  benefit: 极高
   cost: 中
-  advice: 自治闭环前置刹车，优先做
+  advice: ⚠️ P0：2026-11-21 实证 bridge cancel 对活跃循环无效、freeze_watch 只认冻死——what 需更新为"活跃循环检测(loop_breaker 已做)+可靠外部刹车"
   rank_hint: normal
   rank_derived: false
   status: ready
@@ -1016,7 +1016,7 @@ items:
   cost: 中
   advice: 读写地基第一优先
   rank_derived: false
-  status: doing
+  status: done
   claimer: unknown-agent
   claimed_at: '2026-11-20T16:57:05.100377+00:00'
 - id: S12
@@ -1029,9 +1029,9 @@ items:
   - apply证据要用环境事实（目标mtime+内容），不认模型声明
   abort_if: 无法可靠关联补丁脚本与目标文件
   rank_hint: normal
-  benefit: 高
+  benefit: 极高
   cost: 中
-  advice: 读写地基，与S11并行
+  advice: ✅ P0：读写地基三件套之一，与今晚 mutation 审计同源——"写了脚本没应用"正是假绿
   rank_derived: false
   status: ready
 - id: S13
@@ -1044,9 +1044,9 @@ items:
   - 保留对真实语法检查命令的识别
   abort_if: 收紧导致正常验证流程被大面积误拦
   rank_hint: normal
-  benefit: 高
+  benefit: 极高
   cost: 中
-  advice: 读写地基最高优先（假绿源头）
+  advice: ✅ P0：read≠验证正是 ADR-0014 误用与今晚假绿的根源
   rank_derived: false
   status: ready
 - id: S14
@@ -1399,6 +1399,62 @@ autonomy_rungs:
   advice: 机制可观测性，A1_6之后做
   rank_hint: normal
   rank_derived: false
-  status: doing
+  status: done
   claimer: unknown-agent
   claimed_at: '2026-11-20T16:45:21.583892+00:00'
+- id: S15
+  title: 选择性验证深度（ Selective Verification）
+  tier: 2
+  deps:
+  - A1
+  risk: low
+  autonomous: true
+  status: ready
+  what: 把当前"每步无差别守卫 + present 前全量 Critic"改成门控式——低风险步骤跳过，只对高风险步骤做深度验证（多候选+独立评审）
+  why: 2026-11-21 生产实证：无差别守卫把两步任务拖进 C-REJECT 死循环；SWE-Verifier 证明选择性验证以 <4% 验证率取得 +1.73pp 且成本仅 1.09×，全步验证 2.03× 反不提升
+  benefit_to_self: 守卫只在真需要时介入——减少假阳性与 token 税，也减少死循环触发面
+  caveats:
+  - 必须保留确定性硬门（危险操作/引用幻觉）为全量，只对"软判断"（是否需todo/是否深度评审）做选择性
+  - verifier 若用本地 4B 需实测延迟（Q8 约 2.5G 显存，本机 8G 可行但未验）
+  - 门控阈值需在含漂移的留出集上验证单调性（Confidence Gate Theorem 警告）
+  evidence:
+  - arXiv:2610.30284 SWE-Verifier：75.47→77.20 (+1.73pp) @1.09x，验证率<4%；全step 2.03x 反降
+  - 2026-11-21 本地实证：机械守卫 4 例假阳性 + C-REJECT 死循环
+  abort_if: 选择性门漏放危险操作，或端到端质量下降
+  verify:
+  - kind: test_pass
+    cmd: node tools/test_selective_verification.mjs
+    min: 4
+  benefit: 高
+  cost: 中
+  rank_hint: normal
+  rank_derived: false
+  advice: ⭐ P1：与 S12/S13 同族（反假绿），且直接治今晚死循环；先做纯规则门控版（零 LLM），4B verifier 后置
+- id: S16
+  title: 工具描述瘦身与示例
+  tier: 1
+  deps: []
+  risk: low
+  autonomous: true
+  status: ready
+  what: 给高频工具的 schema 补 1-5 个 input_examples（最小/歧义/错误恢复各一），并测算工具定义总 token；作为 M5 工具面收敛的轻量替代
+  why: Anthropic 内部测试 Tool Use Examples 把复杂参数准确率 72%→90%；本机工具面 28 个已在风险区，但砍工具需用户拍板，补示例零风险
+  benefit_to_self: 减少参数错误导致的重复失败（D1/D2），不必动工具数量
+  caveats:
+  - 示例要用真实数据，不用 placeholder（placeholder 教不会东西）
+  - 收益在参数歧义大的工具上明显，简单单参数工具不必加
+  - 不替代 M5 的结构改造——那需要用户拍板
+  evidence:
+  - Anthropic advanced tool use：Tool Use Examples 72%→90%（platform.claude.com 官方 + 多源转述核实）
+  - 工具数>30 后选择准确率下降；deferred loading 49%→74% 且上下文 -85%
+  abort_if: 工具定义 token 增幅 >10% 且参数错误率未下降
+  verify:
+  - kind: file_grep
+    path: config/AGENTS.md
+    regex: input_examples
+    min: 1
+  benefit: 中高
+  cost: 低
+  rank_hint: normal
+  rank_derived: false
+  advice: ⭐ 低成本高证据：先给 3-5 个高频工具补示例，A/B 看参数错误率；与 M5 不冲突
