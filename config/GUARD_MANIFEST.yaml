@@ -1,0 +1,45 @@
+# 一致性守卫清单 — 权威源，改动需走 ADR 审批
+# 设计见 docs/CONSISTENCY_GUARD_DESIGN_20261120.md
+schema: 1
+repos:
+  - id: harness
+    authoritative: D:/Brain/publish/dsh-behavior-guard
+    runtime: D:/Brain/dsh-data/profiles/desktop/node_modules/dsh-agent-harness
+    remote: https://github.com/D-al/dsh-behavior-guard.git
+    key_files:
+      - package.json
+      - index.mjs
+      - cordis.patch.yml
+      - ROADMAP.md
+      - CAPABILITY_LADDER.yaml
+      - tools/roadmap_check.py
+      - tools/frame_limiter.py
+      - tools/self_harness_gate.py
+      - tools/consistency_guard.py
+      - test_sids.json
+      - tools/learn_watcher.py
+      - tools/weakness_miner.py
+      - tools/trace_report.py
+    version_field: package.json:version
+    changelog: CHANGELOG.md
+    lock_file: D:/Brain/dsh-data/profiles/desktop/pnpm-lock.yaml
+    lock_repo_key: dsh-behavior-guard
+  - id: autostart
+    authoritative: D:/Brain/publish/dsh-llama-server-autostart
+    runtime: D:/Brain/dsh-data/profiles/desktop/node_modules/dsh-llama-server-autostart
+    remote: https://github.com/D-al/dsh-llama-server-autostart.git
+    key_files:
+      - package.json
+      - index.mjs
+      - frame_limiter.py
+      - cordis.patch.yml
+    version_field: package.json:version
+    changelog: CHANGELOG.md
+    lock_file: D:/Brain/dsh-data/profiles/desktop/pnpm-lock.yaml
+    lock_repo_key: dsh-llama-server-autostart
+normalize: lf
+exempt_link_junctions: true
+non_production_paths:
+  - node_modules/.pnpm/
+  - pnpm-store
+  - D:/WorkBuddyWorkSpace/

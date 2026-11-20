@@ -623,7 +623,7 @@ rungs:
   deps: []
   risk: low
   autonomous: true
-  status: ready
+  status: done
   verify:
   - kind: file_grep
     path: tools/self_harness_gate.py
@@ -644,6 +644,15 @@ rungs:
   - diff 校验拦住过哪种绕过？
   - 回滚触发过几次，都是什么原因？
   abort_if: e2e 假阴性（把好改动判坏）反复出现
+  claimed_at: '2026-11-20T05:28:05.737234+00:00'
+  claimer: unknown-agent
+  done_at: '2026-11-20T05:54:28.652577+00:00'
+  evidence_log:
+  - at: '2026-11-20T05:54:28.652577+00:00'
+    commit: 83151cb
+    checks:
+    - 31 hits in tools/self_harness_gate.py
+    - D:\Brain\publish\dsh-behavior-guard\tools\run_all.sh
 - id: A4
   deps:
   - A3_5

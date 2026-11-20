@@ -17,6 +17,7 @@
 | **想看脑功能分区对照** | [覆盖度盘点](docs/BRAIN_PARITY.md)（人脑分区 → 我们的机制 → 空白区）|
 | **想看 harness 自进化方案** | [Self-Harness 落地方案](docs/SELF_HARNESS_PLAN.md)（短期①的实现路径）|
 | **我是 agent，想自己成长 / 找下一件可做的事** | [能力阶梯](CAPABILITY_LADDER.yaml)（机器可读成长卡片：what/why/解锁/好处/代价/坑/反思）+ `python tools/roadmap_check.py --next` 选下一项、`--card M1` 读任意卡片、`--dry-run` 验判据。设计见 [成长卡片说明](docs/GROWTH_CARD_DESIGN_20261120.md)|
+| **想确认 GitHub/权威/生产是否一致** | `python tools/consistency_guard.py`（零 LLM 守卫，exit 0/1/2；清单 `config/GUARD_MANIFEST.yaml`，设计见 [守卫设计](docs/CONSISTENCY_GUARD_DESIGN_20261120.md)）|
 | **窗口一开 GPU 就卡死** | [3D/Copy 争抢诊断与降帧](docs/GPU_ENGINE_GUARD.md)（含守护脚本）|
 | **为什么压缩后重复干活/看不到角色** | [压缩与角色诊断](docs/COMPACTION_AND_ROLES_DIAGNOSIS.md)（含存档去重修复）|
 | **能不能用 0.8B 小模型当角色** | [判断类证伪](docs/HETEROGENEOUS_MODELS_EVALUATION.md) / [周围神经类成立](docs/PERIPHERAL_MODELS_EVALUATION.md)（S6/S7）|
