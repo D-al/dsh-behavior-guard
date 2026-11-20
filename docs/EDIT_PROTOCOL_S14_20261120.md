@@ -19,7 +19,7 @@
 | arXiv:2607.16072 | RoPE 1D 偏移在长上下文中导致精确字符匹配能力严重退化 |
 | arXiv:2510.12487 (Diff-XYZ, NeurIPS 25w) | "smaller open models benefit little from any formatting choice"——小模型换格式收益很小（论文未断言"对精确锚点依赖度高"，那是我们的策略推断）|
 | Aider 编辑格式基准（2023-12，已核实） | 仅换编辑格式让 GPT-4 从 26%→59%；但这是大模型数据，Diff-XYZ 证明小模型换格式收益小，故本协议不押注格式 |
-| Claude Code #26996 | tab vs 空格缩进差异导致 edit 失败循环（6+ 分钟无进展） |
+| Claude Code #26996 | tab vs 空格缩进差异导致同一文件连续 6 次 Edit 调用失败 |
 
 ### Diff-XYZ 结论摘要
 

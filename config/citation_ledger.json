@@ -1,0 +1,1024 @@
+{
+  "_schema": 1,
+  "_purpose": "引用台账：每条外部引用(论文/社区/issue)的核实状态 + 它支撑的决策。决策只能引用 status=verified 的条目。设计见 docs/CITATION_AUDIT_PROTOCOL_20261120.md",
+  "_status_values": {
+    "verified": "L1-L4全过：存在+标题匹配+摘要支持结论+数字核实（或数字标N/A）",
+    "partial": "真实但误用/数字仅正文未核——只能作为背景，不能作为决策唯一依据",
+    "hallucinated": "编号真实但标题结论编造，或数字相反——禁止引用",
+    "missing": "不存在/404——禁止引用",
+    "pending": "未核实/抓取失败——禁止作为决策依据",
+    "n/a": "本机实测/用户实测，非外部引用——无需WebFetch",
+    "listed": "仅L1-L2核实(arXiv官方API确认存在+真实标题已记录)，项目未声称具体标题/数字，未做L3-L4结论核对"
+  },
+  "_rules": [
+    "任何ADR/ROADMAP决策章节引用外部证据，必须在此台账有对应条目",
+    "decision_uses 非空的条目，status 必须是 verified 或 n/a",
+    "status=hallucinated/missing/pending 的条目若被决策引用 → guard FAIL",
+    "status=partial 的条目被决策引用 → guard WARN（需注明'仅背景，非唯一依据'）",
+    "新增决策引用必须先在此台账登记并核实，再写决策文档"
+  ],
+  "entries": [
+    {
+      "id": "arxiv:2310.01798",
+      "type": "paper",
+      "claimed": "质疑式措辞有害（ADR-0014 原依据）",
+      "real_title": "Large Language Models Cannot Self-Correct Reasoning Yet",
+      "status": "partial",
+      "note": "真论文，研究 intrinsic self-correction（无外部反馈），不支持'质疑式措辞有害'这一具体主张。ADR-0014 已改为现场症状+谨慎表述。",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2605.01403",
+      "type": "paper",
+      "claimed": "Answering Questions with Confidence / JS散度0.0186 / 76.6%被推翻",
+      "real_title": "Rethinking Multi-Label Node Classification: Do Tuned Classic GNNs Suffice?",
+      "status": "hallucinated",
+      "note": "2026-11-20 已清除。真实论文是多标签节点分类GNN，与LLM提示词无关。",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2605.11705",
+      "type": "paper",
+      "claimed": "Overthinking trope / -20.4pp / -20.9pp",
+      "real_title": "CAST: Collapse-Aware multi-Scale Topology Fusion for Multimodal Coreset Selection",
+      "status": "hallucinated",
+      "note": "2026-11-20 已清除。真实论文是多模态数据选择。",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2605.14729",
+      "type": "paper",
+      "claimed": "Don't Think Twice / 二次思考降性能",
+      "real_title": "Regularized vacuum stress tensor of a scalar field as the inflaton or dark energy",
+      "status": "hallucinated",
+      "note": "2026-11-20 已清除。真实论文是宇宙学。",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2504.09864",
+      "type": "paper",
+      "claimed": "Re-Examination Prompt / 重查让答案变差",
+      "real_title": "Evaporative Refrigeration Effect in Evaporation and Condensation between Two Parallel Plates",
+      "status": "hallucinated",
+      "note": "2026-11-20 已清除。真实论文是蒸发制冷。",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2605.00631",
+      "type": "paper",
+      "claimed": "System 1/2 不是推理量",
+      "real_title": "H-RAG at SemEval-2026 Task 8",
+      "status": "hallucinated",
+      "note": "2026-11-20 已清除。真实论文是RAG。",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2606.05256",
+      "type": "paper",
+      "claimed": "Reasoning-Reflection-Doubt / 质疑反思伤小模型",
+      "real_title": "How Far Did They Go? The Persuasive Tactics of Covert LLM Agents",
+      "status": "hallucinated",
+      "note": "2026-11-20 已清除。真实论文是Reddit说服策略。",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2604.09715",
+      "type": "paper",
+      "claimed": "RSD / 自我怀疑致过度保守",
+      "real_title": "MuPPet: Multi-person 2D-to-3D Pose Lifting",
+      "status": "hallucinated",
+      "note": "2026-11-20 已清除。真实论文是3D姿态估计。",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2606.09498",
+      "type": "paper",
+      "claimed": "Self-Harness / Qwen3.5-35B-A3B +18.7pp",
+      "real_title": "Self-Harness: Harnesses That Improve Themselves",
+      "status": "partial",
+      "note": "论文真实且高度相关（三阶段自改进、同族模型Qwen3.5-35B-A3B）；摘要给'up to 132% relative gains'，+18.7pp 未在摘要（正文未核）。ADR-0018 依据方向成立，具体数字待正文确认。",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2608.29168",
+      "type": "paper",
+      "claimed": "JudgePanel / 否决多judge投票",
+      "real_title": "JudgePanel: A Compact Judge with Panel Deliberation via Adaptive Multi-Reward RL",
+      "status": "partial",
+      "note": "论文真实但项目引用方向相反——论文提出紧凑judge达到多agent审议效果（14B超过70B），是支持用好judge，非'否决多judge'。ROADMAP §8 已标注待修正。",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2607.16072",
+      "type": "paper",
+      "claimed": "RoPE 1D致精确复制失败(AGENTS.md编辑协议根因)",
+      "real_title": "Frontier Language Models Struggle to Copy: Text Can Be Better Viewed in 2D",
+      "status": "verified",
+      "note": "主代理WebFetch核实标题/摘要/机制完全一致。摘要未给具体复制率数字（正文数据，引用已注明）。",
+      "decision_uses": [
+        "S14"
+      ],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2510.12487",
+      "type": "paper",
+      "claimed": "Diff-XYZ / 小模型换格式收益小(S14重心依据)",
+      "real_title": "Diff-XYZ: A Benchmark for Evaluating Diff Understanding",
+      "status": "verified",
+      "note": "主代理WebFetch核实，摘要原文' smaller open models benefit little from any formatting choice'。",
+      "decision_uses": [
+        "S14"
+      ],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2609.38108",
+      "type": "paper",
+      "claimed": "Planning-as-Routing / 按任务类型查表(AGENTS.md依据)",
+      "real_title": "Do LLM Agents Execute the Plans They Declare? From Planning-Mode Declaration to Pattern-Specific Execution",
+      "status": "verified",
+      "note": "主代理WebFetch核实，摘要原文支持：22-45%保真率、pattern-specific executor 0.48→0.92。",
+      "decision_uses": [
+        "AGENTS.md路由表"
+      ],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "url:anthropic-advanced-tool-use",
+      "type": "community",
+      "claimed": "10+ tools就该考虑 / Tool Use Examples 72→90% / Opus 49→74%",
+      "real_title": "Anthropic: Advanced Tool Use (engineering blog)",
+      "status": "verified",
+      "note": "主代理WebFetch核实：所有四组数字均在原文（10+ tools、72%→90%、85% token reduction、49%→74%/79.5%→88.1%）。M5 why 修正依据。",
+      "decision_uses": [
+        "M5"
+      ],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2504.19413",
+      "type": "paper",
+      "claimed": "Mem0 / 71.7%但延迟14x token+41%（纯检索≠学习依据）",
+      "real_title": "Mem0: Building Production-Ready AI Agents with Scalable Long-Term Memory",
+      "status": "hallucinated",
+      "note": "论文真实但数字完全相反：摘要是91%更低p95延迟+90%token节省、26%相对提升。项目写的71.7%/14x/+41%是编造。待清除。",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2609.00006",
+      "type": "paper",
+      "claimed": "Harness Engineering / 11个主流harness全用确定性循环无人用vector retrieval",
+      "real_title": "Harness Engineering: Anatomy, Architecture, and Evolution of Coding Agents -- A Source-Code Study of Eleven Systems",
+      "status": "verified",
+      "note": "主代理WebFetch核实：摘要原文确认11系统源码分析、no general-purpose agentic framework、none retrieves code with vector embeddings、hand-rolled async loops and deterministic retrieval。ROADMAP §8 依据成立。",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "url:aider-wiki",
+      "type": "community",
+      "claimed": "GPT-4 26→59% / GPT-4 Turbo 20→61%",
+      "real_title": "Aider | AI Wiki (Edit format benchmark history)",
+      "status": "verified",
+      "note": "第5路核实：原文December 2023，数字逐字吻合",
+      "decision_uses": [
+        "S14"
+      ],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "url:harnessrouter-hashline",
+      "type": "community",
+      "claimed": "hashline 6.7→68.3%、14/16模型",
+      "real_title": "Thin Model, Thick Harness (2026-09-14)",
+      "status": "partial",
+      "note": "第5路核实：数字对，但comparator错——原文是'beat patch format for 14/16'，项目写成'≥str_replace'需修正",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "url:chroma-context-rot",
+      "type": "community",
+      "claimed": "18模型随输入变长单调下降",
+      "real_title": "Context Rot (Chroma, 2025-07-14)",
+      "status": "partial",
+      "note": "第5路核实：内容真实，但原文'non-uniform含局部峰值'，'单调'表述略夸大需修正",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "url:agentlenshq-qad",
+      "type": "community",
+      "claimed": "QAD量化感知蒸馏96-97%保留",
+      "real_title": "页面标题=LFM2.5 Q4_0 release notes",
+      "status": "pending",
+      "note": "第5路WebFetch失败且标题不符——禁止作为决策依据，需换源或降级",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "github:OpenHands/software-agent-sdk#6277",
+      "type": "issue",
+      "claimed": "进展豁免只比工具+目标签名不比thought",
+      "real_title": "OpenHands/software-agent-sdk#6277 Validation-loop detection misses repeated failures",
+      "status": "partial",
+      "note": "第5路核实：内容对但项目裸写'OpenHands #6277'会指向主仓FD Leak Tracker——必须补/software-agent-sdk/路径",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "github:anthropics/claude-code#26996",
+      "type": "issue",
+      "claimed": "tab→空格致连续6次Edit失败",
+      "real_title": "[BUG] Edit tool silently converts tabs to spaces",
+      "status": "verified",
+      "note": "第5路核实：原文吻合。小偏差：项目写'6+分钟'原文是6次调用——建议改'连续6次Edit失败'",
+      "decision_uses": [
+        "S14"
+      ],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2602.12106",
+      "type": "paper",
+      "claimed": "声称ESPRT",
+      "real_title": "MedExChain: PHR Sharing(医疗区块链)",
+      "status": "hallucinated",
+      "note": "2026-11-20 arXiv官方API核实：编号真实但标题/主题与引用声称完全无关。已在MIND_GAPS标注作废。仅存于调研文档，未进入ADR/AGENTS决策。",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2603.25150",
+      "type": "paper",
+      "claimed": "声称Meta-CoT 22→46%",
+      "real_title": "Goodness-of-pronunciation(语音评估)",
+      "status": "hallucinated",
+      "note": "2026-11-20 arXiv官方API核实：编号真实但标题/主题与引用声称完全无关。已在MIND_GAPS标注作废。仅存于调研文档，未进入ADR/AGENTS决策。",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2605.02077",
+      "type": "paper",
+      "claimed": "声称Self-Constancy AUC>0.7",
+      "real_title": "Obscura: Algorand区块链隐私",
+      "status": "hallucinated",
+      "note": "2026-11-20 arXiv官方API核实：编号真实但标题/主题与引用声称完全无关。已在MIND_GAPS标注作废。仅存于调研文档，未进入ADR/AGENTS决策。",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2605.10686",
+      "type": "paper",
+      "claimed": "声称SkillCatalogue 54技能",
+      "real_title": "Ginzburg-Landau超导理论",
+      "status": "hallucinated",
+      "note": "2026-11-20 arXiv官方API核实：编号真实但标题/主题与引用声称完全无关。已在MIND_GAPS标注作废。仅存于调研文档，未进入ADR/AGENTS决策。",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2605.11970",
+      "type": "paper",
+      "claimed": "声称Self-Braceless +10.1pp",
+      "real_title": "NOFE神经算子嵌入",
+      "status": "hallucinated",
+      "note": "2026-11-20 arXiv官方API核实：编号真实但标题/主题与引用声称完全无关。已在MIND_GAPS标注作废。仅存于调研文档，未进入ADR/AGENTS决策。",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2605.16281",
+      "type": "paper",
+      "claimed": "声称SkillRL 86→90%",
+      "real_title": "Post-Deployment Accountability AI治理",
+      "status": "hallucinated",
+      "note": "2026-11-20 arXiv官方API核实：编号真实但标题/主题与引用声称完全无关。已在MIND_GAPS标注作废。仅存于调研文档，未进入ADR/AGENTS决策。",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2605.25163",
+      "type": "paper",
+      "claimed": "声称SkillClaw",
+      "real_title": "K-U-KAN 3D牙科重建",
+      "status": "hallucinated",
+      "note": "2026-11-20 arXiv官方API核实：编号真实但标题/主题与引用声称完全无关。已在MIND_GAPS标注作废。仅存于调研文档，未进入ADR/AGENTS决策。",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2607.02021",
+      "type": "paper",
+      "claimed": "声称MemRL 50%反害",
+      "real_title": "惯性自旋波物理",
+      "status": "hallucinated",
+      "note": "2026-11-20 arXiv官方API核实：编号真实但标题/主题与引用声称完全无关。已在MIND_GAPS标注作废。仅存于调研文档，未进入ADR/AGENTS决策。",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2608.14111",
+      "type": "paper",
+      "claimed": "声称AGU +21.3pp",
+      "real_title": "NFA=FNFA自动机理论",
+      "status": "hallucinated",
+      "note": "2026-11-20 arXiv官方API核实：编号真实但标题/主题与引用声称完全无关。已在MIND_GAPS标注作废。仅存于调研文档，未进入ADR/AGENTS决策。",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2608.22134",
+      "type": "paper",
+      "claimed": "声称GACP",
+      "real_title": "Gopakumar-Vafa不变量(Calabi-Yau)",
+      "status": "hallucinated",
+      "note": "2026-11-20 arXiv官方API核实：编号真实但标题/主题与引用声称完全无关。已在MIND_GAPS标注作废。仅存于调研文档，未进入ADR/AGENTS决策。",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2303.11366",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Reflexion: Language Agents with Verbal Reinforcement Learning",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2305.17390",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "SwiftSage: A Generative Agent with Fast and Slow Thinking for Complex Interactive Tasks",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2306.05148",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "A Novel Blind Adaptive Beamformer with Robustness against Mutual Coupling and Miscalibration Effects",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2307.03172",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Lost in the Middle: How Language Models Use Long Contexts",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2307.11909",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Practical Low-density Codes for PB-ToF Sensing",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2307.16789",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "ToolLLM: Facilitating Large Language Models to Master 16000+ Real-world APIs",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2308.05342",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Metacognitive Prompting Improves Understanding in Large Language Models",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2310.08560",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "MemGPT: Towards LLMs as Operating Systems",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2404.02258",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Mixture-of-Depths: Dynamically allocating compute in transformer-based language models",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2406.04692",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Mixture-of-Agents Enhances Large Language Model Capabilities",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2406.12045",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "$τ$-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2406.16657",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "The Coherent State Transform and an Application to the Hyperbolic Laplacian",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2406.18665",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "RouteLLM: Learning to Route LLMs with Preference Data",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2406.19314",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "LiveBench: A Challenging, Contamination-Limited LLM Benchmark",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2408.03910",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "CodexGraph: Bridging Large Language Models and Code Repositories via Code Graph Databases",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2410.10934",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Agent-as-a-Judge: Evaluate Agents with Agents",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2410.14684",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "RepoGraph: Enhancing AI Software Engineering with Repository-level Code Graph",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2411.13268",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Enhanced Gas Source Localization Using Distributed IoT Sensors and Bayesian Inference",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2503.03459",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Unified Mind Model: Reimagining Autonomous Agents in the LLM Era",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2503.13657",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Why Do Multi-Agent LLM Systems Fail?",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2504.01990",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Advances and Challenges in Foundation Agents: From Brain-Inspired Intelligence to Evolutionary, Collaborative, and Safe Systems",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2505.03275",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "RAG-MCP: Mitigating Prompt Bloat in LLM Tool Selection via Retrieval-Augmented Generation",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2505.09388",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Qwen3 Technical Report",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2505.17469",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Efficient compression of neural networks and datasets",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2505.24298",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "AReaL: A Large-Scale Asynchronous Reinforcement Learning System for Language Reasoning",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2506.13331",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Mixture of Cognitive Reasoners: Modular Reasoning with Brain-Like Specialization",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2508.18192",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Unraveling the cognitive patterns of Large Language Models through module communities",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2508.18748",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Chronological Passage Assembling in RAG framework for Temporal Question Answering",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2508.21433",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "The Complexity Trap: Simple Observation Masking Is as Efficient as LLM Summarization for Agent Context Management",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2510.06599",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Excitonic Insulator and Possible Superfluid Based on Two-Dimensional Diamond",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2601.02553",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "SimpleMem: Efficient Lifelong Memory for LLM Agents",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2601.16863",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Mixture-of-Models: Distributed Inference over Heterogeneous LLMs as Model-Level Mixture-of-Experts",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2602.02475",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "AgentRx: Diagnosing AI Agent Failures from Execution Trajectories",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2602.23681",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "ODAR: Principled Adaptive Routing for LLM Reasoning via Active Inference",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2603.24639",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Experiential Reflective Learning for Self-Improving LLM Agents",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2603.25158",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Trace2Skill: Distill Trajectory-Local Lessons into Transferable Agent Skills",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2604.11465",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Three Roles, One Model: Role Orchestration at Inference Time to Close the Performance Gap Between Small and Large Agents",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2604.15097",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "From Procedural Skills to Strategy Genes: Towards Experience-Driven Test-Time Evolution",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2604.16004",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "AgentV-RL: Scaling Reward Modeling with Agentic Verifier",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2605.06165",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Post-Reasoning: Improving the Performance of Non-Thinking Models at Negligible Cost",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2606.03557",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "From Prompt to Service: An SLM-Based Agent Orchestration Gateway for AI-Driven Virtual Worlds",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2606.06079",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "SkillComposer: Learning to Evolve Agent Skills for Specification and Generalization",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2606.10821",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Continuous and discontinuous transitions in the Ising-Heisenberg model on the extended Lieb lattice in a magnetic field",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2606.13317",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "SkillCAT: Contrastive, Assessment-Augmented and Topology-AwareSkill Self-Evolution for LLM Agents",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2606.15971",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "SAG: SQL-Retrieval Augmented Generation with Query-Time Dynamic Hyperedges",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2606.16360",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Tyler: Typed Latent Reasoning for Language Models -- When to Think, What to Compute, and How Much to Allocate",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2606.29713",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "SEVA: Self-Evolving Verification Agent with Process Reward for Fact Attribution",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2607.11423",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "ToFu: A White-Box, Token-Efficient Agent Harness for Researchers",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2608.14905",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "How Do Agents Fail on AutoResearch: End-to-End Diagnostic Evaluation on 100 Real-World Frontier Research Tasks",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2608.20256",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Learning When to Think: Adaptive Reasoning for Test-Time Compute Allocation",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2608.23651",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Feedback That Backfires: Why Small Language Model Agents Repeat the Call They Just Watched Fail",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2608.23670",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Automata from Agent Traces: Failure and Next-Step Prediction",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2608.27167",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Calibrated Enough to Know, Not Calibrated to Act: Fabricated Evidence Makes LLM Agents Commit to the Unknowable",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2609.05274",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "How to Speculate about Uncertainty in Agentic Coding? A Draft-Model Gate Method",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2609.30293",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Cartograph: Federated Tool Discovery with Operator-Attested Retrieval for AI Agents",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2609.32520",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "When Users Change Their Minds: Measuring and Repairing Intent Drift in LLM Agents",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2609.38147",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Thinking Before Thinking: Scaling Agentic Inference Through Meta-Reasoning",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2610.05223",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Look Before You Leap: Thermodynamic Arbitration of Parametric and Non-Parametric Knowledge in LLM Agents via Self-Regulating Memory Architectures",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2610.12668",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Recurrent Harness for Agentic Continual Learning",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2610.22984",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Self-Evolving Agents Can Repair Failures but Struggle to Generalize from Them",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2610.23599",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "From Trajectories to Differentiated Skills: Cognitive Differentiation for Self-Improving Agents",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2610.24453",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Hippo: Training-Free Agent Self-Evolution via Hippocampal Replay",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2610.28393",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "When Copying Is Hard: Copy-Constrained Decoding for Exact Span Reproduction",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2610.34724",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Harness-Model Collaboration for Long-Horizon Continual Learning",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2610.41124",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Confident Fools or Careful Searchers? A Behavioural Study of When LLMs Search Beyond Their Static Internal Memory",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2611.03852",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Why Pay for Long Reasoning When Rewrite Do Trick? Causal Effects of Reasoning History Compaction on Future Generation and Agent Cost",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2611.10982",
+      "type": "paper",
+      "claimed": "(项目未声称具体标题/数字)",
+      "real_title": "Think or Remember: The Exchange Rate of Agentic Inference",
+      "status": "listed",
+      "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    }
+  ]
+}

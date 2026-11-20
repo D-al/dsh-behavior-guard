@@ -164,7 +164,7 @@ DRY 0.8-1.75-32-512
 |---|---|
 | [MAST (2503.13657)](https://arxiv.org/abs/2503.13657) | 21.3% 失败是验证缺口 → D4/D5 |
 | [Agent-as-a-Judge (2410.10934)](https://arxiv.org/abs/2410.10934) | 审计员主动取证 |
-| [JudgePanel (2608.29168)](https://arxiv.org/abs/2608.29168) | 否决多 judge 投票 |
+| [JudgePanel (2608.29168)](https://arxiv.org/abs/2608.29168) | 紧凑 judge + 多角色审议（14B>70B）——⚠️ 原文**支持**用好 judge，非"否决多 judge"；我们不用多 judge 的依据是本机 JudgeBench 小 judge 45-60% 实测，非此论文 |
 | [Post-Reasoning (2605.06165)](https://arxiv.org/abs/2605.06165) | 先判定再论证 |
 | [SEVA (2606.29713)](https://arxiv.org/abs/2606.29713) | 结构化可审计验收输出 |
 | [AgentV-RL (2604.16004)](https://arxiv.org/abs/2604.16004) | 双向验证（正向+反向）|

@@ -1,5 +1,12 @@
 # 心智模型缺失拼图 —— 广搜调研汇总（2026-11-18）
 
+> ⚠️ **引用审计声明（2026-11-20）**：本文部分 arXiv 引用经官方 API 核实为**幻觉引用**
+> （编号真实但标题/结论/数字与论文无关）。已逐条标注 `[❌幻觉-已作废]`。
+> **凡标注的引用不得作为任何决策依据**。核实协议见 `CITATION_AUDIT_PROTOCOL_20261120.md`，
+> 台账见 `config/citation_ledger.json`。
+
+
+
 > 5 个并行 agent 调研：①认知科学框架 ②前沿能力缺口 ③三缺口深化 ④社区产品 ⑤记忆系统。
 > 本文件是汇总草稿，逐份回填。最终结论将进 README 路线图 + MANUALS。
 
@@ -128,20 +135,29 @@ System 3 动机 🟡（可用规则近似）、ToM 用户模型 ✅（显式文�
 | 结论 | 数字/依据 |
 |---|---|
 | **历史成功率是缺失变量** | [Reflexion (2303.11366)](https://arxiv.org/abs/2303.11366) 8.2%→33.8%；[ExpeL](https://arxiv.org/abs/2307.11909) 84.2%→92.6%，都来自失败轨迹提炼 |
-| **纯检索≠学习** | [Mem0 (2504.19413)](https://arxiv.org/abs/2504.19413) 71.7% 但延迟 14x/token +41%；[SimpleMem](https://arxiv.org/abs/2601.02553) 检索 AIME 仅 2.8% |
-| **失败 > 成功** | [SkillRL (2605.16281)](https://arxiv.org/abs/2605.16281) ALFWorld 86.6%→90.7%；但对失败**做解释反而掉点** → 学"诊断"不是"复盘" |
-| **技能会失控复制** | [SkillCatalogue (2605.10686)](https://arxiv.org/abs/2605.10686) 无治理多生成 54 技能；[SkillClaw (2605.25163)](https://arxiv.org/abs/2605.25163) 用聚类+概率门控过滤 |
-| **反面** | [MemRL (2607.02021)](https://arxiv.org/abs/2607.02021) 50% 任务记忆反害策略；[SkillEvolver](https://arxiv.org/abs/2606.10821) 域内 +46.9pp 但跨域 **-24.8pp** → 必须可回滚、按域隔离 |
+> ❌ **幻觉引用-已作废**（2504.19413: 真论文但数字相反(真实:91%延迟↓/90%token↓)）
+> | **纯检索≠学习** | [Mem0 (2504.19413)](https://arxiv.org/abs/2504.19413) 71.7% 但延迟 14x/token +41%；[SimpleMem](https://arxiv.org/abs/2601.02553) 检索 AIME 仅 2.8% |
+> ❌ **幻觉引用-已作废**（2605.16281: 真论文是AI治理问责,非SkillRL）
+> | **失败 > 成功** | [SkillRL (2605.16281)](https://arxiv.org/abs/2605.16281) ALFWorld 86.6%→90.7%；但对失败**做解释反而掉点** → 学"诊断"不是"复盘" |
+> ❌ **幻觉引用-已作废**（2605.10686: 真论文是超导理论,非SkillCatalogue; 2605.25163: 真论文是3D牙科重建,非SkillClaw）
+> | **技能会失控复制** | [SkillCatalogue (2605.10686)](https://arxiv.org/abs/2605.10686) 无治理多生成 54 技能；[SkillClaw (2605.25163)](https://arxiv.org/abs/2605.25163) 用聚类+概率门控过滤 |
+> ❌ **幻觉引用-已作废**（2607.02021: 真论文是自旋波物理,非MemRL）
+> | **反面** | [MemRL (2607.02021)](https://arxiv.org/abs/2607.02021) 50% 任务记忆反害策略；[SkillEvolver](https://arxiv.org/abs/2606.10821) 域内 +46.9pp 但跨域 **-24.8pp** → 必须可回滚、按域隔离 |
 
 👉 缺的不是工具，是**把工具喂饱的证据**：每轮 write/edit 后追加结构化判定（成功/失败/部分），10-20 条就能让 skill_draft 从"猜"变"提炼"。
 
 ### 缺口2：自我模型 —— **伪缺口**：让 Critic 顺带输出，不要另起 agent
 
-- [Self-Braceless (2605.11970)](https://arxiv.org/abs/2605.11970)：训练时 critique 自进化，推理时**零额外调用**，自我准确率 +10.1pp
-- [Meta-CoT (2603.25150)](https://arxiv.org/abs/2603.25150)：元认知策略外化成复用技能，22.2%→46.7%
-- [Self-Constancy (2605.02077)](https://arxiv.org/abs/2605.02077)：自报置信绝对值不可靠但**相对趋势**可预测失败（AUC>0.7）→ 用序列不用快照
-- [AGU (2608.14111)](https://arxiv.org/abs/2608.14111) + [AGenieBench](https://arxiv.org/abs/2606.15971)：定向自问 > 泛泛自问，US Air Traffic 1.6%→22.9%（+21.3pp）
-- **反面**：[Critic 盲区 (2410.10934)](https://arxiv.org/abs/2410.10934)、[MARTA (2610.05223)](https://arxiv.org/abs/2610.05223)、[GACP (2608.22134)](https://arxiv.org/abs/2608.22134)（小模型"learn to sound humble"而非真校准）
+> ❌ **幻觉引用-已作废**（2605.11970: 真论文是神经算子,非Self-Braceless）
+> - [Self-Braceless (2605.11970)](https://arxiv.org/abs/2605.11970)：训练时 critique 自进化，推理时**零额外调用**，自我准确率 +10.1pp
+> ❌ **幻觉引用-已作废**（2603.25150: 真论文是语音发音评估,非Meta-CoT）
+> - [Meta-CoT (2603.25150)](https://arxiv.org/abs/2603.25150)：元认知策略外化成复用技能，22.2%→46.7%
+> ❌ **幻觉引用-已作废**（2605.02077: 真论文是Algorand区块链隐私,非Self-Constancy）
+> - [Self-Constancy (2605.02077)](https://arxiv.org/abs/2605.02077)：自报置信绝对值不可靠但**相对趋势**可预测失败（AUC>0.7）→ 用序列不用快照
+> ❌ **幻觉引用-已作废**（2608.14111: 真论文是自动机理论,非AGU）
+> - [AGU (2608.14111)](https://arxiv.org/abs/2608.14111) + [AGenieBench](https://arxiv.org/abs/2606.15971)：定向自问 > 泛泛自问，US Air Traffic 1.6%→22.9%（+21.3pp）
+> ❌ **幻觉引用-已作废**（2608.22134: 真论文是Calabi-Yau不变量,非GACP）
+> - **反面**：[Critic 盲区 (2410.10934)](https://arxiv.org/abs/2410.10934)、[MARTA (2610.05223)](https://arxiv.org/abs/2610.05223)、[GACP (2608.22134)](https://arxiv.org/abs/2608.22134)（小模型"learn to sound humble"而非真校准）
 
 👉 在 Critic/审计员/验收员现有 JSON 里加 3 个字段（self_assessment / error_category / evidence_refs），零额外 LLM 调用。
 
@@ -150,7 +166,8 @@ System 3 动机 🟡（可用规则近似）、ToM 用户模型 ✅（显式文�
 - [SEVA (2606.29713)](https://arxiv.org/abs/2606.29713)：结构化验证输出让 3B 追平 GPT-4o-mini，关键是**六类错误诊断 + 可执行修复**
 - [Metacognitive Prompting (2308.05342)](https://arxiv.org/abs/2308.05342) NAACL 2024：7 阶段固定自问，PaLM 62→68%，但 token 成本高
 - [AgentRx (2602.02475)](https://arxiv.org/abs/2602.02475)：失败步定位 +75%，但**"定位后必然修复"假设错误**
-- **反面（重要）**：[AReaL (2505.24298)](https://arxiv.org/abs/2505.24298) "rewrite thoughts" 在 4/7 基准掉点；[ESPRT (2602.12106)](https://arxiv.org/abs/2602.12106) 截断思维链有害
+> ❌ **幻觉引用-已作废**（2602.12106: 真论文是MedExChain医疗区块链,非ESPRT）
+> - **反面（重要）**：[AReaL (2505.24298)](https://arxiv.org/abs/2505.24298) "rewrite thoughts" 在 4/7 基准掉点；[ESPRT (2602.12106)](https://arxiv.org/abs/2602.12106) 截断思维链有害
 
 👉 下一步不是更花哨的自问，而是**把每次诊断连到可回滚的证据记录**，让第 N 次同错被自动识别为"已试过且失败"。
 
