@@ -1065,10 +1065,13 @@ export function apply(ctx, config) {
               })
             }
           }
-          if (status === 'OK' && (c.name === 'write' || c.name === 'edit')) {
+          // S11：lastProduct 记录扩到全部写工具（原只 write/edit——另6种工具连路径都没进，
+          // 导致 verify-on-edit 对它们完全不可见，这才是"零校验"的真正卡点，不在 checkSyntax）
+          if (status === 'OK' && cfg.writeTools.includes(c.name)) {
             try {
               const a = JSON.parse(c.fullArgs || c.args || '{}')
-              if (a.file_path) s.lastProduct = String(a.file_path)
+              const fp = a.file_path || a.path || a.filePath || a.target_file || a.notebook_path
+              if (fp) s.lastProduct = String(fp)
             } catch { /* ignore */ }
             // ── 学习闭环 A 段：写/编辑成功后捕获 outcome（真实证据，非测试假数据）──
             // B 段 watcher 会消费这些记录，判定成功/失败并沉淀到 skill 草稿/crit 状态。
