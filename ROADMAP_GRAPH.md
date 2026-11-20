@@ -558,7 +558,7 @@ rungs:
   - A0
   risk: low
   autonomous: true
-  status: backlog
+  status: ready
   verify:
   - kind: file_exists
     path: tools/roadmap_check.py
