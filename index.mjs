@@ -25,6 +25,27 @@ import { execFile, execFileSync } from 'node:child_process'
 
 export const name = 'agent-harness'
 
+// ── 任务级上下文（2026-11-21）：守卫共享"这是什么任务"信号 ──
+// 根因：4 个守卫假阳性（todo/深检/Critic/交付闸门）都是"只看自己管的场景发生没"，
+// 却没有全局协调"这个任务到底需要多少守卫"。纯确定性信号，零 LLM。
+// 独立可测版见 tools/task_profile.mjs（4/4 测试）。
+function taskProfile(s) {
+  if (!s || typeof s !== 'object') {
+    return { kind: 'unknown', needsTodo: true, needsVerify: true, needsDeepReview: true,
+      needsTreeCheck: true, reason: 'state 缺失——fail-closed，不放松任何守卫' }
+  }
+  const writeCalls = Number(s.writeCalls || 0)
+  const hasProduct = String(s.lastProduct || '').length > 0
+  if (writeCalls === 0 && !hasProduct) {
+    return { kind: 'read-only', needsTodo: false, needsVerify: false,
+      needsDeepReview: false, needsTreeCheck: false,
+      reason: '本轮无写调用且无产物——纯只读任务' }
+  }
+  return { kind: hasProduct ? 'artifact' : 'mutating', needsTodo: true,
+    needsVerify: true, needsDeepReview: true, needsTreeCheck: true,
+    reason: hasProduct ? '有产物，需验收/深检' : '有写调用，需验证' }
+}
+
 // ── 路径解析层（2026-11-20 平台整治 P0）────────────────────────────────────
 // 历史 bug：下面 DEFAULTS 里所有路径写死 C:/Users/Ad 和 D:/Brain/workspace/...，
 // 换机器、删 .dsh junction、或重装到别的盘后全部失效——GitHub 上的版本同样带这个病。
@@ -1649,7 +1670,7 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
       if (state.totalContinuations >= cfg.maxContinuationsPerSession) return
 
       // ── present 前确定性深检（独立于 Critic 开关：~0.3s，0 LLM）──
-      if (cfg.deepCheckEnabled && state.presentCalled === true && state.deepChecked !== true) {
+      if (cfg.deepCheckEnabled && taskProfile(state).needsDeepReview && state.presentCalled === true && state.deepChecked !== true) {
         state.deepChecked = true
         try {
           const deepIssues = checkArtifactDeep(state.lastProduct)
@@ -1680,6 +1701,7 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
       // 成本：1 次 LLM（10-20s），每会话 ≤2 次，只在 present 触发。
       if (
         cfg.criticEnabled &&
+        taskProfile(state).needsDeepReview &&
         state.presentCalled === true &&
         state.criticAccepted !== true &&
         (state.criticCount || 0) < cfg.maxCriticPerSession
@@ -1715,6 +1737,7 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
       // ── D4 present-gate：present 声明交付但本轮无独立验收痕迹（verify-gated completion）──
       if (
         cfg.presentGateEnabled &&
+        taskProfile(state).needsTreeCheck &&
         state.presentCalled === true &&
         state.criticAccepted !== true &&
         state.spawnedThisTurn !== true &&
@@ -1885,7 +1908,7 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
         // P1：todo 闹钟（无单 / 停滞）
         if ((s.turnTodoInjections || 0) < cfg.maxTodoInjectionsPerTurn && (s.sessionTodoInjections || 0) < cfg.maxTodoInjectionsPerSession) {
           let text = ''
-          if (s.todoCalls === 0 && s.step >= cfg.noTodoStepThreshold && !s.remindedNoTodo && !s.delivered) {
+          if (taskProfile(s).needsTodo && s.todoCalls === 0 && s.step >= cfg.noTodoStepThreshold && !s.remindedNoTodo && !s.delivered) {
             text = cfg.messageNoTodo
             s.remindedNoTodo = true
           } else if (s.todoCalls > 0 && (s.sinceLastTodo || 0) >= cfg.staleStepThreshold) {
