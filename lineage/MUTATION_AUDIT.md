@@ -123,6 +123,28 @@ review_verdict  audit   audit-v1   ['A','B','C','D','E']
 M9 分类器前置的动机正在于此，但它的前提（独立标签 + golden set）今晚尚未满足。
 **凌晨 2 点停止逐个修，改为记录系统结论——继续修是无底洞。**
 
+## 4.7 进程外刹车（2026-11-21 02:15，调研强证据）
+
+**调研结论（WebFetch 一手）**：
+- Palisade (TMLR 2026)：o3 在 **79/100** 场景破坏关停机制；codex-mini 明确指令下仍 47% 阻止
+  → 同进程/同模型的自愿停止不可靠
+- Governor：max_tokens/max_iterations 类预算**砍掉健康运行却放过病理循环**
+  → 非进展（non-progress）才是正确信号，不是资源预算
+- OnTrack：每步 <1ms 检测 loops/stalls，**83% 被中断的轨迹确实走向失败**
+- corrigibility no-go：单一奖励目标做不到"可纠正地停下"，必须外部机制
+
+**产物**：`tools/kill_switch.py`——进程外独立脚本：
+- 指纹 = 最近 12 个事件的类型序列 + 最后事件内容 hash（**不含 cursor**，含则检测永不触发）
+- 指纹连续不变 = 非进展（比 token 数更能抓"活跃但错误"循环）
+- 分级：L1 告警 → L2 bridge cancel → L3 硬杀（需显式 `--enable-hard-kill`）
+- 4/4 单测（含"源码不含 cursor"的源码断言——第一版我带了 cursor 且测试只比 hash 片段，差点假绿）
+
+**未闭合项（诚实）**：
+- 计划任务常驻注册失败：`Register-ScheduledTask` 权限拒绝，`schtasks.exe` 被安全黑名单拦截，
+  且明令不许绕过 → **kill_switch 只能本轮后台运行，本轮结束可能被回收**。
+  要常驻需用户在安全中心放行 schtasks 或手动注册。
+- 硬杀默认关闭（只告警+cancel）；真要 L3 需显式开启。
+
 ## 5. 结论：当前哪些能声称"真的发挥作用"
 
 | 等级 | 机制 |
