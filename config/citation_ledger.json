@@ -103,9 +103,11 @@
       "type": "paper",
       "claimed": "Self-Harness / Qwen3.5-35B-A3B +18.7pp",
       "real_title": "Self-Harness: Harnesses That Improve Themselves",
-      "status": "partial",
-      "note": "论文真实且高度相关（三阶段自改进、同族模型Qwen3.5-35B-A3B）；摘要给'up to 132% relative gains'，+18.7pp 未在摘要（正文未核）。ADR-0018 依据方向成立，具体数字待正文确认。",
-      "decision_uses": [],
+      "status": "verified",
+      "note": "2026-11-20 正文核实：Qwen3.5-35B-A3B Terminal-Bench-2.0 Overall 18.0%→36.7%(绝对+18.7pp,原文相对+104%)。项目+18.7pp数字正确，是计算所得非原文直写。decision_uses恢复ADR-0018。",
+      "decision_uses": [
+        "ADR-0018"
+      ],
       "verified_at": "2026-11-20"
     },
     {
