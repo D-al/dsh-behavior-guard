@@ -927,7 +927,7 @@ items:
   human_note: 2026-11-20 21:12 用户实证推翻前提：两窗口全开推理正常(n_decoded 1211→1356/5s，带宽22-29%功耗36-41W)。原"3D抢占致spin-wait"是单帧采样撞相位间隙的误判。S10原目标(降帧效果回读)前提不成立，阻塞待重定义。
 - id: S11
   title: 写后校验覆盖全部写工具
-  status: doing
+  status: done
   deps:
   - A1
   risk: low
@@ -1340,7 +1340,7 @@ rungs:
     - D:\Brain\publish\dsh-behavior-guard\docs\FUTURE_CLAIM_GUARD_20261120.md
 - id: A1_7
   title: 评审机制可观测性
-  status: doing
+  status: done
   deps:
   - A1
   risk: low
@@ -1365,4 +1365,66 @@ rungs:
   abort_if: 无法在不改 callLLM 签名的前提下拿到 rubric 版本与维度判定
   claimed_at: '2026-11-20T16:45:21.583892+00:00'
   claimer: unknown-agent
+- id: S15
+  title: 选择性验证深度（Selective Verification）
+  status: ready
+  tier: 2
+  deps:
+  - A1
+  risk: low
+  autonomous: true
+  verify:
+  - kind: file_exists
+    path: lineage/MUTATION_AUDIT.md
+  - kind: test_pass
+    cmd: node tools/test_task_profile.mjs
+    min: 4
+  what: 把无差别守卫改成门控式——只对高风险步骤做深度验证，低风险跳过
+  why: 2026-11-21 实证无差别守卫拖入 C-REJECT 死循环；SWE-Verifier(arXiv:2610.30284) 验证<4%步骤得+1.73pp@1.09x成本
+  benefit_to_self: 减少假阳性与token税，减少死循环触发面
+  cost: 中
+  caveats:
+  - 确定性硬门（危险操作）保持全量，只对软判断做选择性
+  - 门控阈值需在含漂移留出集验单调性
+  abort_if: 漏放危险操作或端到端质量下降
+- id: S16
+  title: 工具描述瘦身与示例
+  status: done
+  tier: 1
+  deps: []
+  risk: low
+  autonomous: true
+  verify:
+  - kind: file_grep
+    path: config/AGENTS.md
+    regex: input_examples
+    min: 1
+  what: 给高频工具补 input_examples（最小/真实路径各一），M5工具面收敛的轻量替代
+  why: Anthropic Tool Use Examples 复杂参数准确率72%→90%；dsh已完成并修正虚构路径(commit 1fe0659)
+  benefit_to_self: 减少参数错误重复失败，不动工具数量
+  cost: 低
+  caveats:
+  - 示例用真实数据不用 placeholder
+  abort_if: 工具定义token增幅>10%且错误率未降
+- id: S17
+  title: 函数外置模式推广（自修改地基）
+  status: doing
+  tier: 2
+  deps: []
+  risk: low
+  autonomous: true
+  verify:
+  - kind: file_exists
+    path: tools/format_correction.mjs
+  - kind: test_pass
+    cmd: node tools/test_task_profile_integration.mjs
+    min: 1
+  what: 按四段式把剩余嵌套函数外置成纯函数+单测+内联+集成测试；formatCorrection已由dsh自主完成
+  why: 合成心智需要agent能安全自修改；每次改动有机器可验的等价证据
+  benefit_to_self: 不靠人肉小心（今晚手滑4次的根治）
+  cost: 中
+  caveats:
+  - 必须内联；tools/版只作规范+测试载体
+  - 每步跑trace基线对照，不能只看单测
+  abort_if: trace分布与基线不一致或单测恒真
 <!-- ROADMAP_GRAPH_END -->
