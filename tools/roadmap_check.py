@@ -267,7 +267,7 @@ def save_authoritative(data):
     human = (f'{HUMAN_BEGIN}：由 roadmap_check.py --apply 自动生成，勿手改 -->\n'
              f'> ### 🟢 自主化进度（自动同步）\n>\n'
              f'> | 卡片 | 状态 | 完成证据 |\n> |---|---|---|\n{rows}\n{next_line}\n>\n'
-             f'> 机器真相 = 上方 ROADMAP_GRAPH 块；本表由 `--apply` 自动写，人读与机器不漂移。\n'
+             f'> 机器真相 = 文末「附录 A」权威块；本表由 `--apply` 自动写，人读与机器不漂移。\n'
              f'{HUMAN_END}')
     if HUMAN_BEGIN in new_md and HUMAN_END in new_md:
         pat = re.escape(HUMAN_BEGIN) + r'[^\n]*-->' + r'.*?' + re.escape(HUMAN_END)
