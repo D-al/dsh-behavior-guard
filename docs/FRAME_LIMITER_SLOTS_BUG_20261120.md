@@ -72,3 +72,30 @@ SLOTS = "http://127.0.0.1:8081/slots?model=Qwen3.6-35B-A3B-UD-Q4_K_XL"
 
 **结论**：这是单点 bug，不是系统性崩塌。但教训普适——凡是 hardcode 路由 URL 的地方都要过一遍
 "router 模式必须带 model"的检查清单。
+
+## 7. 降帧效果实测：EcoQoS 调用成功，但对 Chromium gpu-process 实质无效（21:08）
+
+用户问"同时降帧是否有效果？"——做了证据链核查，答案：**机制通了，效果没有**。
+
+| 环节 | 状态 | 证据 |
+|---|---|---|
+| frame_limiter 识别推理 | ✅ 修复后正常 | SLOTS 带 model → is_processing=True |
+| THROTTLE 调用 | ✅ 成功 | 21:01:22 `THROTTLE pid=10756 WorkBuddy eng3d=66.0`，EcoQoS 返回 ok |
+| 3D 占用下降 | ❌ 几乎无 | 66% → 62.5%（仅 -3.5pp）|
+| 进程优先级 | ❌ 未被节流 | WorkBuddy gpu-process 仍 `AboveNormal`，51 线程优先级 10-13 |
+| GPU 恢复 | 归因 cancel | 100%/25W → 5%/20W 是 cancel 停推理带来的，非降帧 |
+
+**机制层面的两个洞**：
+1. **EcoQoS 对 Chromium gpu-process 无效**：WorkBuddy 的 `--type=gpu-process` 是高优先级渲染线程，
+   Windows EcoQoS（ProcessPowerThrottling）对这类进程的帧率节流效果有限。
+2. **降帧只做一次、永不复查**：frame_limiter 把 pid 加入 `active` 后，后续推理轮次不再重新调用
+   `eco_qos(pid, True)`（21:01:22 之后 7 分钟无新 THROTTLE，即使新会话又开始推理）。
+   如果第一次降帧无效，就永远无效。
+
+**结论**：`min_3d` 限帧这条路在当前 WorkBuddy+Chromium 环境下走不通。
+真正能释放 Copy 引擎的是**减少可见窗口合成量**（dwm 35% 是合成所有窗口）——但这与"我在 WorkBuddy 里观察"矛盾。
+实用策略：推理期把 dsh/浏览器最小化、避免高频 IDE 操作；重负载用计划任务跑（沙箱派生进程已被 CPU 限速的记忆也印证这点）。
+
+**待优化**（可开卡）：frame_limiter 应加"降帧效果回读"——采样 THROTTLE 后 3D 是否下降，
+若 N 轮无下降则升级手段（设 ProcessPriorityClass=Idle 或记 WARN），而不是假装降过就算数。
+这又是"机制存在 ≠ 效果达成"的典型——和今天 A1_7（评审可观测性）同类。
