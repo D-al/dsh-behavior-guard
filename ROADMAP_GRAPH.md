@@ -898,6 +898,23 @@ items:
   - 不能误杀正常推理中的会话（必须有明确的无进展判据）
   - 停止必须是幂等的、可复查的
   abort_if: 停止机制误杀正常会话，或 dsh 侧根本没有可用的会话控制通道
+- id: S10
+  title: 降帧效果回读（限帧治假绿）
+  status: ready
+  deps:
+  - A1
+  risk: low
+  autonomous: true
+  verify:
+  - kind: file_grep
+    path: tools/frame_limiter.py
+    regex: effect_check|回读|no_effect|WARN_THROTTLE
+    min: 1
+  - kind: file_exists
+    path: docs/FRAME_LIMITER_SLOTS_BUG_20261120.md
+  - kind: test_pass
+    cmd: D:/Python/python.exe -B tools/test_frame_limiter_effect.py
+    min: 1
 rungs:
 - id: A0
   deps: []
