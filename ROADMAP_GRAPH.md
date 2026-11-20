@@ -1117,7 +1117,7 @@ rungs:
   cost: 高
 - id: A1_5
   title: 判据元验证（防假绿）
-  status: doing
+  status: done
   deps:
   - A1
   risk: low
@@ -1143,6 +1143,14 @@ rungs:
   abort_if: 无法构造稳定的假判据样本，或元验证器本身产生假绿
   claimed_at: '2026-11-20T12:06:01.711017+00:00'
   claimer: unknown-agent
+  done_at: '2026-11-20T12:26:01.475219+00:00'
+  evidence_log:
+  - at: '2026-11-20T12:26:01.475219+00:00'
+    commit: a423329
+    checks:
+    - D:\Brain\publish\dsh-behavior-guard\tools\check_verify.py
+    - rc=0 PASS=7
+    - 7 hits in tools/check_verify.py
 - id: A1_6
   title: 守卫 L1 补将来时承诺检测
   status: ready
@@ -1160,4 +1168,14 @@ rungs:
     min: 1
   - kind: file_exists
     path: docs/FUTURE_CLAIM_GUARD_20261120.md
+  what: 把 guardDecide 的 L1 从只校验过去时声明（已写入X）扩展到将来时承诺（现在写X/接下来创建X），要求承诺的产物在本轮真实产生
+  why: 2026-11-20 A1_5 会话输出"现在进入核心：编写 check_verify.py"后结束回合、文件不存在——WRITE_CLAIM 只匹配过去时，将来时承诺穿过
+    L0-L3 全部防线，是"只输出好"的新变体
+  benefit_to_self: 防止模型用"说要干"冒充"干了"——自治闭环的完成判定不能再被将来时承诺绕过
+  cost: 中
+  caveats:
+  - 别把正常的进度汇报误判为承诺（如"下一步我会考虑..."）
+  - 必须要求真实产物+mtime，不能只做文本匹配
+  - L1 校验必须仍以环境事实为准，不能只信模型声明
+  abort_if: 无法区分"将来时承诺"与"正常下一步说明"导致大量误拦截
 <!-- ROADMAP_GRAPH_END -->

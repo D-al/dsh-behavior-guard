@@ -21,6 +21,7 @@
 > | **A0 数据可信（sid 黑名单）** | ✅ done | 证据见 `evidence_log` + `docs/reflection-A0.md` |
 > | **A1 会记路（机器判据 + dry-run 核验）** | ✅ done | 证据见 `evidence_log` + `docs/reflection-A1.md` |
 > | **A3_5 安全地基（真实 diff + e2e + 回滚）** | ✅ done | 证据见 `evidence_log` + `docs/reflection-A3_5.md` |
+> | **A1_5 判据元验证（防假绿）** | ✅ done | 证据见 `evidence_log` + `docs/reflection-A1_5.md` |
 > | **S1 Self-Harness P0-P2** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S1.md` |
 > | **S2 可控遗忘常态化** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S2.md` |
 > | **S3 频次收尾（trace 带 turn/controlTotal）** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S3.md` |
@@ -41,7 +42,7 @@
 > | **outcome_all 结果反馈捕获 / 确定性门控 / 三角色 / P0-P2 心智拼图** | ✅ done | 证据见 `evidence_log` + `docs/reflection-outcome_all.md` |
 > | **M1 情景检索进主循环** | ✅ done | 证据见 `evidence_log` + `docs/reflection-M1.md` |
 > | **M8 轨迹 FSM 监控器** | ✅ done | 证据见 `evidence_log` + `docs/reflection-M8.md` |
-> | **下一项** | 🟢 M10 | `M10` 已 ready，可 `--claim` |
+> | **下一项** | 🟢 A1_6 | `A1_6` 已 ready，可 `--claim` |
 >
 > 机器真相 = [ROADMAP_GRAPH.md](ROADMAP_GRAPH.md)；本表由 `--apply` 自动写，人读与机器不漂移。
 <!-- HUMAN_PROGRESS_END -->
@@ -86,15 +87,6 @@ v2.24 同时做了**深度维护**：修 1 个 P0（安全注入被次数闸门�
 > 全部字段来自卡片单一真相源（CAPABILITY_LADDER.yaml），状态来自 ROADMAP_GRAPH.md；本块自动重写，勿手改。
 > 机器判据见 `--card <ID>`；每行 `分` = 性价比分数，`桶` = rank_hint（见卡片字段）。
 > ⚠️ 全局铁律（所有卡通用，故不再逐条重复）：说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 ≠ 进程活着。
-
-**`A1_5` 判据元验证（防假绿）** · 分 `1.333` · 状态 `doing` · 桶 `normal`
-- **性价比**：收益 高 / 成本 中 / 建议 判据地基体检，与会话治理并行
-- **依赖→解锁**：A1 → —
-- **做什么**：写 check_verify.py 检测判据自身的四类病：自引用递归、格式不匹配、恒真判据、测试sid污染
-- **为什么**：A1 判据曾递归6分钟不停、^PASS格式不匹配假FAIL、管道吞rc假绿；A1只管卡状态核验，不管判据本身可信
-- **对 agent 的好处**：自治信任建立在判据可信上——避免"全绿但没做"
-- **坑/边界**：元验证器自己不能递归（必须独立于 roadmap_check 的 evaluate）；用构造的假判据样本验证必须全判FAIL
-- **何时停**：无法构造稳定的假判据样本，或元验证器本身产生假绿
 
 **`A1_6` 守卫 L1 补将来时承诺检测** · 分 `1.333` · 状态 `ready` · 桶 `normal`
 - **性价比**：收益 高 / 成本 中 / 建议 防线的防线，比A1_5更优先
