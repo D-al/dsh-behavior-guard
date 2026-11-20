@@ -30,6 +30,8 @@ GRAPH_BEGIN = '<!-- ROADMAP_GRAPH_BEGIN v1 -->'
 GRAPH_END = '<!-- ROADMAP_GRAPH_END -->'
 HUMAN_BEGIN = '<!-- HUMAN_PROGRESS_BEGIN v1'
 HUMAN_END = '<!-- HUMAN_PROGRESS_END -->'
+CARDS_BEGIN = '<!-- HUMAN_CARDS_BEGIN v1'
+CARDS_END = '<!-- HUMAN_CARDS_END -->'
 
 RISK_ORDER = {'low': 0, 'med': 1, 'high': 2}
 
@@ -257,6 +259,58 @@ def cmd_next(data):
     return 0
 
 
+def fmt_field(v):
+    """把语义字段（str 或 list）渲染成一行人读文本。
+
+    全局事故教训（每张卡 caveats 都带）抽成块顶部脚注，避免人读层重复 20 次噪声。
+    """
+    if isinstance(v, list):
+        v = [x for x in v if not str(x).startswith('[事故教训]')]
+        return '；'.join(str(x) for x in v) if v else '—'
+    return str(v) if v else '—'
+
+
+def render_human_cards(data, mirror):
+    """从 LADDER 语义源渲染 20 张非 done 卡的人读详情（what/why/benefit/坑/反思/何时停）。
+
+    状态取机器源 data，语义取 mirror——两源各司其职，块内零手工副本。
+    按 ready → backlog → manual-blocked 分组，让人一眼看到"现在能做什么、为什么、坑在哪"。
+    """
+    sm = status_map_of(data)
+    sem = {i['id']: i for i in mirror.get('items', []) + mirror.get('autonomy_rungs', [])}
+    allc = list(data['rungs']) + list(data['items'])
+    groups = [('🟢 可开干（ready）', 'ready'),
+              ('🟡 排队（backlog）', 'backlog'),
+              ('⛔ 需人工拍板（manual-blocked）', 'manual-blocked')]
+    out = [f'{CARDS_BEGIN}：由 roadmap_check.py --apply 从 LADDER 语义源生成，勿手改 -->',
+           '> ### 📇 卡片详情（人读版 · 为什么做每张卡）',
+           '> 语义来自 CAPABILITY_LADDER.yaml，状态来自 ROADMAP_GRAPH.md；本块每次 `--apply` 自动重写。',
+           '> 机器判据/验证方法见 `--card <ID>`；这里只回答"做什么 / 为什么 / 对我有啥好处 / 坑 / 何时停"。',
+           '> ⚠️ 全局铁律（所有卡通用，故不再逐条重复）：说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 ≠ 进程活着。',
+           '']
+    total = 0
+    for label, st in groups:
+        cards = [c for c in allc if sm.get(c['id']) == st]
+        if not cards:
+            continue
+        out.append(f'#### {label}（{len(cards)} 张）')
+        out.append('')
+        for c in cards:
+            s = sem.get(c['id'], {})
+            out.append(f"**`{c['id']}` {c.get('title', s.get('title', ''))}**")
+            out.append(f"- **做什么**：{fmt_field(s.get('what') or c.get('what'))}")
+            out.append(f"- **为什么**：{fmt_field(s.get('why') or c.get('why'))}")
+            out.append(f"- **对 agent 的好处**：{fmt_field(s.get('benefit_to_self') or c.get('benefit_to_self'))}")
+            out.append(f"- **坑/边界**：{fmt_field(s.get('caveats') or c.get('caveats'))}")
+            if s.get('reflection') or c.get('reflection'):
+                out.append(f"- **做完要反思**：{fmt_field(s.get('reflection') or c.get('reflection'))}")
+            out.append(f"- **何时停**：{fmt_field(s.get('abort_if') or c.get('abort_if'))}")
+            out.append('')
+            total += 1
+    out.append(CARDS_END)
+    return '\n'.join(out), total
+
+
 def save_authoritative(data):
     """写回机器权威块（ROADMAP_GRAPH.md）+ 人类进度表（ROADMAP.md）+ 语义镜像；apply/claim 共用。
 
@@ -291,6 +345,12 @@ def save_authoritative(data):
     if HUMAN_BEGIN in new_md and HUMAN_END in new_md:
         pat = re.escape(HUMAN_BEGIN) + r'[^\n]*-->' + r'.*?' + re.escape(HUMAN_END)
         new_md = re.sub(pat, lambda _m: human, new_md, flags=re.S)
+    # 人读卡片详情：从 LADDER 语义源渲染（与状态源分离，零手工副本）
+    mirror_pre = yaml.safe_load(LADDER.read_text(encoding='utf-8')) if LADDER.exists() else {}
+    cards_md, n_cards = render_human_cards(data, mirror_pre)
+    if CARDS_BEGIN in new_md and CARDS_END in new_md:
+        pat = re.escape(CARDS_BEGIN) + r'[^\n]*-->' + r'.*?' + re.escape(CARDS_END)
+        new_md = re.sub(pat, lambda _m: cards_md, new_md, flags=re.S)
     ROADMAP.write_text(new_md, encoding='utf-8')
     mirror = yaml.safe_load(LADDER.read_text(encoding='utf-8')) if LADDER.exists() else {}
     sm = status_map_of(data)
