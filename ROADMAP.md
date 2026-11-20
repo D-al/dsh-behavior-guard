@@ -43,6 +43,7 @@
 > | **outcome_all 结果反馈捕获 / 确定性门控 / 三角色 / P0-P2 心智拼图** | ✅ done | 证据见 `evidence_log` + `docs/reflection-outcome_all.md` |
 > | **M1 情景检索进主循环** | ✅ done | 证据见 `evidence_log` + `docs/reflection-M1.md` |
 > | **M8 轨迹 FSM 监控器** | ✅ done | 证据见 `evidence_log` + `docs/reflection-M8.md` |
+> | **S14 编辑协议升级（降低复现负担）** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S14.md` |
 > | **下一项** | 🟢 A1_7 | `A1_7` 已 ready，可 `--claim` |
 >
 > 机器真相 = [ROADMAP_GRAPH.md](ROADMAP_GRAPH.md)；本表由 `--apply` 自动写，人读与机器不漂移。
@@ -88,15 +89,6 @@ v2.24 同时做了**深度维护**：修 1 个 P0（安全注入被次数闸门�
 > 全部字段来自卡片单一真相源（CAPABILITY_LADDER.yaml），状态来自 ROADMAP_GRAPH.md；本块自动重写，勿手改。
 > 机器判据见 `--card <ID>`；每行 `分` = 性价比分数，`桶` = rank_hint（见卡片字段）。
 > ⚠️ 全局铁律（所有卡通用，故不再逐条重复）：说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 ≠ 进程活着。
-
-**`S14` 编辑协议升级（降低复现负担）** · 分 `2.5` · 状态 `doing` · 桶 `normal`
-- **性价比**：收益 极高 / 成本 中低 / 建议 读写地基最高优先:学术证据最强(RoPE复制缺陷+Diff-XYZ小模型结论),提示层改动成本低
-- **依赖→解锁**：A1 → —
-- **做什么**：把 AGENTS.md:105 的裸 read→edit 升级为"短文件(<400行)整块输出、长文件紧邻重读+最短唯一锚点、压缩后强制重读"；失败时回灌精确差异(edit-doctor模式)。不押注结构化diff格式——Diff-XYZ证明小模型换格式收益很小
-- **为什么**：学术证据:RoPE 1D归纳偏置致精确复制失败(arXiv:2607.16072);Diff-XYZ(NeurIPS25w,arXiv:2510.12487)明确"smaller open models benefit little from any formatting choice";Aider 26→59%是GPT-4大模型数据不可套用到35B;Claude Code #26996 tab→空格致6连败;edit-doctor旁路诊断第二次即成功。C-010正是压缩后凭记忆重建1300字符old_string截断
-- **对 agent 的好处**：减少要精确复现的字符量——35B在Diff-XYZ属"换格式收益小"区间，降负担才是杠杆
-- **坑/边界**：别照搬Aider大模型结论到35B——Diff-XYZ明确小模型换格式收益小；锚点要唯一且从第一个非空白字符起，绕开tab/CRLF/不可见字符；失败回灌要给可复制文本而非裸重试；35B属于"格式收益小"区间，重心是降低要复现的字符量
-- **何时停**：无法在dsh原生edit工具约束下实现可验证的锚点协议
 
 **`M10` 会话生命周期治理（刹车）** · 分 `1.333` · 状态 `ready` · 桶 `normal`
 - **性价比**：收益 高 / 成本 中 / 建议 自治闭环前置刹车，优先做

@@ -17,8 +17,8 @@
 | 论文 | 发现 |
 |---|---|
 | arXiv:2607.16072 | RoPE 1D 偏移在长上下文中导致精确字符匹配能力严重退化 |
-| arXiv:2510.12487 (Diff-XYZ, NeurIPS 25w) | "smaller open models benefit little from any formatting choice"——小模型对格式不敏感，但对精确锚点依赖度高 |
-| Aider 基准测试 2024-06 | GPT-4o vs 35B 模型在小任务代码复现不一致率高达 59% |
+| arXiv:2510.12487 (Diff-XYZ, NeurIPS 25w) | "smaller open models benefit little from any formatting choice"——小模型换格式收益很小（论文未断言"对精确锚点依赖度高"，那是我们的策略推断）|
+| Aider 编辑格式基准（2023-12，已核实） | 仅换编辑格式让 GPT-4 从 26%→59%；但这是大模型数据，Diff-XYZ 证明小模型换格式收益小，故本协议不押注格式 |
 | Claude Code #26996 | tab vs 空格缩进差异导致 edit 失败循环（6+ 分钟无进展） |
 
 ### Diff-XYZ 结论摘要
@@ -67,6 +67,6 @@ Diff-XYZ 实验表明：
 
 1. arXiv:2607.16072 — RoPE position encoding offset in long contexts
 2. arXiv:2510.12487 — Diff-XYZ, NeurIPS 2025 Workshop
-3. Aider benchmark 2024-06 — model consistency rates
+3. Aider 编辑格式基准（2023-12）— GPT-4 26%→59%（换 udiff 格式），出处 aiwiki.ai/wiki/aider；**非**"35B 不一致率"
 4. Claude Code issue #26996 — whitespace-induced edit loops
 5. C-010 — truncation recovery via re-read strategy (~1300 char old_string baseline)

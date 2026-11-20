@@ -1065,9 +1065,17 @@ items:
   cost: 中低
   advice: 读写地基最高优先:学术证据最强(RoPE复制缺陷+Diff-XYZ小模型结论),提示层改动成本低
   rank_derived: false
-  status: doing
+  status: done
   claimer: unknown-agent
   claimed_at: '2026-11-20T14:18:32.327124+00:00'
+  evidence_log:
+  - at: '2026-11-20T14:31:21.313624+00:00'
+    commit: 172dfcc
+    checks:
+    - 4 hits in config/AGENTS.md
+    - 1 hits in config/AGENTS.md
+    - D:\Brain\publish\dsh-behavior-guard\tools\test_edit_protocol.py
+    - rc=0 PASS=6
 autonomy_rungs:
 - id: A0
   title: 数据可信（sid 黑名单）

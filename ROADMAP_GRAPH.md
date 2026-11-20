@@ -1003,7 +1003,7 @@ items:
   abort_if: 收紧导致正常验证流程被大面积误拦
 - id: S14
   title: 编辑协议升级（降低复现负担）
-  status: doing
+  status: done
   deps:
   - A1
   risk: low
@@ -1036,6 +1036,15 @@ items:
   abort_if: 无法在dsh原生edit工具约束下实现可验证的锚点协议
   claimed_at: '2026-11-20T14:18:32.327124+00:00'
   claimer: unknown-agent
+  done_at: '2026-11-20T14:31:21.313624+00:00'
+  evidence_log:
+  - at: '2026-11-20T14:31:21.313624+00:00'
+    commit: 172dfcc
+    checks:
+    - 4 hits in config/AGENTS.md
+    - 1 hits in config/AGENTS.md
+    - D:\Brain\publish\dsh-behavior-guard\tools\test_edit_protocol.py
+    - rc=0 PASS=6
 rungs:
 - id: A0
   deps: []
