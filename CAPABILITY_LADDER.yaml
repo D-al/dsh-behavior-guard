@@ -324,7 +324,8 @@ items:
   unlock: &id006 []
   human_note: ⛔ 永久人工闸门
   what: 把 28 个工具收敛到最小内核，低频能力进 skill 卡
-  why: 工具面过宽会退化（社区上限约 40），但"哪些进内核"是产品判断
+  why: 工具面过宽会退化:Anthropic官方"10+ tools就该考虑"(Tool Use Examples 72→90%)、弱模型拐点12-15(社区实测)、Prosodica
+    10工具78%→100工具<40%。旧"上限约40"已被推翻——它是模型/描述相关拐点非硬上限。哪些进内核仍是产品判断
   benefit_to_self: 每次决策要在更少的工具里选，减少选择噪声
   caveats:
   - ⛔ 用户拍板项，agent 不得自主决定
@@ -1042,6 +1043,24 @@ items:
   benefit: 高
   cost: 中
   advice: 读写地基最高优先（假绿源头）
+  rank_derived: false
+- id: S14
+  title: 编辑协议升级（降低复现负担）
+  what: 把 AGENTS.md:105 的裸 read→edit 升级为"短文件(<400行)整块输出、长文件紧邻重读+最短唯一锚点、压缩后强制重读"；失败时回灌精确差异(edit-doctor模式)。不押注结构化diff格式——Diff-XYZ证明小模型换格式收益很小
+  why: '学术证据:RoPE 1D归纳偏置致精确复制失败(arXiv:2607.16072);Diff-XYZ(NeurIPS25w,arXiv:2510.12487)明确"smaller
+    open models benefit little from any formatting choice";Aider 26→59%是GPT-4大模型数据不可套用到35B;Claude
+    Code #26996 tab→空格致6连败;edit-doctor旁路诊断第二次即成功。C-010正是压缩后凭记忆重建1300字符old_string截断'
+  benefit_to_self: 减少要精确复现的字符量——35B在Diff-XYZ属"换格式收益小"区间，降负担才是杠杆
+  caveats:
+  - 别照搬Aider大模型结论到35B——Diff-XYZ明确小模型换格式收益小
+  - 锚点要唯一且从第一个非空白字符起，绕开tab/CRLF/不可见字符
+  - 失败回灌要给可复制文本而非裸重试
+  - 35B属于"格式收益小"区间，重心是降低要复现的字符量
+  abort_if: 无法在dsh原生edit工具约束下实现可验证的锚点协议
+  rank_hint: normal
+  benefit: 高
+  cost: 中
+  advice: 读写能力地基，重心=减少复现字符量而非换格式
   rank_derived: false
 autonomy_rungs:
 - id: A0

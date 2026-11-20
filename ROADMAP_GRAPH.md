@@ -976,6 +976,27 @@ items:
   - kind: test_pass
     cmd: D:/Python/python.exe -B tools/test_verify_ran.py
     min: 1
+- id: S14
+  title: 编辑协议升级（降低复现负担）
+  status: ready
+  deps:
+  - A1
+  risk: low
+  autonomous: true
+  verify:
+  - kind: file_grep
+    path: config/AGENTS.md
+    regex: 紧邻重读|最短唯一锚点|引用而非重述|near.?read|minimal.?anchor
+    min: 1
+  - kind: file_grep
+    path: config/AGENTS.md
+    regex: 压缩.*重读|compaction.*reread
+    min: 1
+  - kind: file_exists
+    path: tools/test_edit_protocol.py
+  - kind: test_pass
+    cmd: D:/Python/python.exe -B tools/test_edit_protocol.py
+    min: 1
 rungs:
 - id: A0
   deps: []
