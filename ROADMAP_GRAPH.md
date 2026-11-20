@@ -927,7 +927,7 @@ items:
   human_note: 2026-11-20 21:12 用户实证推翻前提：两窗口全开推理正常(n_decoded 1211→1356/5s，带宽22-29%功耗36-41W)。原"3D抢占致spin-wait"是单帧采样撞相位间隙的误判。S10原目标(降帧效果回读)前提不成立，阻塞待重定义。
 - id: S11
   title: 写后校验覆盖全部写工具
-  status: ready
+  status: doing
   deps:
   - A1
   risk: low
@@ -950,6 +950,8 @@ items:
   - 别让校验失败阻断正常写入（拦=纠错消息而非硬失败）
   - 扩展名映射要覆盖.mjs/.js/.py/.json/.yaml
   abort_if: 无法在不改dsh原生工具的前提下拿到写后内容
+  claimed_at: '2026-11-20T16:57:05.100377+00:00'
+  claimer: unknown-agent
 - id: S12
   title: 补丁应用闭环（禁写脚本不落地）
   status: ready

@@ -44,7 +44,7 @@
 > | **M1 情景检索进主循环** | ✅ done | 证据见 `evidence_log` + `docs/reflection-M1.md` |
 > | **M8 轨迹 FSM 监控器** | ✅ done | 证据见 `evidence_log` + `docs/reflection-M8.md` |
 > | **S14 编辑协议升级（降低复现负担）** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S14.md` |
-> | **下一项** | 🟢 S11 | `S11` 已 ready，可 `--claim` |
+> | **下一项** | 🟢 S12 | `S12` 已 ready，可 `--claim` |
 >
 > 机器真相 = [ROADMAP_GRAPH.md](ROADMAP_GRAPH.md)；本表由 `--apply` 自动写，人读与机器不漂移。
 <!-- HUMAN_PROGRESS_END -->
@@ -99,7 +99,7 @@ v2.24 同时做了**深度维护**：修 1 个 P0（安全注入被次数闸门�
 - **坑/边界**：不能误杀正常推理中的会话（必须有明确的无进展判据）；停止必须是幂等的、可复查的
 - **何时停**：停止机制误杀正常会话，或 dsh 侧根本没有可用的会话控制通道
 
-**`S11` 写后校验覆盖全部写工具** · 分 `1.333` · 状态 `ready` · 桶 `normal`
+**`S11` 写后校验覆盖全部写工具** · 分 `1.333` · 状态 `doing` · 桶 `normal`
 - **性价比**：收益 高 / 成本 中 / 建议 读写地基第一优先
 - **依赖→解锁**：A1 → —
 - **做什么**：把 verify-on-edit 从只覆盖 write/edit 扩展到 DEFAULT_WRITE_TOOLS 全部8种（apply_patch/multi_edit/create_file/str_replace/write_file/notebook_edit），每种按扩展名跑对应语法校验

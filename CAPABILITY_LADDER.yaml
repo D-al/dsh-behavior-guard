@@ -1016,7 +1016,9 @@ items:
   cost: 中
   advice: 读写地基第一优先
   rank_derived: false
-  status: ready
+  status: doing
+  claimer: unknown-agent
+  claimed_at: '2026-11-20T16:57:05.100377+00:00'
 - id: S12
   title: 补丁应用闭环（禁写脚本不落地）
   what: 检测"写了修复脚本但没真正应用"的模式：补丁脚本(_apply_*.py/_fix_*.py)写入后必须有对应的apply证据（目标文件mtime变化+语法通过），否则守卫提示"脚本已写但未应用"
