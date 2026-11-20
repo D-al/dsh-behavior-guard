@@ -61,6 +61,33 @@ review_verdict  audit   audit-v1   ['A','B','C','D','E']
 初版 M4 CritBank 断言写成"两边都 false 也算通过"——等于永远 PASS。
 已改为：未命中就明确打印 `SKIP`（不算通过），命中才断言开/关差异。
 
+## 4.5 生产验证暴露的两个新缺陷（2026-11-21 01:15，真实会话）
+
+用 bridge 向生产 35B 发"创建文件+present"的简单验证消息，暴露两个守卫假阳性：
+
+**缺陷 1：present 后仍注入 todo 闹钟**
+- 时间线：step3 `deliverables/presented`（seq29，交付成功）→ step4 注入
+  `[harness 执行检查] 这是一个多步任务…立即停下：先调用 todo_write…`（seq33）
+- 根因：`noTodoStepThreshold: 4` 用**步数**当任务复杂度代理。两步任务因 35B 多走一步到 step4 被误判
+- 讽刺：35B 自己在 step5 reasoning 说"这个任务确实很简单…我不应为迎合 harness 强行加 todo"——
+  **模型判断对了，守卫用机械规则覆盖了它**
+- 修复：`present` 成功设 `s.delivered=true`，todo 闹钟条件加 `!s.delivered`（已改 index.mjs）
+
+**缺陷 2：Critic 把过程动作当产物要求 → C-REJECT 死循环**
+- 时间线：present 成功后，seq43/47 两次
+  `[harness 产物评审 C-REJECT] 不达标: 未体现调用 present 交付动作`
+- 根因：Critic 拿 `snap.goal`（含"调用 present"）当判据，但它**只看产物文件**——
+  产物里当然没有 present 痕迹 → REJECT → 模型再 present → 再 REJECT（连烧 2 轮）
+- 这是 Critic 正确设计（只看产物不看过程）与任务类型（动作型任务）的不匹配
+- 修复：task 含 present/交付类词时，显式附加"评审边界：只评产物内容，过程动作不作为不达标理由"（已改）
+
+**刹车盲区（诚实记录）**：
+用户问"你不是有刹车吗"——核实后：
+- `bridge send` 是 queue 模式无抢占，停止消息排在 next-turn 要等当前推理完
+- `freeze_watch` 判据是"prompt token 不动 + 功耗<30W"（真冻死），
+  而活跃 C-REJECT 循环 token 在动、功耗正常 → 判为"慢但未冻，不打断"
+- **结论：刹车只对冻死有效，对活跃错误循环无效**——这是需要新判据的盲区
+
 ## 5. 结论：当前哪些能声称"真的发挥作用"
 
 | 等级 | 机制 |

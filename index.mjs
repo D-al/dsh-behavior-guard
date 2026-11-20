@@ -924,7 +924,10 @@ export function apply(ctx, config) {
         // D4 present-gate：验收痕迹观测（present / spawn 验收者 / 跑过 verify_agent）
         {
           const callName = String(event.data?.name ?? '')
-          if (callName === 'present') s.presentCalled = true
+          // 2026-11-21：present 成功 = 任务已交付，此后不再触发"多步任务需 todo"闹钟
+          // （生产实测：验证会话 step3 已 deliverables/presented，step4 仍注入"立即停下建todo"
+          //   → 模型被迫继续跑，形成假阳性循环。用步数当复杂度代理的经典误判。）
+          if (callName === 'present') { s.presentCalled = true; s.delivered = true }
           if (callName === 'spawn_teammate') s.spawnedThisTurn = true
           if (callName === 'pwsh' && fullArgs.includes('verify_agent')) s.verifyRan = true
           // verify-on-stop 证据：只认【命令型工具的验证动作】，绝不扫写入内容
@@ -1468,7 +1471,13 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
     // 实测 max_tokens=100 时 finish=length/content=''，提到 1200 给思维链+JSON 留空间。
     // A1_7：评审可观测性——把 rubric 版本/维度随 ctx 透传给 trace（不改 callLLM 签名）
     const criticDims = Array.isArray(CRITIC_RUBRIC?.dimensions) ? CRITIC_RUBRIC.dimensions.map((d) => d.id) : []
-    const out = await callLLM(CRITIC_PROMPT(snap.goal, product, content), cfg.criticMaxTokens ?? 1200, cfg.criticTimeoutMs || 90000, {
+    // 2026-11-21 生产实证：任务含"调用 present"时，Critic 只看产物文件，找不到 present 痕迹 →
+    // REJECT"未体现 present 动作" → 模型再 present → 再 REJECT（死循环，实测连烧 2 轮）。
+    // Critic 的天职是"只看产物不看过程"，所以过程动作不是它的判据——显式告知，别让它越界。
+    const criticTask = /present|交付|调用\s*\w+\s*工具/.test(String(snap.goal || ''))
+      ? `${snap.goal}\n\n（评审边界：你只评"产物内容"。诸如 present/调用工具/交付 属于过程动作，不在产物里留痕，不要作为不达标理由。）`
+      : snap.goal
+    const out = await callLLM(CRITIC_PROMPT(criticTask, product, content), cfg.criticMaxTokens ?? 1200, cfg.criticTimeoutMs || 90000, {
       sid: snap.sid, tag: 'critic',
       temperature: cfg.criticTemperature, topK: cfg.criticTopK,
       review_kind: 'critic', rubric_version: CRITIC_RUBRIC?.version || 'builtin',
@@ -1864,7 +1873,7 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
         // P1：todo 闹钟（无单 / 停滞）
         if ((s.turnTodoInjections || 0) < cfg.maxTodoInjectionsPerTurn && (s.sessionTodoInjections || 0) < cfg.maxTodoInjectionsPerSession) {
           let text = ''
-          if (s.todoCalls === 0 && s.step >= cfg.noTodoStepThreshold && !s.remindedNoTodo) {
+          if (s.todoCalls === 0 && s.step >= cfg.noTodoStepThreshold && !s.remindedNoTodo && !s.delivered) {
             text = cfg.messageNoTodo
             s.remindedNoTodo = true
           } else if (s.todoCalls > 0 && (s.sinceLastTodo || 0) >= cfg.staleStepThreshold) {
