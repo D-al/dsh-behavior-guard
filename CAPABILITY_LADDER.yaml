@@ -366,7 +366,7 @@ items:
   preconditions:
   - 'P-86M-LATENCY: 86M CPU 延迟<500ms'
   - 'P-AB-SPEEDUP: A/B 端到端提速'
-  benefit: 高
+  benefit: 中
   cost: 低
   advice: 降级：收益存疑，先验证 86M
   rank: 7
@@ -1058,9 +1058,9 @@ items:
   - 35B属于"格式收益小"区间，重心是降低要复现的字符量
   abort_if: 无法在dsh原生edit工具约束下实现可验证的锚点协议
   rank_hint: normal
-  benefit: 高
-  cost: 中
-  advice: 读写能力地基，重心=减少复现字符量而非换格式
+  benefit: 极高
+  cost: 中低
+  advice: 读写地基最高优先:学术证据最强(RoPE复制缺陷+Diff-XYZ小模型结论),提示层改动成本低
   rank_derived: false
 autonomy_rungs:
 - id: A0
@@ -1245,7 +1245,7 @@ autonomy_rungs:
     - 31 hits in tools/self_harness_gate.py
     - D:\Brain\publish\dsh-behavior-guard\tools\run_all.sh
   benefit: 高
-  cost: 低
+  cost: 中
   advice: 已完成，见 evidence
   rank: 99
   rank_derived: true

@@ -216,7 +216,12 @@ def find_next(data):
         if not deps_done(item, sm) or not tier_unlocked(item, sm, data):
             continue
         ready.append(item)
-    ready.sort(key=lambda x: (RISK_ORDER.get(x.get('risk'), 9), x.get('tier', 0), x['id']))
+    # 2026-11-20 重排：在 risk/tier 两个硬约束之后、id 之前插入 ROI 平局打破键。
+    # 旧算法 (risk, tier, id) 按字母序派活，导致性价比最高的 S14 永远排在 A1_7 之后——
+    # ROADMAP 展示按 ROI 排、实际推卡按 id 排，两套机制脱节。现在同 risk+tier 内按 ROI 选。
+    # risk/tier 优先级不变（低风险、低 tier 仍是硬约束），只打破同层平局。
+    ready.sort(key=lambda x: (RISK_ORDER.get(x.get('risk'), 9), x.get('tier', 0),
+                              -roi_score(x), x['id']))
     return ready[0] if ready else None
 
 
