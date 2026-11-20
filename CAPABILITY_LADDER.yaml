@@ -984,6 +984,7 @@ items:
   advice: 自治闭环前置刹车，优先做
   rank_hint: normal
   rank_derived: false
+  status: ready
 autonomy_rungs:
 - id: A0
   title: 数据可信（sid 黑名单）
@@ -1251,5 +1252,25 @@ autonomy_rungs:
   benefit: 高
   cost: 中
   advice: 判据地基体检，与会话治理并行
+  rank_hint: normal
+  rank_derived: false
+  status: doing
+  claimer: unknown-agent
+  claimed_at: '2026-11-20T12:06:01.711017+00:00'
+- id: A1_6
+  title: 守卫 L1 补将来时承诺检测
+  what: 把 guardDecide 的 L1 从只校验过去时声明（已写入X）扩展到将来时承诺（现在写X/接下来创建X），要求承诺的产物在本轮真实产生
+  why: 2026-11-20 A1_5 会话输出"现在进入核心：编写 check_verify.py"后结束回合、文件不存在——WRITE_CLAIM 只匹配过去时，将来时承诺穿过
+    L0-L3 全部防线，是"只输出好"的新变体
+  benefit_to_self: 防止模型用"说要干"冒充"干了"——自治闭环的完成判定不能再被将来时承诺绕过
+  caveats:
+  - 别把正常的进度汇报误判为承诺（如"下一步我会考虑..."）
+  - 必须要求真实产物+mtime，不能只做文本匹配
+  - L1 校验必须仍以环境事实为准，不能只信模型声明
+  abort_if: 无法区分"将来时承诺"与"正常下一步说明"导致大量误拦截
+  rank: 1
+  benefit: 高
+  cost: 中
+  advice: 防线的防线，比A1_5更优先
   rank_hint: normal
   rank_derived: false

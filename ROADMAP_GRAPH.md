@@ -888,6 +888,15 @@ items:
     flags: IGNORECASE
   - kind: file_exists
     path: docs/SESSION_LIFECYCLE_20261120.md
+  what: 给 bridge 加 stop/abort 命令、给 freeze_watch 加会话级无进展检测，让 observer 能可靠停止僵尸会话
+  why: 2026-11-20 僵尸会话在"已停止"后复活并改坏 index.mjs（语法垃圾）；bridge 8 命令无 stop、dsh API 全 404、看门狗只盯
+    llama 冻死
+  benefit_to_self: 自治闭环终于有刹车——不用靠人工发极简 STOP + 肉眼复查工作树
+  cost: 中
+  caveats:
+  - 不能误杀正常推理中的会话（必须有明确的无进展判据）
+  - 停止必须是幂等的、可复查的
+  abort_if: 停止机制误杀正常会话，或 dsh 侧根本没有可用的会话控制通道
 rungs:
 - id: A0
   deps: []
@@ -1108,7 +1117,7 @@ rungs:
   cost: 高
 - id: A1_5
   title: 判据元验证（防假绿）
-  status: ready
+  status: doing
   deps:
   - A1
   risk: low
@@ -1124,4 +1133,31 @@ rungs:
     regex: recursive|递归|self.?ref
     min: 1
     flags: IGNORECASE
+  what: 写 check_verify.py 检测判据自身的四类病：自引用递归、格式不匹配、恒真判据、测试sid污染
+  why: A1 判据曾递归6分钟不停、^PASS格式不匹配假FAIL、管道吞rc假绿；A1只管卡状态核验，不管判据本身可信
+  benefit_to_self: 自治信任建立在判据可信上——避免"全绿但没做"
+  cost: 中
+  caveats:
+  - 元验证器自己不能递归（必须独立于 roadmap_check 的 evaluate）
+  - 用构造的假判据样本验证必须全判FAIL
+  abort_if: 无法构造稳定的假判据样本，或元验证器本身产生假绿
+  claimed_at: '2026-11-20T12:06:01.711017+00:00'
+  claimer: unknown-agent
+- id: A1_6
+  title: 守卫 L1 补将来时承诺检测
+  status: ready
+  deps:
+  - A1
+  risk: low
+  autonomous: true
+  verify:
+  - kind: file_grep
+    path: index.mjs
+    regex: FUTURE_CLAIM|将来时|承诺式
+    min: 1
+  - kind: test_pass
+    cmd: D:/Python/python.exe -B tools/test_future_claim_guard.py
+    min: 1
+  - kind: file_exists
+    path: docs/FUTURE_CLAIM_GUARD_20261120.md
 <!-- ROADMAP_GRAPH_END -->
