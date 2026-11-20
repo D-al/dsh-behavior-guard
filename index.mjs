@@ -1330,6 +1330,9 @@ ${evidence || '(无证据可用)'}
       // S5：reasoning 兜底是诊断信息，成功/失败都记
       emptyContent: !!(r && r.emptyContent), reasoningChars: (r && r.reasoningChars) || 0,
       reasoningUsed: !!(r && r.reasoningUsed),
+      // A1_7：评审机制元数据（仅评审类 ctx 带，普通 LLM 调用不含这些字段）
+      ...(ctx.review_kind ? { review_kind: ctx.review_kind,
+        rubric_version: ctx.rubric_version || '', dimensions_checked: ctx.dimensions_checked || [] } : {}),
       ...(parsed ? {} : { error: (r && r.error) || 'unknown', finish: (r && r.finish) || '' }),
     })
     return parsed
@@ -1347,7 +1350,16 @@ ${evidence || '(无证据可用)'}
     // ① GWT：审计读共享快照的 goal 与证据（与控制回合/Critic 同源）
     const snap = workspaceSnapshot(s)
     for (let round = 0; round < rounds; round++) {
-      const out = await callLLM(AUDIT_PROMPT(snap.goal, trail, evidLog), 600, cfg.auditTimeoutMs, { sid: snap.sid, tag: 'audit' })
+      // A1_7：审计员评审可观测性（rubric 版本/检查项随 ctx 进 llm trace）
+      const auditChecks = Array.isArray(AUDIT_RUBRIC?.checks) ? AUDIT_RUBRIC.checks.map((c) => c.id) : []
+      const out = await callLLM(AUDIT_PROMPT(snap.goal, trail, evidLog), 600, cfg.auditTimeoutMs, {
+        sid: snap.sid, tag: 'audit', review_kind: 'audit',
+        rubric_version: AUDIT_RUBRIC?.version || 'builtin', dimensions_checked: auditChecks,
+      })
+      // verdict 专属 trace：证明这次审计真的出了判定（不能只靠"调用过"）
+      trace({ ts: new Date().toISOString(), sid: snap.sid, kind: 'review_verdict', review_kind: 'audit',
+        rubric_version: AUDIT_RUBRIC?.version || 'builtin', dimensions_checked: auditChecks,
+        verdict: out?.verdict || 'PARSE_FAIL', ok: !!out, round })
       if (!out || out.verdict !== 'NEED_EVIDENCE') return out
       if (round === rounds - 1) {
         // 取证轮次用尽仍要证据 → 视为弃权（不介入，记录）
@@ -1395,7 +1407,16 @@ ${(PLANNER_RUBRIC.rules || []).map((r) => `- ${r.requirement}（反例：${r.bad
   async function runPlannerCheck(s) {
     const items = s.pendingPlannerCheck
     if (!Array.isArray(items) || items.length === 0) return null
-    return callLLM(PLANNER_PROMPT(s.initial, items), 400, cfg.plannerCheckTimeoutMs || 90000, { sid: s.sid || '', tag: 'planner' })
+    // A1_7：Planner 评审可观测性
+    const plannerDims = Array.isArray(PLANNER_RUBRIC?.dimensions) ? PLANNER_RUBRIC.dimensions.map((d) => d.id) : []
+    const out = await callLLM(PLANNER_PROMPT(s.initial, items), 400, cfg.plannerCheckTimeoutMs || 90000, {
+      sid: s.sid || '', tag: 'planner', review_kind: 'planner',
+      rubric_version: PLANNER_RUBRIC?.version || 'builtin', dimensions_checked: plannerDims,
+    })
+    trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'review_verdict', review_kind: 'planner',
+      rubric_version: PLANNER_RUBRIC?.version || 'builtin', dimensions_checked: plannerDims,
+      verdict: out?.verdict || 'PARSE_FAIL', ok: !!out })
+    return out
   }
 
   // ── P1 Critic：产物质量评审（异质 rubric；只读产物，不看执行过程）──
@@ -1442,10 +1463,19 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
     // 短期②：异质采样 + 只喂产物/任务/证据，不传 s.trail / 执行者推理链
     // S5-②：Qwen thinking 模型把 token 花在 reasoning_content，500 会被吃光导致 content 空。
     // 实测 max_tokens=100 时 finish=length/content=''，提到 1200 给思维链+JSON 留空间。
-    return callLLM(CRITIC_PROMPT(snap.goal, product, content), cfg.criticMaxTokens ?? 1200, cfg.criticTimeoutMs || 90000, {
+    // A1_7：评审可观测性——把 rubric 版本/维度随 ctx 透传给 trace（不改 callLLM 签名）
+    const criticDims = Array.isArray(CRITIC_RUBRIC?.dimensions) ? CRITIC_RUBRIC.dimensions.map((d) => d.id) : []
+    const out = await callLLM(CRITIC_PROMPT(snap.goal, product, content), cfg.criticMaxTokens ?? 1200, cfg.criticTimeoutMs || 90000, {
       sid: snap.sid, tag: 'critic',
       temperature: cfg.criticTemperature, topK: cfg.criticTopK,
+      review_kind: 'critic', rubric_version: CRITIC_RUBRIC?.version || 'builtin',
+      dimensions_checked: criticDims,
     })
+    // verdict 在 callLLM 之后才产生——补记一条专属 trace，证明评审真的出了判定
+    trace({ ts: new Date().toISOString(), sid: snap.sid, kind: 'review_verdict', review_kind: 'critic',
+      rubric_version: CRITIC_RUBRIC?.version || 'builtin', dimensions_checked: criticDims,
+      verdict: out?.verdict || 'PARSE_FAIL', ok: !!out })
+    return out
   }
 
   async function runCorrector(s) {
