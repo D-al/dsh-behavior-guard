@@ -51,7 +51,18 @@
 - `tools/` 里 43 个分析脚本 + 4 个证据工具（2026-11-20 统计），多数只在需要时被想起；证据工具已有 [README](../tools/evidence/README.md)，其余仍无统一工具目录
 - `config/rubrics/` 的四套 rubric——有代码引用但无文档说明各自何时用
 
-### 3.3 数据/状态文件的归属混乱
+### 3.3 junction 资产的"受控性错位"（2026-11-20 补充）
+- `config/AGENTS.md` 通篇用 `p/bench/xxx`、`bench/critbank.json` 等短路径——它们**不是错误**，
+  而是由 `setup/links.ps1` 建的 7 个 junction（ADR-0016），在**生产工作区 cwd** 建立，不在仓库根目录。
+- **真问题**：这些资产（`D:/Brain/workspace/bench/` 下的 `agentlab.py`/`critbank.json`/`verify_agent.py`
+  等项目实测工具）**在 workspace，不受本仓库版本控制、不随仓库分发**。
+  即：换机器 clone 本仓库后，AGENTS.md 引用的教训库和验证工具**不自动存在**，必须另跑 links.ps1 + 复制 workspace。
+- **影响**：CritBank/agentlab/verify_agent 是"确定性器官"的一部分，却游离在资产主干之外——
+  这是"放错地方"的结构性案例（功能可达，但不可移植/不可审计）。
+- **建议**：把 bench 里**真正是项目资产**的文件（critbank.json、agentlab.py、verify_agent.py、
+  regression_check.py 等）纳入仓库 `bench/` 真身，junction 只作为访问别名；workspace 只留运行产物。
+
+### 3.4 数据/状态文件的归属混乱
 - `docs/_s14_status.json`（看板状态）——已 gitignore ✅
 - 但大量 `_trace.jsonl` 等运行产物在 workspace，lineage 引用它们时路径跨目录
 - 建议：明确 `data/`（运行产物，gitignore）vs `config/`（台账，入库）vs `lineage/`（家谱，入库）三分

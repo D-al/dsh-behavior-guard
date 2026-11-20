@@ -134,6 +134,15 @@
       "authority": "用户'识字率'类比的可复用框架",
       "status": "built",
       "last_verified": "2026-11-20"
+    },
+    {
+      "id": "portability.links_ps1",
+      "kind": "tool",
+      "path": "setup/links.ps1",
+      "when_to_use": "换机器/重装后重建7个junction，使AGENTS.md的p/bench/memory短路径可达",
+      "authority": "A1可移植性核心资产（ADR-0016）",
+      "note": "AGENTS.md通篇依赖它建的junction；但bench下的真实资产在workspace不受版本控制——见ASSET_MAP §3.3",
+      "last_verified": "2026-11-20"
     }
   ]
 }
