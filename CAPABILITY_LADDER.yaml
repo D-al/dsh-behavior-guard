@@ -1,13 +1,3 @@
-# ============================================================
-# CAPABILITY LADDER — agent 自读能力阶梯 / 成长手册（语义镜像）
-# ============================================================
-# ⚠ 本文件是【语义镜像】，供 agent 读完整成长卡片(what/why/benefit/caveats/reflection)。
-# ⚠ 状态真相源在 ROADMAP.md 的 <!-- ROADMAP_GRAPH_BEGIN v1 --> 块内——不要手改本文件的 status。
-# 用户目标：把路线图切成 agent 能自己一步步爬的、可读的形式，让它顺着成长。
-# 设计：docs/GROWTH_CARD_DESIGN_20261120.md；执行器：tools/roadmap_check.py
-# 一致性教训：docs/CONSISTENCY_VERDICT_20261120.md
-# ============================================================
-
 meta:
   schema_version: 1
   generated: '2026-11-20'
@@ -549,10 +539,10 @@ autonomy_rungs:
   deps: []
   risk: low
   autonomous: true
-  status: ready
+  status: done
   verify:
   - kind: file_exists
-    path: bench/test_sids.json
+    path: test_sids.json
   - kind: file_grep
     path: tools/learn_watcher.py
     regex: test_sids|TEST_SIDS
@@ -573,10 +563,21 @@ autonomy_rungs:
   - 黑名单要覆盖 s1/outcome-/budget-*/b7332eb6 等
   - 只过滤不删数据本体（可逆）
   - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
+  - '[C-08] 判据路径必须和文件实际落点一致：bench/ 前缀会被解析到 BENCH_DIR，不是权威仓库根'
   reflection:
   - 过滤后真实数据占比多少？还有哪种假数据没被黑名单抓到？
   - 有没有真实 sid 被误过滤？
   abort_if: 过滤后真实样本<100 行，不足以支撑后续判断
+  claimer: unknown-agent
+  claimed_at: '2026-11-20T04:56:06.145832+00:00'
+  evidence_log:
+  - at: '2026-11-20T05:14:02.333493+00:00'
+    commit: d958a1a
+    checks:
+    - D:\Brain\publish\dsh-behavior-guard\test_sids.json
+    - 13 hits in tools/learn_watcher.py
+    - 13 hits in tools/weakness_miner.py
+    - 13 hits in tools/trace_report.py
 - id: A1
   title: 会记路（机器判据 + dry-run 核验）
   deps:

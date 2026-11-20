@@ -244,8 +244,9 @@ def save_authoritative(data):
     """写回权威块（ROADMAP.md）+ 同步镜像；apply 与 claim 共用。"""
     md = ROADMAP.read_text(encoding='utf-8')
     inner = yaml.safe_dump(data, allow_unicode=True, sort_keys=False)
+    # 用 lambda 返回替换文本：直接传字符串会让 re.sub 把内文里的 \B 等当转义序列（实测 bug）
     new_md = re.sub(re.escape(GRAPH_BEGIN) + r'.*?' + re.escape(GRAPH_END),
-                    GRAPH_BEGIN + '\n' + inner + GRAPH_END, md, flags=re.S)
+                    lambda _m: GRAPH_BEGIN + '\n' + inner + GRAPH_END, md, flags=re.S)
     ROADMAP.write_text(new_md, encoding='utf-8')
     mirror = yaml.safe_load(LADDER.read_text(encoding='utf-8')) if LADDER.exists() else {}
     sm = status_map_of(data)

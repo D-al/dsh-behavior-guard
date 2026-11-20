@@ -13,6 +13,33 @@ BENCH_DIR = os.environ.get('BENCH_DIR') or r'D:\Brain\workspace\bench'
 TRACE = str(Path(BENCH_DIR) / '_trace.jsonl')
 OUT = str(Path(BENCH_DIR) / '_evidence_bundle.json')
 
+# A0 — test SID blacklist (loaded lazily once)
+_TEST_SIDS_CACHE = None
+
+
+def _load_test_sids():
+    """Load test_sids.json; return set() if missing/invalid."""
+    global _TEST_SIDS_CACHE
+    if _TEST_SIDS_CACHE is not None:
+        return _TEST_SIDS_CACHE
+    import json as _json
+    _candidates = [
+        str(Path(__file__).resolve().parent.parent / 'test_sids.json'),
+        str(Path(__file__).resolve().parent / 'test_sids.json'),
+        str(Path(BENCH_DIR) / 'test_sids.json'),
+    ]
+    for _p in _candidates:
+        try:
+            with open(_p, encoding='utf-8') as _f:
+                data = _json.load(_f)
+                sids = set(data.get('sids', []))
+                _TEST_SIDS_CACHE = sids
+                return sids
+        except Exception:
+            continue
+    _TEST_SIDS_CACHE = set()
+    return _TEST_SIDS_CACHE
+
 # 失败签名映射：trace kind/tag → (terminal_cause, criticality, agent_mechanism)
 SIGNATURES = {
     ('llm_failed', 'audit'): ('audit_unavailable', 'high', 'role-llm'),
@@ -29,15 +56,22 @@ SIGNATURES = {
 
 
 def load_rows():
+    """Load trace rows, filtering out test SIDs (A0 blacklist)."""
     if not os.path.exists(TRACE):
         return []
+    _blacklist = _load_test_sids()
     rows = []
     with open(TRACE, encoding='utf-8') as f:
         for line in f:
             try:
-                rows.append(json.loads(line))
+                r = json.loads(line)
             except Exception:
                 continue
+            sid = r.get('sid', '')
+            # Skip if sid starts with any blacklisted prefix or exact match
+            if _blacklist and (sid in _blacklist or any(sid.startswith(prefix) for prefix in _blacklist)):
+                continue
+            rows.append(r)
     return rows
 
 

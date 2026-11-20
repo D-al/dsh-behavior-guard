@@ -41,6 +41,34 @@ REVISIONS = os.path.join(BENCH, '_crit_revisions.json')
 INTERVAL = 30          # 心跳：只查 offset，零新数据时几乎零成本
 CONSOLIDATE_EVERY = 20 # 巩固层：每 20 轮 ≈ 10 分钟跑一次索引/诊断（社区记忆巩固尺度；原为每轮 30s，过密）
 
+# A0 — test SID blacklist (loaded lazily once)
+_TEST_SIDS_CACHE = None
+
+
+def _load_test_sids():
+    """Load test_sids.json; return set() if missing/invalid."""
+    global _TEST_SIDS_CACHE
+    if _TEST_SIDS_CACHE is not None:
+        return _TEST_SIDS_CACHE
+    import json as _json
+    from pathlib import Path as _Path
+    _candidates = [
+        str(_Path(__file__).resolve().parent.parent / 'test_sids.json'),
+        str(_Path(__file__).resolve().parent / 'test_sids.json'),
+        str(_Path(os.environ.get('BENCH_DIR', BENCH)) / 'test_sids.json'),
+    ]
+    for _p in _candidates:
+        try:
+            with open(_p, encoding='utf-8') as _f:
+                data = _json.load(_f)
+                sids = set(data.get('sids', []))
+                _TEST_SIDS_CACHE = sids
+                return sids
+        except Exception:
+            continue
+    _TEST_SIDS_CACHE = set()
+    return _TEST_SIDS_CACHE
+
 SCRIPTS = {
     'crit_decay': [PY, os.path.join(BENCH, 'crit_decay.py')],
     'skill_draft': [PY, os.path.join(BENCH, 'skill_draft.py')],
@@ -237,15 +265,21 @@ def digest_deep_only(state):
 def one_round(state):
     hits, state['pending_offset'] = read_new(PENDING, state.get('pending_offset', 0))
     outcomes, state['outcome_offset'] = read_new(OUTCOME, state.get('outcome_offset', 0))
+    # A0 filter: load blacklist
+    _blacklist = _load_test_sids()
     # trace 全量读（crit_hit 结算需要历史窗口；文件 8MB 轮转前全读成本可接受）
     trace_rows = []
     try:
         with open(TRACE, encoding='utf-8', errors='replace') as f:
             for line in f:
                 try:
-                    trace_rows.append(json.loads(line))
+                    r = json.loads(line)
                 except Exception:
                     pass
+                sid = r.get('sid', '')
+                if _blacklist and (sid in _blacklist or any(sid.startswith(prefix) for prefix in _blacklist)):
+                    continue
+                trace_rows.append(r)
     except Exception:
         pass
 

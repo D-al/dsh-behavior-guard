@@ -1,0 +1,16 @@
+{
+    "_comment": "Test SID blacklist — filtered from all trace/consumer scripts. Do not hand-edit; authority source is CAPABILITY_LADDER.yaml item A0.",
+    "sids": [
+        "s1",
+        "outcome-",
+        "budget-1",
+        "budget-2",
+        "budget-3",
+        "budget-4",
+        "b7332eb6",
+        "r",
+        "fb",
+        "b",
+        "inject-test"
+    ]
+}

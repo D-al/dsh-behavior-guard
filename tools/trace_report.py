@@ -15,20 +15,53 @@ from pathlib import Path
 BENCH_DIR = os.environ.get('BENCH_DIR') or r'D:\Brain\workspace\bench'
 TRACE = str(Path(BENCH_DIR) / '_trace.jsonl')
 
+# A0 — test SID blacklist (loaded lazily once)
+_TEST_SIDS_CACHE = None
+
+
+def _load_test_sids():
+    """Load test_sids.json; return set() if missing/invalid."""
+    global _TEST_SIDS_CACHE
+    if _TEST_SIDS_CACHE is not None:
+        return _TEST_SIDS_CACHE
+    import json as _json
+    _candidates = [
+        str(Path(__file__).resolve().parent.parent / 'test_sids.json'),
+        str(Path(__file__).resolve().parent / 'test_sids.json'),
+        str(Path(BENCH_DIR) / 'test_sids.json'),
+    ]
+    for _p in _candidates:
+        try:
+            with open(_p, encoding='utf-8') as _f:
+                data = _json.load(_f)
+                sids = set(data.get('sids', []))
+                _TEST_SIDS_CACHE = sids
+                return sids
+        except Exception:
+            continue
+    _TEST_SIDS_CACHE = set()
+    return _TEST_SIDS_CACHE
+
 
 def load():
     if not os.path.exists(TRACE):
         print('尚无 trace 记录:', TRACE)
         sys.exit(0)
     rows = []
+    _blacklist = _load_test_sids()
     for line in open(TRACE, encoding='utf-8'):
         line = line.strip()
         if not line:
             continue
         try:
-            rows.append(json.loads(line))
+            r = json.loads(line)
         except json.JSONDecodeError:
             pass
+        sid = r.get('sid', '')
+        # A0 filter: skip blacklisted SIDs
+        if _blacklist and (sid in _blacklist or any(sid.startswith(prefix) for prefix in _blacklist)):
+            continue
+        rows.append(r)
     return rows
 
 
