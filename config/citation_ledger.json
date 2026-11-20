@@ -1077,6 +1077,22 @@
       "note": "论文真实但无失败率数字；66.7%实出自MAST(2503.13657)Fig5(ChatDev success 33.3%)，挂错出处非幻觉。ADR-0011已改挂MAST。",
       "decision_uses": [],
       "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2611.18616",
+      "status": "verified",
+      "real_title": "The Judge Is Not Impartial",
+      "verified_at": "2026-11-21",
+      "decision_uses": [],
+      "note": "子任务WebFetch核实:8模型13760次判断,全部偏袒自家答案Answer Rank Bias+1.22位,有无rubric都存在,称circularity。用于ROADMAP M9分类器同源偏差论证"
+    },
+    {
+      "id": "arxiv:2603.09947",
+      "status": "verified",
+      "real_title": "The Confidence Gate Theorem",
+      "verified_at": "2026-11-21",
+      "decision_uses": [],
+      "note": "子任务WebFetch核实:门控单调改善需rank-alignment/no-inversion;上下文漂移下基于结构性信号(观测计数)的门控违反单调性次数≈随机弃权。用于解释step>=4误判"
     }
   ]
 }
