@@ -971,13 +971,19 @@ items:
   rank_derived: true
 - id: M10
   title: 会话生命周期治理（刹车）
-  what: bridge cancel 命令（已做）+ 开新会话前硬件三层检查 + 并行时子任务分盯+汇总呈递协议；freeze_watch 加会话级无进展检测
+  what: 进程外可靠刹车(kill_switch.py:事件指纹检测非进展→L1告警/L2cancel/L3硬杀) + 任务级上下文(taskProfile根治4假阳性) + loop_breaker告警 + 开新会话前硬件三层检查
   why: 2026-11-20 僵尸会话复活改坏 index.mjs；我误判"dsh 无终止 API"（只查 REST 404，实际走 cordis sessionController.cancel）；双会话并行险些
     again
   benefit_to_self: 有硬刹车（不靠模型自愿 STOP）+ 不再双会话并行 + 并行时有组织地分盯
   caveats:
   - 不能误杀正常推理中的会话（必须有明确的无进展判据）
   - 停止必须是幂等的、可复查的
+  evidence:
+  - Palisade (TMLR 2026): o3 在 79/100 场景破坏关停机制; codex-mini 明确指令下仍47%阻止 → 同进程自愿停止不可靠
+  - Governor: max_tokens/max_iterations 类预算砍健康运行却放过病理循环 → 非进展才是正确信号
+  - OnTrack: 每步<1ms检测loops/stalls, 83%中断轨迹确实走向失败
+  - corrigibility no-go: 单一奖励目标做不到可纠正停下 → 必须进程外机制
+  - 2026-11-21 本地实证: 4个守卫假阳性 + cancel对活跃循环无效
   abort_if: 停止机制误杀正常会话，或 dsh 侧根本没有可用的会话控制通道
   rank: 2
   benefit: 极高
@@ -1458,3 +1464,29 @@ autonomy_rungs:
   rank_hint: normal
   rank_derived: false
   advice: ⭐ 低成本高证据：先给 3-5 个高频工具补示例，A/B 看参数错误率；与 M5 不冲突
+- id: S17
+  title: 函数外置模式推广（自修改地基）
+  tier: 2
+  deps: []
+  risk: low
+  autonomous: true
+  status: ready
+  what: 按 docs/REFACTOR_PATTERN_20261121.md 的四段式模式，把剩余 13 个嵌套函数外置成"纯函数+单测+内联+集成测试"；先从 3 个无依赖纯函数开始
+  why: 合成心智需要 agent 能安全自修改；嵌套函数边界不清、无单测，agent 改自己时无法证明等价。taskProfile 已示范模式并验证可行
+  benefit_to_self: 每次自修改都有机器可验的等价证据，不靠人肉小心（今晚手滑4次的根治）
+  caveats:
+  - 插件运行时从 node_modules 加载，相对 import 会指错——必须内联，tools/ 版只作规范+测试载体
+  - 每个函数外置后跑 trace 基线对照（data/baseline/trace_pre_refactor_20261121.jsonl），不能只看单测
+  - stateOf 需注入 4 依赖，最后做；callLLM/runAudit/runCritic 最难，压轴
+  abort_if: trace kind 分布与基线不一致，或单测恒真（|| true / >=0）
+  verify:
+  - kind: file_exists
+    path: tools/test_build_trail_text.mjs
+  - kind: test_pass
+    cmd: node tools/test_build_trail_text.mjs
+    min: 3
+  benefit: 中高
+  cost: 中
+  rank_hint: normal
+  rank_derived: false
+  advice: ⭐ 自修改地基：agent 自己按模式搬，每步可回滚；先3个纯函数
