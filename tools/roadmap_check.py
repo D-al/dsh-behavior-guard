@@ -119,7 +119,8 @@ def check_one(v, data):
         if kinds == 'test_pass':
             proc = subprocess.run(v['cmd'], shell=True, cwd=ROOT,
                                   capture_output=True, text=True, timeout=300)
-            passes = len(re.findall(r'^PASS', proc.stdout, re.M))
+            # 兼容两种 PASS 输出：裸 'PASS xxx'（test_*.mjs）与 '[PASS  ] ID ...'（本工具 dry-run）
+            passes = len(re.findall(r'^(?:PASS|\[PASS\s*\])', proc.stdout, re.M))
             ok = proc.returncode == 0 and passes >= v.get('min', 1)
             return ok, f'rc={proc.returncode} PASS={passes}'
 

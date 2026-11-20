@@ -19,9 +19,40 @@
 > | 卡片 | 状态 | 完成证据 |
 > |---|---|---|
 > | **A0 数据可信（sid 黑名单）** | ✅ done | 证据见 `evidence_log` + `docs/reflection-A0.md` |
+> | **A1 会记路（机器判据 + dry-run 核验）** | ✅ done | 证据见 `evidence_log` + `docs/reflection-A1.md` |
 > | **A3_5 安全地基（真实 diff + e2e + 回滚）** | ✅ done | 证据见 `evidence_log` + `docs/reflection-A3_5.md` |
+> | **S1 Self-Harness P0-P2** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S1.md` |
+> | **S2 可控遗忘常态化** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S2.md` |
+> | **S3 频次收尾（trace 带 turn/controlTotal）** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S3.md` |
+> | **S4 自适应 A/B** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S4.md` |
+> | **S5 角色失效修复** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S5.md` |
+> | **S6 注入检测** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S6.md` |
+> | **S7 CPU 小模型基准** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S7.md` |
+> | **S8 审计自校准落盘** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S8.md` |
+> | **S9 有状态反馈** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S9.md` |
+> | **M4 注入预算 token 化** | ✅ done | 证据见 `evidence_log` + `docs/reflection-M4.md` |
+> | **M6 安全规则不可覆盖** | ✅ done | 证据见 `evidence_log` + `docs/reflection-M6.md` |
+> | **GWT_FEP_done GWT 共享状态总线 + FEP 预期闭环** | ✅ done | 证据见 `evidence_log` + `docs/reflection-GWT_FEP_done.md` |
+> | **archive_dedup 压缩存档去重** | ✅ done | 证据见 `evidence_log` + `docs/reflection-archive_dedup.md` |
+> | **regression_106 回归审计 106 PASS / 0 FAIL** | ✅ done | 证据见 `evidence_log` + `docs/reflection-regression_106.md` |
+> | **gpu_guard GPU 引擎守护** | ✅ done | 证据见 `evidence_log` + `docs/reflection-gpu_guard.md` |
+> | **watcher_freq3 learn_watcher 频次三层改造** | ✅ done | 证据见 `evidence_log` + `docs/reflection-watcher_freq3.md` |
+> | **rebaseline 路线图重定基线** | ✅ done | 证据见 `evidence_log` + `docs/reflection-rebaseline.md` |
+> | **outcome_all 结果反馈捕获 / 确定性门控 / 三角色 / P0-P2 心智拼图** | ✅ done | 证据见 `evidence_log` + `docs/reflection-outcome_all.md` |
 > | **M1 情景检索进主循环** | ✅ done | 证据见 `evidence_log` + `docs/reflection-M1.md` |
 > | **M8 轨迹 FSM 监控器** | ✅ done | 证据见 `evidence_log` + `docs/reflection-M8.md` |
+> | **S_GWT GWT 共享状态总线** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S_GWT.md` |
+> | **S_FEP FEP 预期闭环** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S_FEP.md` |
+> | **S_SCOPE spec 阈值分类标定** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S_SCOPE.md` |
+> | **S_CRITIC Critic 去同源化** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S_CRITIC.md` |
+> | **S_ARCHIVE 压缩存档去重 + 角色诊断** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S_ARCHIVE.md` |
+> | **S_ROLE 角色失效修复** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S_ROLE.md` |
+> | **S_TRACE trace 上下文字段** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S_TRACE.md` |
+> | **S_SECURITY 安全规则不可覆盖** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S_SECURITY.md` |
+> | **S_REVIEW 有状态反馈环** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S_REVIEW.md` |
+> | **S_INJECT 注入检测规则层** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S_INJECT.md` |
+> | **S_BUDGET 注入预算 token 化** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S_BUDGET.md` |
+> | **S_OUTCOME 结果反馈捕获** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S_OUTCOME.md` |
 > | **下一项** | ⏸ 空 | `--next` 无 autonomous ready 项，剩余需人工开闸 |
 >
 > 机器真相 = [ROADMAP_GRAPH.md](ROADMAP_GRAPH.md)；本表由 `--apply` 自动写，人读与机器不漂移。
@@ -67,15 +98,7 @@ v2.24 同时做了**深度维护**：修 1 个 P0（安全注入被次数闸门�
 > 机器判据/验证方法见 `--card <ID>`；这里只回答"做什么 / 为什么 / 对我有啥好处 / 坑 / 何时停"。
 > ⚠️ 全局铁律（所有卡通用，故不再逐条重复）：说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 ≠ 进程活着。
 
-#### 🟡 排队（backlog）（13 张）
-
-**`A1` 会记路（机器判据 + dry-run 核验）**
-- **做什么**：给路线图补机器判据 + roadmap_check.py dry-run 核验
-- **为什么**：路线图已可机器写回(--apply)，但人工勾选仍占多数，autonomous 地基待补
-- **对 agent 的好处**：我不用等人告诉我"这条做完了没"，跑一次脚本就知道
-- **坑/边界**：对 §7 归档 16 项回测必须 100% PASS、对未完成项 0 误报才准开 --apply；主观 DoD（M5/M7）标 manual-only；判据指向真实产物，过滤测试 sid
-- **做完要反思**：回测里有没有"判据 PASS 但其实没做"的假阳性？；哪些判据太松/太紧，需要调阈值？
-- **何时停**：回测出现假阳性且无法用判据修正
+#### 🟡 排队（backlog）（12 张）
 
 **`A2` 会指路（自动勾选，只写权威源）**
 - **做什么**：roadmap_check.py 自动勾选确定性条目，只写权威源

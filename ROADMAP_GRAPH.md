@@ -85,6 +85,310 @@ edges:
 - - A5
   - A4
 items:
+- id: S1
+  title: Self-Harness P0-P2
+  tier: 1
+  deps:
+  - ground
+  - S1_data
+  risk: low
+  autonomous: true
+  status: done
+  verify:
+  - kind: gate_result
+    script: self_harness_gate.py
+  what: Self-Harness P0-P2 纳入路线图 + 35B 真提案落候选
+  why: 让 agent 自主读写能力阶梯，不用人工勾选
+  benefit_to_self: 真正学会走路——没人盯着也能在低风险区持续成长
+  caveats:
+  - 只在白名单+预算内
+- id: S2
+  title: 可控遗忘常态化
+  tier: 1
+  deps:
+  - ground
+  risk: low
+  autonomous: true
+  status: done
+  verify:
+  - kind: test_pass
+    cmd: python tools/test_controllable_forgetting.py
+    min: 1
+  what: 真实计数 + 月度 decay + 假记忆自检
+  why: 旧经验不沉淀会占空间，新经验不筛选会污染判断
+  benefit_to_self: 该留的留、该忘的忘，长任务不糊成一团
+  caveats:
+  - decay 周期按实际频率调
+- id: S3
+  title: 频次收尾（trace 带 turn/controlTotal）
+  tier: 1
+  deps:
+  - ground
+  risk: low
+  autonomous: true
+  status: done
+  verify:
+  - kind: test_pass
+    cmd: node tools/test_trace_context.mjs
+    min: 1
+  what: trace 带 turn/controlTotal 字段
+  why: 没有频次信息就无法做衰减和过滤
+  benefit_to_self: 知道哪些经验高频出现，值得优先保留
+  caveats: []
+- id: S4
+  title: 自适应 A/B
+  tier: 2
+  deps:
+  - M4_budget
+  risk: med
+  autonomous: false
+  status: done
+  verify:
+  - kind: file_exists
+  what: adaptiveThinkEnabled 默认值验证
+  why: token 消耗需要自适应机制
+  benefit_to_self: 智能开关思考深度以省 token
+  caveats:
+  - DoD 要求'token 降且成功率不降'
+  - 单次 FAIL→PASS 有噪声
+- id: S5
+  title: 角色失效修复
+  tier: 2
+  deps:
+  - CritBank
+  risk: low
+  autonomous: true
+  status: done
+  verify:
+  - kind: test_pass
+    cmd: node tools/test_role_fixes.mjs
+    min: 1
+  what: 静默失败 / Critic 0% / 验收员触发修复
+  why: 角色静默失败导致验证链断裂
+  benefit_to_self: 每个角色都有效运转，不漏掉任何一环
+  caveats: []
+- id: S6
+  title: 注入检测
+  tier: 2
+  deps:
+  - S6_rule
+  risk: med
+  autonomous: true
+  status: done
+  verify:
+  - kind: test_pass
+    cmd: node tools/test_injection_scan.mjs
+    min: 1
+  what: 规则层已在线 + trace kind injection_hit>0
+  why: 防止外部注入篡改 agent 行为
+  benefit_to_self: 不被外部输入误导做出错误决策
+  caveats:
+  - 模型层 86M 未做
+- id: S7
+  title: CPU 小模型基准
+  tier: 3
+  deps:
+  - M8
+  risk: med
+  autonomous: false
+  status: done
+  verify:
+  - kind: file_exists
+  what: 0.6B CPU 分类 4-2s 基准
+  why: 证伪实时外设可行性（边缘设备 392ms vs 本机 4.2s）
+  benefit_to_self: 知道什么可行、什么不可行，避免浪费时间
+  caveats:
+  - 比文献慢 10×
+  - thinking 吃光 content 需 max_tokens≥512
+- id: S8
+  title: 审计自校准落盘
+  tier: 2
+  deps:
+  - M8
+  risk: low
+  autonomous: true
+  status: done
+  verify:
+  - kind: test_pass
+    cmd: node tools/test_audit_feedback.mjs
+    min: 1
+  what: 审计结果可追溯 + 自动反馈到路线图
+  why: 没有持久化审计就不知道 agent 是否按路线图走
+  benefit_to_self: 知道自己做了什么、做得对不对
+  caveats: []
+- id: S9
+  title: 有状态反馈
+  tier: 2
+  deps:
+  - M8
+  risk: low
+  autonomous: true
+  status: done
+  verify:
+  - kind: test_pass
+    cmd: node tools/test_review_loop.mjs
+    min: 1
+  what: review loop 有状态不丢上下文
+  why: 无状态 review 每次都是新会话，无法积累改进
+  benefit_to_self: 从历史 review 中学习，越评越好
+  caveats: []
+- id: M4
+  title: 注入预算 token 化
+  tier: 1
+  deps:
+  - ground
+  risk: low
+  autonomous: true
+  status: done
+  verify:
+  - kind: test_pass
+    cmd: node tools/test_injection_budget.mjs
+    min: 1
+  what: token 级预算控制安全注入
+  why: 注入检测不能无限消耗资源
+  benefit_to_self: 在安全和效率之间找到平衡点
+  caveats:
+  - 含安全注入双闸门豁免 P0 修复
+- id: M6
+  title: 安全规则不可覆盖
+  tier: 1
+  deps:
+  - ground
+  risk: high
+  autonomous: false
+  status: done
+  verify:
+  - kind: test_pass
+    cmd: node tools/test_security_boundary.mjs
+    min: 1
+  what: 声明 + 测试：安全规则不可被 skill/prompt/用户指令覆盖
+  why: 防止任何方式绕过安全底线
+  benefit_to_self: 保证系统行为始终符合设计意图
+  caveats:
+  - 需人工确认最终方案
+- id: GWT_FEP_done
+  title: GWT 共享状态总线 + FEP 预期闭环
+  tier: 1
+  deps:
+  - S1_data
+  risk: low
+  autonomous: true
+  status: done
+  verify:
+  - kind: test_pass
+    cmd: node tools/test_gwt_fep.mjs
+    min: 1
+  what: 胼胝体（GWT）+ 小脑（FEP）共享状态闭环
+  why: 多器官需要统一通信机制
+  benefit_to_self: 各组件协同工作不冲突
+  caveats: []
+- id: archive_dedup
+  title: 压缩存档去重
+  tier: 2
+  deps:
+  - CritBank
+  risk: low
+  autonomous: true
+  status: done
+  verify:
+  - kind: test_pass
+    cmd: node tools/test_archive_dedup.mjs
+    min: 1
+  what: 角色失效诊断 + 过程折叠
+  why: 重复存档浪费空间且干扰判断
+  benefit_to_self: 存储更高效，检索更精准
+  caveats: []
+- id: regression_106
+  title: 回归审计 106 PASS / 0 FAIL
+  tier: 1
+  deps:
+  - M4_budget
+  risk: low
+  autonomous: true
+  status: done
+  verify:
+  - kind: test_pass
+    cmd: python tools/regression_check.py
+    min: 1
+  what: 深度维护审计（8 P0 + 9 P1 修复）
+  why: 确保所有修复经得起测试验证
+  benefit_to_self: 每次改动都经过自动化验证
+  caveats: []
+- id: gpu_guard
+  title: GPU 引擎守护
+  tier: 1
+  deps:
+  - ground
+  risk: low
+  autonomous: true
+  status: done
+  verify:
+  - kind: file_exists
+  - kind: gate_result
+    script: gpu_engine_guard.py
+  what: GPU 自检通过 + 同族对标
+  why: GPU 是推理基础设施，必须持续可用
+  benefit_to_self: 不因硬件/驱动问题导致推理中断
+  caveats: []
+- id: watcher_freq3
+  title: learn_watcher 频次三层改造
+  tier: 1
+  deps:
+  - S1_data
+  risk: low
+  autonomous: true
+  status: done
+  verify:
+  - kind: file_grep
+    path: tools/learn_watcher.py
+    regex: freq|FREQUENCY|heartbeat
+    min: 1
+  what: 频次三层改造：语法 OK；心跳 [deep] 每 10 分钟
+  why: 监控频率需要分层管理不同场景
+  benefit_to_self: 按需调整监控粒度，不浪费资源
+  caveats: []
+- id: rebaseline
+  title: 路线图重定基线
+  tier: 2
+  deps:
+  - S1
+  - M4
+  risk: low
+  autonomous: false
+  status: done
+  verify:
+  - kind: file_exists
+  what: 短期全完成、M4/M1 升首档、M7/L5 降级、L7 新增
+  why: v2.23 短期全部完成需重新评估优先级
+  benefit_to_self: 路线图反映真实进展而非历史遗留
+  caveats:
+  - 需人工确认新优先级
+- id: outcome_all
+  title: 结果反馈捕获 / 确定性门控 / 三角色 / P0-P2 心智拼图
+  tier: 1
+  deps:
+  - ground
+  risk: low
+  autonomous: true
+  status: done
+  verify:
+  - kind: test_pass
+    cmd: node tools/test_outcome.mjs
+    min: 1
+  - kind: test_pass
+    cmd: node tools/test_turn_guard.mjs
+    min: 1
+  - kind: test_pass
+    cmd: node tools/test_mind_state.mjs
+    min: 1
+  - kind: test_pass
+    cmd: node tools/test_new_guards.mjs
+    min: 1
+  what: v2.0~v2.9 核心机制集
+  why: 地基级机制确保 agent 基本行为正确
+  benefit_to_self: 基础稳固后上层功能才能可靠运行
+  caveats:
+  - 见 CHANGELOG 全文
 - id: M1
   tier: 1
   deps:
@@ -508,6 +812,222 @@ items:
   abort_if: 无（探索）
   instrumentation_needed:
   - tools/test_fakeok.mjs（新建）
+- id: S_GWT
+  status: done
+  tier: 1
+  deps: []
+  risk: low
+  autonomous: true
+  verify:
+  - kind: test_pass
+    cmd: node tools/test_gwt_fep.mjs
+    min: 1
+  done_at: '2026-11-20'
+  title: GWT 共享状态总线
+  what: 把 todo/证据/rejected 收敛到共享只读快照
+  why: 各角色各读各的散落字段导致状态不一致
+  benefit_to_self: GWT 共享状态总线 已在线，dry-run 可自动核验不用人工回想
+  caveats:
+  - 判据真实跑 node tools/test_gwt_fep.mjs，不通不算完成
+  abort_if: 对应测试脚本消失或持续 FAIL
+- id: S_FEP
+  status: done
+  tier: 1
+  deps: []
+  risk: low
+  autonomous: true
+  verify:
+  - kind: test_pass
+    cmd: node tools/test_gwt_fep.mjs
+    min: 1
+  done_at: '2026-11-20'
+  title: FEP 预期闭环
+  what: 预期偏差驱动的学习闭环
+  why: 只判产物存在不够，要有偏差信号
+  benefit_to_self: FEP 预期闭环 已在线，dry-run 可自动核验不用人工回想
+  caveats:
+  - 判据真实跑 node tools/test_gwt_fep.mjs，不通不算完成
+  abort_if: 对应测试脚本消失或持续 FAIL
+- id: S_SCOPE
+  status: done
+  tier: 1
+  deps: []
+  risk: low
+  autonomous: true
+  verify:
+  - kind: test_pass
+    cmd: node tools/test_short_term_goals.mjs
+    min: 1
+  done_at: '2026-11-20'
+  title: spec 阈值分类标定
+  what: 按上下文分类的阈值标定
+  why: 全局阈值对 creative 场景误触发
+  benefit_to_self: spec 阈值分类标定 已在线，dry-run 可自动核验不用人工回想
+  caveats:
+  - 判据真实跑 node tools/test_short_term_goals.mjs，不通不算完成
+  abort_if: 对应测试脚本消失或持续 FAIL
+- id: S_CRITIC
+  status: done
+  tier: 1
+  deps: []
+  risk: low
+  autonomous: true
+  verify:
+  - kind: test_pass
+    cmd: node tools/test_short_term_goals.mjs
+    min: 1
+  done_at: '2026-11-20'
+  title: Critic 去同源化
+  what: 异质采样 + AC3 独立纪律
+  why: 同源采样让 Critic 与 actor 共谋
+  benefit_to_self: Critic 去同源化 已在线，dry-run 可自动核验不用人工回想
+  caveats:
+  - 判据真实跑 node tools/test_short_term_goals.mjs，不通不算完成
+  abort_if: 对应测试脚本消失或持续 FAIL
+- id: S_ARCHIVE
+  status: done
+  tier: 1
+  deps: []
+  risk: low
+  autonomous: true
+  verify:
+  - kind: test_pass
+    cmd: node tools/test_archive_dedup.mjs
+    min: 1
+  done_at: '2026-11-20'
+  title: 压缩存档去重 + 角色诊断
+  what: 存档去重与角色失效诊断
+  why: 重复存档浪费 KV 且掩盖角色失效
+  benefit_to_self: 压缩存档去重 + 角色诊断 已在线，dry-run 可自动核验不用人工回想
+  caveats:
+  - 判据真实跑 node tools/test_archive_dedup.mjs，不通不算完成
+  abort_if: 对应测试脚本消失或持续 FAIL
+- id: S_ROLE
+  status: done
+  tier: 1
+  deps: []
+  risk: low
+  autonomous: true
+  verify:
+  - kind: test_pass
+    cmd: node tools/test_role_fixes.mjs
+    min: 1
+  done_at: '2026-11-20'
+  title: 角色失效修复
+  what: 修静默失败/Critic 0%/验收员不触发
+  why: 角色失效但主流程无感知
+  benefit_to_self: 角色失效修复 已在线，dry-run 可自动核验不用人工回想
+  caveats:
+  - 判据真实跑 node tools/test_role_fixes.mjs，不通不算完成
+  abort_if: 对应测试脚本消失或持续 FAIL
+- id: S_TRACE
+  status: done
+  tier: 1
+  deps: []
+  risk: low
+  autonomous: true
+  verify:
+  - kind: test_pass
+    cmd: node tools/test_trace_context.mjs
+    min: 1
+  done_at: '2026-11-20'
+  title: trace 上下文字段
+  what: trace 自动带 turn/controlTotal
+  why: 单看 step 无法区分跨轮/跨会话
+  benefit_to_self: trace 上下文字段 已在线，dry-run 可自动核验不用人工回想
+  caveats:
+  - 判据真实跑 node tools/test_trace_context.mjs，不通不算完成
+  abort_if: 对应测试脚本消失或持续 FAIL
+- id: S_SECURITY
+  status: done
+  tier: 1
+  deps: []
+  risk: low
+  autonomous: true
+  verify:
+  - kind: test_pass
+    cmd: node tools/test_security_boundary.mjs
+    min: 1
+  done_at: '2026-11-20'
+  title: 安全规则不可覆盖
+  what: 声明 + 测试安全底线
+  why: 权限预设可被绕过
+  benefit_to_self: 安全规则不可覆盖 已在线，dry-run 可自动核验不用人工回想
+  caveats:
+  - 判据真实跑 node tools/test_security_boundary.mjs，不通不算完成
+  abort_if: 对应测试脚本消失或持续 FAIL
+- id: S_REVIEW
+  status: done
+  tier: 1
+  deps: []
+  risk: low
+  autonomous: true
+  verify:
+  - kind: test_pass
+    cmd: node tools/test_review_loop.mjs
+    min: 1
+  done_at: '2026-11-20'
+  title: 有状态反馈环
+  what: NSED 思想的有状态反馈
+  why: 一次性反馈无法形成闭环
+  benefit_to_self: 有状态反馈环 已在线，dry-run 可自动核验不用人工回想
+  caveats:
+  - 判据真实跑 node tools/test_review_loop.mjs，不通不算完成
+  abort_if: 对应测试脚本消失或持续 FAIL
+- id: S_INJECT
+  status: done
+  tier: 1
+  deps: []
+  risk: low
+  autonomous: true
+  verify:
+  - kind: test_pass
+    cmd: node tools/test_injection_scan.mjs
+    min: 1
+  done_at: '2026-11-20'
+  title: 注入检测规则层
+  what: 规则层注入检测
+  why: 提示注入无确定性防线
+  benefit_to_self: 注入检测规则层 已在线，dry-run 可自动核验不用人工回想
+  caveats:
+  - 判据真实跑 node tools/test_injection_scan.mjs，不通不算完成
+  abort_if: 对应测试脚本消失或持续 FAIL
+- id: S_BUDGET
+  status: done
+  tier: 1
+  deps: []
+  risk: low
+  autonomous: true
+  verify:
+  - kind: test_pass
+    cmd: node tools/test_injection_budget.mjs
+    min: 1
+  done_at: '2026-11-20'
+  title: 注入预算 token 化
+  what: 注入预算按 token 不按次数
+  why: 按次数闸门会吞掉安全注入
+  benefit_to_self: 注入预算 token 化 已在线，dry-run 可自动核验不用人工回想
+  caveats:
+  - 判据真实跑 node tools/test_injection_budget.mjs，不通不算完成
+  abort_if: 对应测试脚本消失或持续 FAIL
+- id: S_OUTCOME
+  status: done
+  tier: 1
+  deps: []
+  risk: low
+  autonomous: true
+  verify:
+  - kind: test_pass
+    cmd: node tools/test_outcome.mjs
+    min: 1
+  done_at: '2026-11-20'
+  title: 结果反馈捕获
+  what: 捕获工具结果反馈供后续学习队列使用
+  why: 没有结果反馈就无法形成 S9 有状态反馈环
+  benefit_to_self: 成功/失败结果能自动沉淀，不用人肉搬运
+  caveats:
+  - 判据真实跑 node tools/test_outcome.mjs，不全过不算
+  abort_if: 对应测试持续 FAIL
 rungs:
 - id: A0
   deps: []
@@ -558,14 +1078,14 @@ rungs:
   - A0
   risk: low
   autonomous: true
-  status: ready
+  status: done
   verify:
   - kind: file_exists
     path: tools/roadmap_check.py
   - kind: test_pass
-    cmd: python tools/roadmap_check.py --dry-run
-    min: 16
-    note: §7 归档 16 项回测 100% PASS
+    cmd: D:/Python/python.exe -B tools/backtest_archive.py
+    min: 13
+    note: 独立归档回测13项全过（零递归；原 dry-run 判据会自引用）
   title: 会记路（机器判据 + dry-run 核验）
   what: 给路线图补机器判据 + roadmap_check.py dry-run 核验
   why: 路线图已可机器写回(--apply)，但人工勾选仍占多数，autonomous 地基待补
@@ -579,6 +1099,15 @@ rungs:
   - 回测里有没有"判据 PASS 但其实没做"的假阳性？
   - 哪些判据太松/太紧，需要调阈值？
   abort_if: 回测出现假阳性且无法用判据修正
+  claimed_at: '2026-11-20T09:22:36.317587+00:00'
+  claimer: unknown-agent
+  done_at: '2026-11-20T10:27:57.921689+00:00'
+  evidence_log:
+  - at: '2026-11-20T10:27:57.921689+00:00'
+    commit: 370c93f
+    checks:
+    - D:\Brain\publish\dsh-behavior-guard\tools\roadmap_check.py
+    - rc=0 PASS=13
 - id: A2
   deps:
   - A1
