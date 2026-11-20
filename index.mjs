@@ -1921,6 +1921,48 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
           if (cfg.bdiEnabled && s.bdi?.goal && s.bdi.goal !== String(s.latest).slice(0, 250)) {
             parts.push('⑥ 用户意图（BDI）：' + String(s.bdi.goal).slice(0, 90) + '（状态卡持续维护，不因上下文压缩丢失）')
           }
+          // ── M8 FSM_SIGNAL 局部失败预警（SURF-FSM-SIGNAL 白名单：只读 signal + trace 埋点 + prompt 文案）──
+          if (cfg.fsmSignalEnabled) {
+            try {
+              const trail = Array.isArray(s.trail) ? s.trail : []
+              let repeats = 0, failStreak = 0, pathMisses = 0, errorCount = 0
+              let productiveAfterFail = false
+              for (let i = Math.max(0, trail.length - 8); i < trail.length; i++) {
+                const e = trail[i]
+                if (!e || !e.name) continue
+                if (e.kind === 'call') {
+                  const t = e.target || ''
+                  if (t && t.length > 3 && e.name === s._fsmLastTool && t === s._fsmLastTarget) {
+                    repeats++
+                  } else {
+                    repeats = Math.max(0, repeats - 1)
+                  }
+                  s._fsmLastTool = e.name
+                  s._fsmLastTarget = t
+                  if (e.status === 'OK') failStreak = 0
+                } else if (e.kind === 'result') {
+                  if ((e.status || '').toUpperCase() === 'FAIL' || /\berror\b/i.test(String(e.outChars || ''))) {
+                    failStreak++
+                    errorCount++
+                    if (typeof e.outChars === 'number' && e.outChars < 100) pathMisses++
+                  } else if (e.status === 'OK') {
+                    if (['write', 'edit', 'present'].includes(e.name)) productiveAfterFail = true
+                    failStreak = Math.max(0, failStreak - 1)
+                    if (['glob', 'grep', 'read'].includes(e.name)) pathMisses = Math.max(0, pathMisses - 2)
+                  }
+                }
+              }
+              const severity = Math.min((repeats * 0.15) + (failStreak * 0.15) + (pathMisses * 0.15), 0.45) + (errorCount > 0 && !productiveAfterFail ? 0.10 : 0)
+              if (severity >= 0.40) {
+                const msgs = []
+                if (repeats >= 3) msgs.push('重复探测×' + repeats)
+                if (failStreak >= 2) msgs.push('连续失败×' + failStreak)
+                if (pathMisses >= 2) msgs.push('路径未命中×' + pathMisses)
+                parts.push('⚠️ FSM_SIGNAL: [' + msgs.join(', ') + '] 建议换工具或改方向，避免卡死循环。')
+                trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'FSM_SIGNAL', step: s.step, severity: parseFloat(severity.toFixed(2)), signal: msgs.join(',') })
+              }
+            } catch { /* ignore */ }
+          }
           // ── 短期③：test-time 自适应（DART 双信号一致性路由，纯 prompt 零 LLM）──
           // 两个独立信号一致判"简单"：MTP draft acceptance 高（模型不犹豫）且本轮无失败。
           // 简单题直接执行、跳过长思考；否则保持展开。trace 记录路由决策供 token 对照。

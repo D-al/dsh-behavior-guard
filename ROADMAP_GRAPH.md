@@ -141,7 +141,7 @@ items:
   - S1_data
   risk: low
   autonomous: true
-  status: ready
+  status: done
   verify:
   - kind: file_exists
     path: tools/eval_fsm.py
@@ -169,6 +169,16 @@ items:
   abort_if: held-out AUROC<0.85 反复达不到，或预警侵入运行时注入通道
   instrumentation_needed:
   - tools/eval_fsm.py（新建）+ _fsm_eval.json
+  claimed_at: '2026-11-20T09:17:57.235651+00:00'
+  claimer: unknown-agent
+  done_at: '2026-11-20T09:17:57.571459+00:00'
+  evidence_log:
+  - at: '2026-11-20T09:17:57.571459+00:00'
+    commit: ea05cb9
+    checks:
+    - D:\Brain\publish\dsh-behavior-guard\tools\eval_fsm.py
+    - heldout_auc=0.8927 >= 0.85
+    - 3 hits in index.mjs
 - id: M3
   tier: 2
   deps:

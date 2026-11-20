@@ -21,7 +21,8 @@
 > | **A0 数据可信（sid 黑名单）** | ✅ done | 证据见 `evidence_log` + `docs/reflection-A0.md` |
 > | **A3_5 安全地基（真实 diff + e2e + 回滚）** | ✅ done | 证据见 `evidence_log` + `docs/reflection-A3_5.md` |
 > | **M1 情景检索进主循环** | ✅ done | 证据见 `evidence_log` + `docs/reflection-M1.md` |
-> | **下一项** | 🟢 M8 | `M8` 已 ready，可 `--claim` |
+> | **M8 轨迹 FSM 监控器** | ✅ done | 证据见 `evidence_log` + `docs/reflection-M8.md` |
+> | **下一项** | ⏸ 空 | `--next` 无 autonomous ready 项，剩余需人工开闸 |
 >
 > 机器真相 = [ROADMAP_GRAPH.md](ROADMAP_GRAPH.md)；本表由 `--apply` 自动写，人读与机器不漂移。
 <!-- HUMAN_PROGRESS_END -->
@@ -65,16 +66,6 @@ v2.24 同时做了**深度维护**：修 1 个 P0（安全注入被次数闸门�
 > 语义来自 CAPABILITY_LADDER.yaml，状态来自 ROADMAP_GRAPH.md；本块每次 `--apply` 自动重写。
 > 机器判据/验证方法见 `--card <ID>`；这里只回答"做什么 / 为什么 / 对我有啥好处 / 坑 / 何时停"。
 > ⚠️ 全局铁律（所有卡通用，故不再逐条重复）：说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 ≠ 进程活着。
-
-#### 🟢 可开干（ready）（1 张）
-
-**`M8` 轨迹 FSM 监控器**
-- **做什么**：把 8147 行 trace 压成 FSM，做局部失败预测（重复探测/路径解析/工具报错）
-- **为什么**：长轨迹因果归因交主模型只有 0.56≈随机；但局部可观察信号（FSM）实测 AUROC 0.94，是可靠的前置预警
-- **对 agent 的好处**：能在卡住的早期就知道"这个模式会导致失败"，提前换路，不用烧完 10 步才发现
-- **坑/边界**：只做局部信号，别碰长轨迹因果归因（Jev 实测≈随机）；判据产物 eval_fsm.py/_fsm_eval.json 由本任务自己生成；AUROC<0.85 不算完成，别降标准
-- **做完要反思**：FSM 预警的误报是什么模式？误报比漏报更伤吗？；哪些失败签名是 FSM 抓不到、必须交主模型的？
-- **何时停**：held-out AUROC<0.85 反复达不到，或预警侵入运行时注入通道
 
 #### 🟡 排队（backlog）（13 张）
 
