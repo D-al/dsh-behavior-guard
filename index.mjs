@@ -1467,7 +1467,13 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
     try {
       const st = statSync(product, { throwIfNoEntry: false })
       if (!st || !st.isFile()) return null
-      content = readFileSync(product, 'utf8').slice(0, 3000)
+      // 2026-11-21 生产实证：AGENTS.md 的 input_examples 在第205行(>3000字符)，
+      // Critic 只读前3000字符 → 看不到新增段落 → 误判"未添加"→ 2次REJECT死循环。
+      // 提到 12000（配置/文档类产物常见长度）；更大的文件靠 present 时指定关键段落。
+      const raw = readFileSync(product, 'utf8')
+      content = raw.length > 12000
+        ? raw.slice(0, 4000) + '\n…[中段省略 ' + (raw.length - 8000) + ' 字符]…\n' + raw.slice(-4000)
+        : raw
     } catch {
       return null
     }
