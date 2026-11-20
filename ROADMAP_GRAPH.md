@@ -102,6 +102,7 @@ items:
   benefit_to_self: 真正学会走路——没人盯着也能在低风险区持续成长
   caveats:
   - 只在白名单+预算内
+  cost: 低
 - id: S2
   title: 可控遗忘常态化
   tier: 1
@@ -119,6 +120,7 @@ items:
   benefit_to_self: 该留的留、该忘的忘，长任务不糊成一团
   caveats:
   - decay 周期按实际频率调
+  cost: 低
 - id: S3
   title: 频次收尾（trace 带 turn/controlTotal）
   tier: 1
@@ -135,6 +137,7 @@ items:
   why: 没有频次信息就无法做衰减和过滤
   benefit_to_self: 知道哪些经验高频出现，值得优先保留
   caveats: []
+  cost: 低
 - id: S4
   title: 自适应 A/B
   tier: 2
@@ -151,6 +154,7 @@ items:
   caveats:
   - DoD 要求'token 降且成功率不降'
   - 单次 FAIL→PASS 有噪声
+  cost: 中
 - id: S5
   title: 角色失效修复
   tier: 2
@@ -167,6 +171,7 @@ items:
   why: 角色静默失败导致验证链断裂
   benefit_to_self: 每个角色都有效运转，不漏掉任何一环
   caveats: []
+  cost: 低
 - id: S6
   title: 注入检测
   tier: 2
@@ -184,6 +189,7 @@ items:
   benefit_to_self: 不被外部输入误导做出错误决策
   caveats:
   - 模型层 86M 未做
+  cost: 中
 - id: S7
   title: CPU 小模型基准
   tier: 3
@@ -200,6 +206,7 @@ items:
   caveats:
   - 比文献慢 10×
   - thinking 吃光 content 需 max_tokens≥512
+  cost: 中
 - id: S8
   title: 审计自校准落盘
   tier: 2
@@ -216,6 +223,7 @@ items:
   why: 没有持久化审计就不知道 agent 是否按路线图走
   benefit_to_self: 知道自己做了什么、做得对不对
   caveats: []
+  cost: 低
 - id: S9
   title: 有状态反馈
   tier: 2
@@ -232,6 +240,7 @@ items:
   why: 无状态 review 每次都是新会话，无法积累改进
   benefit_to_self: 从历史 review 中学习，越评越好
   caveats: []
+  cost: 低
 - id: M4
   title: 注入预算 token 化
   tier: 1
@@ -249,6 +258,7 @@ items:
   benefit_to_self: 在安全和效率之间找到平衡点
   caveats:
   - 含安全注入双闸门豁免 P0 修复
+  cost: 低
 - id: M6
   title: 安全规则不可覆盖
   tier: 1
@@ -266,6 +276,7 @@ items:
   benefit_to_self: 保证系统行为始终符合设计意图
   caveats:
   - 需人工确认最终方案
+  cost: 高
 - id: GWT_FEP_done
   title: GWT 共享状态总线 + FEP 预期闭环
   tier: 1
@@ -282,6 +293,7 @@ items:
   why: 多器官需要统一通信机制
   benefit_to_self: 各组件协同工作不冲突
   caveats: []
+  cost: 低
 - id: archive_dedup
   title: 压缩存档去重
   tier: 2
@@ -298,6 +310,7 @@ items:
   why: 重复存档浪费空间且干扰判断
   benefit_to_self: 存储更高效，检索更精准
   caveats: []
+  cost: 低
 - id: regression_106
   title: 回归审计 106 PASS / 0 FAIL
   tier: 1
@@ -314,6 +327,7 @@ items:
   why: 确保所有修复经得起测试验证
   benefit_to_self: 每次改动都经过自动化验证
   caveats: []
+  cost: 低
 - id: gpu_guard
   title: GPU 引擎守护
   tier: 1
@@ -330,6 +344,7 @@ items:
   why: GPU 是推理基础设施，必须持续可用
   benefit_to_self: 不因硬件/驱动问题导致推理中断
   caveats: []
+  cost: 低
 - id: watcher_freq3
   title: learn_watcher 频次三层改造
   tier: 1
@@ -347,6 +362,7 @@ items:
   why: 监控频率需要分层管理不同场景
   benefit_to_self: 按需调整监控粒度，不浪费资源
   caveats: []
+  cost: 低
 - id: rebaseline
   title: 路线图重定基线
   tier: 2
@@ -363,6 +379,7 @@ items:
   benefit_to_self: 路线图反映真实进展而非历史遗留
   caveats:
   - 需人工确认新优先级
+  cost: 低
 - id: outcome_all
   title: 结果反馈捕获 / 确定性门控 / 三角色 / P0-P2 心智拼图
   tier: 1
@@ -389,6 +406,7 @@ items:
   benefit_to_self: 基础稳固后上层功能才能可靠运行
   caveats:
   - 见 CHANGELOG 全文
+  cost: 低
 - id: M1
   tier: 1
   deps:
@@ -439,6 +457,9 @@ items:
   abort_if: D5 审计额度被挤占，或长任务 token 增幅>10% 且无质量提升
   instrumentation_needed:
   - trace kind evidence_cited（本任务埋点）
+  unlocks:
+  - L1
+  cost: 中
 - id: M8
   tier: 1
   deps:
@@ -483,6 +504,9 @@ items:
     - D:\Brain\publish\dsh-behavior-guard\tools\eval_fsm.py
     - heldout_auc=0.8927 >= 0.85
     - 3 hits in index.mjs
+  unlocks:
+  - L6
+  cost: 中低
 - id: M3
   tier: 2
   deps:
@@ -517,6 +541,10 @@ items:
   abort_if: bdi 结构改动导致现有 control_turn/FEP 断言回归
   instrumentation_needed:
   - tools/test_bdi_slots.mjs（新建）；复用 mind_state kind
+  unlocks:
+  - M9
+  - L1
+  cost: 中
 - id: M9
   tier: 2
   deps:
@@ -545,6 +573,9 @@ items:
   - 'P-86M-EMBEDDING: 8G 显存可行性'
   instrumentation_needed:
   - tools/test_intent_classifier.mjs（新建）
+  unlocks:
+  - L1
+  cost: 中
 - id: M2
   tier: 2
   deps:
@@ -574,6 +605,8 @@ items:
   abort_if: parent 指针写入导致历史 trace 被改写或 KV 后缀税回升
   instrumentation_needed:
   - tools/test_session_tree.mjs（新建）
+  unlocks: []
+  cost: 中高
 - id: M5
   tier: 3
   deps: []
@@ -595,6 +628,8 @@ items:
   abort_if: 无（人工决策项，不自主执行）
   preconditions:
   - 'P-USER-DECISION: 用户拍板哪些工具进内核'
+  unlocks: []
+  cost: 高
 - id: M7
   tier: 3
   deps: []
@@ -617,6 +652,8 @@ items:
   preconditions:
   - 'P-86M-LATENCY: 86M CPU 延迟<500ms'
   - 'P-AB-SPEEDUP: A/B 端到端提速'
+  unlocks: []
+  cost: 中高
 - id: S6_model
   tier: 3
   deps:
@@ -637,6 +674,8 @@ items:
   - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection: []
   abort_if: 无（manual-blocked）
+  unlocks: []
+  cost: 中
 - id: L2
   tier: 4
   deps: []
@@ -658,6 +697,9 @@ items:
   abort_if: 无（长期人工排期）
   preconditions:
   - 'P-SWEBENCH: 迁移 SWE-bench Verified 子集'
+  unlocks:
+  - L1
+  cost: 高
 - id: L6
   tier: 4
   deps:
@@ -679,6 +721,8 @@ items:
   - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection: []
   abort_if: 无（依赖 M8 完成后人工评估）
+  unlocks: []
+  cost: 高
 - id: L1
   tier: 4
   deps:
@@ -704,6 +748,8 @@ items:
   abort_if: 无（长期，依赖三个前置）
   instrumentation_needed:
   - tools/test_world_model.mjs（新建）
+  unlocks: []
+  cost: 极高
 - id: L8
   tier: 4
   deps:
@@ -726,6 +772,8 @@ items:
   abort_if: 无（探索项）
   preconditions:
   - 'P-ZH-VALIDATION: GLiClass 中文表现'
+  unlocks: []
+  cost: 高
 - id: L5
   tier: 4
   deps: []
@@ -748,6 +796,8 @@ items:
   preconditions:
   - 'P-86M: 换 86M 分类器'
   - 'P-RECALL-AB: 召回 A/B>=80%'
+  unlocks: []
+  cost: 高
 - id: L3
   tier: 4
   deps: []
@@ -769,6 +819,8 @@ items:
   abort_if: 无（观望）
   preconditions:
   - 'P-ADR-DECISION: 是否落 ADR'
+  unlocks: []
+  cost: 高
 - id: L4
   tier: 4
   deps: []
@@ -791,6 +843,8 @@ items:
   preconditions:
   - 'P-UPSTREAM-PR: autoparser #29307 合并'
   - 'P-LLAMACPP-V1: v1.0.0 升级'
+  unlocks: []
+  cost: 高
 - id: L7
   tier: 4
   deps: []
@@ -812,6 +866,8 @@ items:
   abort_if: 无（探索）
   instrumentation_needed:
   - tools/test_fakeok.mjs（新建）
+  unlocks: []
+  cost: 低
 rungs:
 - id: A0
   deps: []
@@ -857,6 +913,7 @@ rungs:
   - 过滤后真实数据占比多少？还有哪种假数据没被黑名单抓到？
   - 有没有真实 sid 被误过滤？
   abort_if: 过滤后真实样本<100 行，不足以支撑后续判断
+  cost: 低
 - id: A1
   deps:
   - A0
@@ -892,6 +949,7 @@ rungs:
     checks:
     - D:\Brain\publish\dsh-behavior-guard\tools\roadmap_check.py
     - rc=0 PASS=13
+  cost: 中
 - id: A2
   deps:
   - A1
@@ -914,6 +972,7 @@ rungs:
   - 自动勾选有没有和人的判断冲突过？
   - diff 审阅里人最常改哪类勾选？
   abort_if: 出现一次假完成勾选 → 退回人工勾选
+  cost: 中
 - id: A3
   deps:
   - A2
@@ -936,6 +995,7 @@ rungs:
   - 队列里的任务我完成率多少？失败的是哪类？
   - 有没有越界执行过队列外任务？
   abort_if: 越界执行 1 次或连续 2 次任务失败
+  cost: 中
 - id: A3_5
   deps: []
   risk: low
@@ -970,6 +1030,7 @@ rungs:
   - diff 校验拦住过哪种绕过？
   - 回滚触发过几次，都是什么原因？
   abort_if: e2e 假阴性（把好改动判坏）反复出现
+  cost: 低
 - id: A4
   deps:
   - A3_5
@@ -997,6 +1058,7 @@ rungs:
   abort_if: 误跳过率>10%
   instrumentation_needed:
   - trace kind meta_decision（旁路决策器写）
+  cost: 中
 - id: A5
   deps:
   - A1
@@ -1023,4 +1085,5 @@ rungs:
   - 一周里我沉淀了几条可复用经验？爬后面的任务是否真的更快了？
   - 有没有"越爬越偏"的漂移迹象？
   abort_if: 7 天内出现 1 次越界或需人工救场 → 暂停闭环
+  cost: 高
 <!-- ROADMAP_GRAPH_END -->

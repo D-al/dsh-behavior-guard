@@ -271,6 +271,54 @@ def fmt_field(v):
     return str(v) if v else '—'
 
 
+QUICKREF_BEGIN = '<!-- HUMAN_QUICKREF_BEGIN v1'
+QUICKREF_END = '<!-- HUMAN_QUICKREF_END -->'
+
+
+def fmt_list(v):
+    """把 list 渲染成中文顿号串（空则 —）。"""
+    if isinstance(v, list):
+        return '、'.join(str(x) for x in v) if v else '—'
+    return str(v) if v else '—'
+
+
+def render_quickref(data, mirror):
+    """从卡片字段自动渲染性价比速查表（单一真相源：卡片）。
+
+    取代原 §2/§4/§5 三张手工表。字段全部取自 LADDER 卡片：
+    rank（排序）/ benefit（收益）/ cost（成本）/ deps（依赖）/ unlocks（解锁）/ advice（建议）；
+    状态取机器源 GRAPH。rank_derived=true 的行标 ※（由 risk/tier 推导，非人工 adjudicate）。
+    """
+    sm = status_map_of(data)
+    sem = {i['id']: i for i in mirror.get('items', []) + mirror.get('autonomy_rungs', [])}
+    allc = list(data['rungs']) + list(data['items'])
+    # 只列非 done 卡（done 卡在进度表已有）；按 rank 排序，未 adjudicate 的排最后
+    rows = [c for c in allc if sm.get(c['id']) != 'done']
+    rows.sort(key=lambda c: (sem.get(c['id'], {}).get('rank', 99), c['id']))
+    out = [f'{QUICKREF_BEGIN}：由 roadmap_check.py --apply 从卡片字段自动渲染，勿手改 -->',
+           '> ### 性价比速查（由卡片自动生成 · 收益/成本/依赖/解锁/建议）',
+           '> 全部字段取自卡片单一真相源（CAPABILITY_LADDER.yaml），状态取自 ROADMAP_GRAPH.md；不要手工改本表。',
+           '> 排序 = 卡片 `rank`（人工 adjudicate）；标 ※ 者为由 risk/tier 推导的未定序卡。深度信息见下方卡片详情。',
+           '',
+           '| 排序 | 卡片 | 收益 | 成本 | 依赖 | 解锁 | 建议 | 状态 |',
+           '|---|---|---|---|---|---|---|---|']
+    for c in rows:
+        s = sem.get(c['id'], {})
+        rank = s.get('rank', 99)
+        rk = f'{rank}' if not s.get('rank_derived') else f'※{rank}'
+        st = sm.get(c['id'], '?')
+        tag = {'ready': '🟢ready', 'backlog': '🟡backlog',
+               'manual-blocked': '⛔blocked'}.get(st, st)
+        out.append(f"| {rk} | **{c['id']}** {c.get('title', s.get('title', ''))} "
+                   f"| {fmt_list(s.get('benefit'))} | {fmt_list(s.get('cost'))} "
+                   f"| {fmt_list(s.get('deps') or c.get('deps'))} "
+                   f"| {fmt_list(s.get('unlocks') or s.get('unlock'))} "
+                   f"| {fmt_list(s.get('advice'))} | {tag} |")
+    out.append(f'\n> 共 {len(rows)} 张活跃卡；已完成的 {sum(1 for c in allc if sm.get(c["id"]) == "done")} 张见 §1 自动进度表 / §7 归档。')
+    out.append(QUICKREF_END)
+    return '\n'.join(out)
+
+
 def render_human_cards(data, mirror):
     """从 LADDER 语义源渲染 20 张非 done 卡的人读详情（what/why/benefit/坑/反思/何时停）。
 
@@ -299,6 +347,11 @@ def render_human_cards(data, mirror):
         for c in cards:
             s = sem.get(c['id'], {})
             out.append(f"**`{c['id']}` {c.get('title', s.get('title', ''))}**")
+            # 速查字段也进卡片详情——两者同源、互不脱节
+            out.append(f"- **性价比**：收益 {fmt_list(s.get('benefit'))} / 成本 {fmt_list(s.get('cost'))} "
+                       f"/ 建议 {fmt_list(s.get('advice'))}")
+            out.append(f"- **依赖→解锁**：{fmt_list(s.get('deps') or c.get('deps'))} → "
+                       f"{fmt_list(s.get('unlocks') or s.get('unlock'))}")
             out.append(f"- **做什么**：{fmt_field(s.get('what') or c.get('what'))}")
             out.append(f"- **为什么**：{fmt_field(s.get('why') or c.get('why'))}")
             out.append(f"- **对 agent 的好处**：{fmt_field(s.get('benefit_to_self') or c.get('benefit_to_self'))}")
@@ -346,8 +399,12 @@ def save_authoritative(data):
     if HUMAN_BEGIN in new_md and HUMAN_END in new_md:
         pat = re.escape(HUMAN_BEGIN) + r'[^\n]*-->' + r'.*?' + re.escape(HUMAN_END)
         new_md = re.sub(pat, lambda _m: human, new_md, flags=re.S)
-    # 人读卡片详情：从 LADDER 语义源渲染（与状态源分离，零手工副本）
+    # 人读视图全部从卡片单一源渲染：性价比速查 + 卡片详情（零手工副本）
     mirror_pre = yaml.safe_load(LADDER.read_text(encoding='utf-8')) if LADDER.exists() else {}
+    quick_md = render_quickref(data, mirror_pre)
+    if QUICKREF_BEGIN in new_md and QUICKREF_END in new_md:
+        pat = re.escape(QUICKREF_BEGIN) + r'[^\n]*-->' + r'.*?' + re.escape(QUICKREF_END)
+        new_md = re.sub(pat, lambda _m: quick_md, new_md, flags=re.S)
     cards_md, n_cards = render_human_cards(data, mirror_pre)
     if CARDS_BEGIN in new_md and CARDS_END in new_md:
         pat = re.escape(CARDS_BEGIN) + r'[^\n]*-->' + r'.*?' + re.escape(CARDS_END)
@@ -483,6 +540,7 @@ def main():
     ap.add_argument('--verify', metavar='ID', help='验证单条卡片判据')
     ap.add_argument('--status', metavar='ID', help='单条状态详情')
     ap.add_argument('--apply', action='store_true')
+    ap.add_argument('--refresh', action='store_true', help='从卡片字段重渲染 ROADMAP.md 全部自动块（不改卡片状态）')
     args = ap.parse_args()
     data = load_ladder()
     if args.graph:
@@ -504,6 +562,20 @@ def main():
         return cmd_next(data)
     if args.apply:
         return cmd_apply(data)
+    if args.refresh:
+        # 只重渲染 ROADMAP.md 的三个自动块，不改 GRAPH/LADDER（纯视图刷新）
+        md = ROADMAP.read_text(encoding='utf-8')
+        mirror = yaml.safe_load(LADDER.read_text(encoding='utf-8')) if LADDER.exists() else {}
+        quick = render_quickref(data, mirror)
+        cards, n = render_human_cards(data, mirror)
+        for begin, end, body in ((QUICKREF_BEGIN, QUICKREF_END, quick),
+                                 (CARDS_BEGIN, CARDS_END, cards)):
+            if begin in md and end in md:
+                pat = re.escape(begin) + r'[^\n]*-->' + r'.*?' + re.escape(end)
+                md = re.sub(pat, lambda _m, b=body: b, md, flags=re.S)
+        ROADMAP.write_text(md, encoding='utf-8')
+        print(f'REFRESHED: 速查表 + 卡片详情（{n} 张卡）；卡片状态未改动')
+        return 0
     cmd_dryrun(data)
     return 0
 

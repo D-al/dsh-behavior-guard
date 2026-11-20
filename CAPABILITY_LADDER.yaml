@@ -103,7 +103,7 @@ items:
     sid_filter: exclude_tests
     min: 1
     note: 埋点后真实会话跑一次
-  unlock:
+  unlock: &id001
   - L1
   human_note: 原 DoD'被主动引用>0次'是主观的；改造为可机读埋点后再验，埋点本身属本任务交付
   what: 把离线 es.exe 检索接进控制回合，长任务里自动注入 top-3 历史经验
@@ -129,6 +129,12 @@ items:
     - 1 hits in index.mjs
     - 1 hits in index.mjs
     - evidence_cited=1 (real sid)
+  benefit: 高
+  cost: 中
+  advice: ✅ **已完成**（v2.26.5，见 §7）
+  rank: 1
+  rank_derived: false
+  unlocks: *id001
 - id: M8
   title: 轨迹 FSM 监控器
   tier: 1
@@ -150,7 +156,7 @@ items:
     path: index.mjs
     regex: fsm.*signal|FSM_SIGNAL
     min: 1
-  unlock:
+  unlock: &id002
   - L6
   human_note: AUROC 判据需新建 eval_fsm.py；本机纯统计无显存
   what: 把 8147 行 trace 压成 FSM，做局部失败预测（重复探测/路径解析/工具报错）
@@ -176,6 +182,12 @@ items:
     - D:\Brain\publish\dsh-behavior-guard\tools\eval_fsm.py
     - heldout_auc=0.8927 >= 0.85
     - 3 hits in index.mjs
+  benefit: 高
+  cost: 中低
+  advice: ✅ **已完成**（v2.26.6）：heldout_auc=0.8927，`FSM_SIGNAL` 已接入
+  rank: 2
+  rank_derived: false
+  unlocks: *id002
 - id: M3
   title: 用户意图 BDI 三槽
   tier: 2
@@ -198,7 +210,7 @@ items:
     sid_filter: exclude_tests
     min: 1
     note: BDI 三槽写进现有 mind_state kind，不新造 kind
-  unlock:
+  unlock: &id003
   - M9
   - L1
   human_note: 改 index.mjs 的 bdi 状态结构，需人工确认（非白名单细粒度 target）
@@ -216,6 +228,12 @@ items:
   abort_if: bdi 结构改动导致现有 control_turn/FEP 断言回归
   instrumentation_needed:
   - tools/test_bdi_slots.mjs（新建）；复用 mind_state kind
+  benefit: 中高
+  cost: 中
+  advice: 排队
+  rank: 99
+  rank_derived: true
+  unlocks: *id003
 - id: M9
   title: 意图分类器
   tier: 2
@@ -227,7 +245,7 @@ items:
   verify:
   - kind: manual
     reason: 需验证中文表现 + embedding 编码器（8G 显存硬约束）
-  unlock:
+  unlock: &id004
   - L1
   human_note: 本机 8G 不可行挂编码器；先验证 86M CPU 分类器，暂 manual-blocked
   what: 用意图分类器填 BDI 意图槽，高置信直接用、低置信交三角色
@@ -247,6 +265,12 @@ items:
   - 'P-86M-EMBEDDING: 8G 显存可行性'
   instrumentation_needed:
   - tools/test_intent_classifier.mjs（新建）
+  benefit: 中
+  cost: 中
+  advice: embedding+LR 1-20ms/92-93%
+  rank: 4
+  rank_derived: false
+  unlocks: *id004
 - id: M2
   title: 会话树实时化
   tier: 2
@@ -263,7 +287,7 @@ items:
   - kind: test_pass
     cmd: node tools/test_trace_context.mjs
     min: 5
-  unlock: []
+  unlock: &id005 []
   human_note: 涉及 append-only 历史语义，人工确认
   what: 让 session_tree.py 从事后分析变实时写 parent 指针，支持从任一节点 fork
   why: 现在只能事后重建会话树，无法在长任务中实时知道"我现在是哪条支线"
@@ -278,6 +302,12 @@ items:
   abort_if: parent 指针写入导致历史 trace 被改写或 KV 后缀税回升
   instrumentation_needed:
   - tools/test_session_tree.mjs（新建）
+  benefit: 中
+  cost: 中高
+  advice: 中期后半
+  rank: 5
+  rank_derived: false
+  unlocks: *id005
 - id: M5
   title: 工具面结构改造
   tier: 3
@@ -288,7 +318,7 @@ items:
   verify:
   - kind: manual
     reason: 用户拍板'哪些进内核'——价值判断，agent 不得自主
-  unlock: []
+  unlock: &id006 []
   human_note: ⛔ 永久人工闸门
   what: 把 28 个工具收敛到最小内核，低频能力进 skill 卡
   why: 工具面过宽会退化（社区上限约 40），但"哪些进内核"是产品判断
@@ -301,6 +331,12 @@ items:
   abort_if: 无（人工决策项，不自主执行）
   preconditions:
   - 'P-USER-DECISION: 用户拍板哪些工具进内核'
+  benefit: 中高
+  cost: 高
+  advice: 不阻塞别人，等决策
+  rank: 6
+  rank_derived: false
+  unlocks: *id006
 - id: M7
   title: 格式修复器（降级）
   tier: 3
@@ -311,7 +347,7 @@ items:
   verify:
   - kind: manual
     reason: 需先验证 86M 分类器 + A/B 端到端提速
-  unlock: []
+  unlock: &id007 []
   human_note: 降级项，前置未满足
   what: 格式修复器：只做格式重写、不判断对错，35B 首轮兜底
   why: 模型输出格式错误浪费后续步骤，但前置 86M 分类器还没验证
@@ -325,6 +361,12 @@ items:
   preconditions:
   - 'P-86M-LATENCY: 86M CPU 延迟<500ms'
   - 'P-AB-SPEEDUP: A/B 端到端提速'
+  benefit: 中
+  cost: 中高
+  advice: 降级：收益存疑，先验证 86M
+  rank: 7
+  rank_derived: false
+  unlocks: *id007
 - id: S6_model
   title: S6 模型层升级
   tier: 3
@@ -336,7 +378,7 @@ items:
   verify:
   - kind: manual
     reason: 86M Prompt-Guard + 阈值重标定；FPR 98% 教训
-  unlock: []
+  unlock: &id008 []
   human_note: 规则层够用，待实测误报率 >2%
   what: S6 从规则层升级到 86M Prompt-Guard 模型层
   why: 规则层够用；模型层是误报率兜底，但 FPR 98% 的教训在前
@@ -347,6 +389,12 @@ items:
   - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection: []
   abort_if: 无（manual-blocked）
+  benefit: 中高
+  cost: 中
+  advice: FPR 98% 教训：不标定不上
+  rank: 8
+  rank_derived: false
+  unlocks: *id008
 - id: L2
   title: 标准化 eval
   tier: 4
@@ -357,7 +405,7 @@ items:
   verify:
   - kind: manual
     reason: 迁移 SWE-bench Verified 子集，外部基准
-  unlock:
+  unlock: &id009
   - L1
   human_note: 长期优先但高成本
   what: 把自建 P3/P4/P5 评测迁移到 SWE-bench Verified 子集
@@ -371,6 +419,12 @@ items:
   abort_if: 无（长期人工排期）
   preconditions:
   - 'P-SWEBENCH: 迁移 SWE-bench Verified 子集'
+  benefit: 高（外部效度）
+  cost: 高
+  advice: 长期优先
+  rank: 9
+  rank_derived: false
+  unlocks: *id009
 - id: L6
   title: 专属误差预测器
   tier: 4
@@ -382,7 +436,7 @@ items:
   verify:
   - kind: manual
     reason: 单次蒸馏 n=1 + 保留 UNCERTAIN；需 35B 标注
-  unlock: []
+  unlock: &id010 []
   human_note: 由 M8 解锁，不再是空中楼阁
   what: 用 trace + 35B 标注训 0.5B 二分类误差预测器
   why: 由 M8 的 FSM 局部信号解锁，不再空中楼阁
@@ -394,6 +448,12 @@ items:
   - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection: []
   abort_if: 无（依赖 M8 完成后人工评估）
+  benefit: 中
+  cost: 高
+  advice: 由 M8 解锁，不再是空中楼阁
+  rank: 11
+  rank_derived: false
+  unlocks: *id010
 - id: L1
   title: FEP 深化 → 世界模型
   tier: 4
@@ -407,7 +467,7 @@ items:
   verify:
   - kind: manual
     reason: 产物内容满足 what 的断言精度/召回可测
-  unlock: []
+  unlock: &id011 []
   human_note: 最后做，依赖 M1+M3+M9
   what: FEP 从"产物是否存在"升级为"产物内容满足 what"的世界模型断言
   why: 存在性判据太浅，产物写错内容也能过
@@ -421,6 +481,12 @@ items:
   abort_if: 无（长期，依赖三个前置）
   instrumentation_needed:
   - tools/test_world_model.mjs（新建）
+  benefit: 高
+  cost: 极高
+  advice: 最后做
+  rank: 10
+  rank_derived: false
+  unlocks: *id011
 - id: L8
   title: 多标签心智编码器
   tier: 4
@@ -432,7 +498,7 @@ items:
   verify:
   - kind: manual
     reason: GLiClass 中文表现验证；128 标签仅掉 7-20% 吞吐
-  unlock: []
+  unlock: &id012 []
   human_note: 新探索，8G 可行性待证
   what: 一个前向同时输出意图+风险+难度，写进 GWT 共享状态
   why: 现在三个判断分散，128 标签仅掉 7-20% 吞吐可行
@@ -445,6 +511,12 @@ items:
   abort_if: 无（探索项）
   preconditions:
   - 'P-ZH-VALIDATION: GLiClass 中文表现'
+  benefit: 中
+  cost: 高
+  advice: 一个前向输出意图+风险+难度
+  rank: 12
+  rank_derived: false
+  unlocks: *id012
 - id: L5
   title: 小模型 Critic 预警（降级）
   tier: 4
@@ -455,7 +527,7 @@ items:
   verify:
   - kind: manual
     reason: 须换 86M 且召回 A/B ≥80%；0.6B 已证伪
-  unlock: []
+  unlock: &id013 []
   human_note: 无实证收益前不做
   what: 86M 小模型 Critic 做轻量预警
   why: 0.6B 扫一次 5s 不实用；但小 judge 一致率仅 45-60%，需谨慎
@@ -469,6 +541,12 @@ items:
   preconditions:
   - 'P-86M: 换 86M 分类器'
   - 'P-RECALL-AB: 召回 A/B>=80%'
+  benefit: 低
+  cost: 高
+  advice: 降级：无实证收益前不做
+  rank: 13
+  rank_derived: false
+  unlocks: *id013
 - id: L3
   title: 脑功能分区空白区
   tier: 4
@@ -479,7 +557,7 @@ items:
   verify:
   - kind: manual
     reason: 调研完成，待决定是否落 ADR
-  unlock: []
+  unlock: &id014 []
   human_note: 观望
   what: 补眶额价值/脑干稳态的脑功能空白
   why: BRAIN_PARITY 盘点的空白区
@@ -492,6 +570,12 @@ items:
   abort_if: 无（观望）
   preconditions:
   - 'P-ADR-DECISION: 是否落 ADR'
+  benefit: 低（探索性）
+  cost: 高
+  advice: 观望
+  rank: 14
+  rank_derived: false
+  unlocks: *id014
 - id: L4
   title: 独立轨道（上游 PR）
   tier: 4
@@ -502,7 +586,7 @@ items:
   verify:
   - kind: manual
     reason: 'autoparser 上游 PR #29307 未合并，本地补丁还在'
-  unlock: []
+  unlock: &id015 []
   human_note: 不插队，等上游
   what: 上游 autoparser PR 合并后撤本地补丁，升级引擎
   why: 跟上游减少维护负担
@@ -516,6 +600,12 @@ items:
   preconditions:
   - 'P-UPSTREAM-PR: autoparser #29307 合并'
   - 'P-LLAMACPP-V1: v1.0.0 升级'
+  benefit: 中
+  cost: 高
+  advice: 不插队
+  rank: 15
+  rank_derived: false
+  unlocks: *id015
 - id: L7
   title: FAKEOK 抑制（探索）
   tier: 4
@@ -526,7 +616,7 @@ items:
   verify:
   - kind: manual
     reason: S4 发现 ⑦，先小规模对照，不占正式坑
-  unlock: []
+  unlock: &id016 []
   human_note: 探索项
   what: 验证"防提前假装完成"的轻量机制
   why: S4 发现提示让 FAKEOK→PASS（token 未降）
@@ -539,6 +629,12 @@ items:
   abort_if: 无（探索）
   instrumentation_needed:
   - tools/test_fakeok.mjs（新建）
+  benefit: 中
+  cost: 低
+  advice: 不占坑，先小规模验证
+  rank: 99
+  rank_derived: false
+  unlocks: *id016
 - id: S1
   title: Self-Harness P0-P2
   tier: 1
@@ -553,6 +649,11 @@ items:
   benefit_to_self: 真正学会走路——没人盯着也能在低风险区持续成长
   caveats:
   - 只在白名单+预算内
+  benefit: —（已完成）
+  cost: 低
+  advice: 已完成，见 evidence
+  rank: 99
+  rank_derived: true
 - id: S2
   title: 可控遗忘常态化
   tier: 1
@@ -566,6 +667,11 @@ items:
   benefit_to_self: 该留的留、该忘的忘，长任务不糊成一团
   caveats:
   - decay 周期按实际频率调
+  benefit: —（已完成）
+  cost: 低
+  advice: 已完成，见 evidence
+  rank: 99
+  rank_derived: true
 - id: S3
   title: 频次收尾（trace 带 turn/controlTotal）
   tier: 1
@@ -578,6 +684,11 @@ items:
   why: 没有频次信息就无法做衰减和过滤
   benefit_to_self: 知道哪些经验高频出现，值得优先保留
   caveats: []
+  benefit: —（已完成）
+  cost: 低
+  advice: 已完成，见 evidence
+  rank: 99
+  rank_derived: true
 - id: S4
   title: 自适应 A/B
   tier: 2
@@ -592,6 +703,11 @@ items:
   caveats:
   - DoD 要求'token 降且成功率不降'
   - 单次 FAIL→PASS 有噪声
+  benefit: —（已完成）
+  cost: 中
+  advice: 已完成，见 evidence
+  rank: 99
+  rank_derived: true
 - id: S5
   title: 角色失效修复
   tier: 2
@@ -604,6 +720,11 @@ items:
   why: 角色静默失败导致验证链断裂
   benefit_to_self: 每个角色都有效运转，不漏掉任何一环
   caveats: []
+  benefit: —（已完成）
+  cost: 低
+  advice: 已完成，见 evidence
+  rank: 99
+  rank_derived: true
 - id: S6
   title: 注入检测
   tier: 2
@@ -617,6 +738,11 @@ items:
   benefit_to_self: 不被外部输入误导做出错误决策
   caveats:
   - 模型层 86M 未做
+  benefit: —（已完成）
+  cost: 中
+  advice: 已完成，见 evidence
+  rank: 99
+  rank_derived: true
 - id: S7
   title: CPU 小模型基准
   tier: 3
@@ -631,6 +757,11 @@ items:
   caveats:
   - 比文献慢 10×
   - thinking 吃光 content 需 max_tokens≥512
+  benefit: —（已完成）
+  cost: 中
+  advice: 已完成，见 evidence
+  rank: 99
+  rank_derived: true
 - id: S8
   title: 审计自校准落盘
   tier: 2
@@ -643,6 +774,11 @@ items:
   why: 没有持久化审计就不知道 agent 是否按路线图走
   benefit_to_self: 知道自己做了什么、做得对不对
   caveats: []
+  benefit: —（已完成）
+  cost: 低
+  advice: 已完成，见 evidence
+  rank: 99
+  rank_derived: true
 - id: S9
   title: 有状态反馈
   tier: 2
@@ -655,6 +791,11 @@ items:
   why: 无状态 review 每次都是新会话，无法积累改进
   benefit_to_self: 从历史 review 中学习，越评越好
   caveats: []
+  benefit: —（已完成）
+  cost: 低
+  advice: 已完成，见 evidence
+  rank: 99
+  rank_derived: true
 - id: M4
   title: 注入预算 token 化
   tier: 1
@@ -668,6 +809,11 @@ items:
   benefit_to_self: 在安全和效率之间找到平衡点
   caveats:
   - 含安全注入双闸门豁免 P0 修复
+  benefit: —（已完成）
+  cost: 低
+  advice: 已完成，见 evidence
+  rank: 99
+  rank_derived: true
 - id: M6
   title: 安全规则不可覆盖
   tier: 1
@@ -681,6 +827,11 @@ items:
   benefit_to_self: 保证系统行为始终符合设计意图
   caveats:
   - 需人工确认最终方案
+  benefit: —（已完成）
+  cost: 高
+  advice: 已完成，见 evidence
+  rank: 99
+  rank_derived: true
 - id: GWT_FEP_done
   title: GWT 共享状态总线 + FEP 预期闭环
   tier: 1
@@ -693,6 +844,11 @@ items:
   why: 多器官需要统一通信机制
   benefit_to_self: 各组件协同工作不冲突
   caveats: []
+  benefit: —（已完成）
+  cost: 低
+  advice: 已完成，见 evidence
+  rank: 99
+  rank_derived: true
 - id: archive_dedup
   title: 压缩存档去重
   tier: 2
@@ -705,6 +861,11 @@ items:
   why: 重复存档浪费空间且干扰判断
   benefit_to_self: 存储更高效，检索更精准
   caveats: []
+  benefit: —（已完成）
+  cost: 低
+  advice: 已完成，见 evidence
+  rank: 99
+  rank_derived: true
 - id: regression_106
   title: 回归审计 106 PASS / 0 FAIL
   tier: 1
@@ -717,6 +878,11 @@ items:
   why: 确保所有修复经得起测试验证
   benefit_to_self: 每次改动都经过自动化验证
   caveats: []
+  benefit: —（已完成）
+  cost: 低
+  advice: 已完成，见 evidence
+  rank: 99
+  rank_derived: true
 - id: gpu_guard
   title: GPU 引擎守护
   tier: 1
@@ -729,6 +895,11 @@ items:
   why: GPU 是推理基础设施，必须持续可用
   benefit_to_self: 不因硬件/驱动问题导致推理中断
   caveats: []
+  benefit: —（已完成）
+  cost: 低
+  advice: 已完成，见 evidence
+  rank: 99
+  rank_derived: true
 - id: watcher_freq3
   title: learn_watcher 频次三层改造
   tier: 1
@@ -741,6 +912,11 @@ items:
   why: 监控频率需要分层管理不同场景
   benefit_to_self: 按需调整监控粒度，不浪费资源
   caveats: []
+  benefit: —（已完成）
+  cost: 低
+  advice: 已完成，见 evidence
+  rank: 99
+  rank_derived: true
 - id: rebaseline
   title: 路线图重定基线
   tier: 2
@@ -755,6 +931,11 @@ items:
   benefit_to_self: 路线图反映真实进展而非历史遗留
   caveats:
   - 需人工确认新优先级
+  benefit: —（已完成）
+  cost: 低
+  advice: 已完成，见 evidence
+  rank: 99
+  rank_derived: true
 - id: outcome_all
   title: 结果反馈捕获 / 确定性门控 / 三角色 / P0-P2 心智拼图
   tier: 1
@@ -768,6 +949,11 @@ items:
   benefit_to_self: 基础稳固后上层功能才能可靠运行
   caveats:
   - 见 CHANGELOG 全文
+  benefit: —（已完成）
+  cost: 低
+  advice: 已完成，见 evidence
+  rank: 99
+  rank_derived: true
 autonomy_rungs:
 - id: A0
   title: 数据可信（sid 黑名单）
@@ -813,6 +999,11 @@ autonomy_rungs:
     - 13 hits in tools/learn_watcher.py
     - 13 hits in tools/weakness_miner.py
     - 13 hits in tools/trace_report.py
+  benefit: —（已完成）
+  cost: 低
+  advice: 已完成，见 evidence
+  rank: 99
+  rank_derived: true
 - id: A1
   title: 会记路（机器判据 + dry-run 核验）
   deps:
@@ -848,6 +1039,11 @@ autonomy_rungs:
     checks:
     - D:\Brain\publish\dsh-behavior-guard\tools\roadmap_check.py
     - rc=0 PASS=13
+  benefit: 高
+  cost: 中
+  advice: 已完成（A0地基→自治判据）
+  rank: 3
+  rank_derived: false
 - id: A2
   title: 会指路（自动勾选，只写权威源）
   deps:
@@ -871,6 +1067,11 @@ autonomy_rungs:
   - 自动勾选有没有和人的判断冲突过？
   - diff 审阅里人最常改哪类勾选？
   abort_if: 出现一次假完成勾选 → 退回人工勾选
+  benefit: 中
+  cost: 中
+  advice: 排队
+  rank: 99
+  rank_derived: true
 - id: A3
   title: 会迈步（预批低风险队列取任务）
   deps:
@@ -894,6 +1095,11 @@ autonomy_rungs:
   - 队列里的任务我完成率多少？失败的是哪类？
   - 有没有越界执行过队列外任务？
   abort_if: 越界执行 1 次或连续 2 次任务失败
+  benefit: 中
+  cost: 中
+  advice: 排队
+  rank: 99
+  rank_derived: true
 - id: A3_5
   title: 安全地基（真实 diff + e2e + 回滚）
   deps: []
@@ -928,6 +1134,11 @@ autonomy_rungs:
     checks:
     - 31 hits in tools/self_harness_gate.py
     - D:\Brain\publish\dsh-behavior-guard\tools\run_all.sh
+  benefit: —（已完成）
+  cost: 低
+  advice: 已完成，见 evidence
+  rank: 99
+  rank_derived: true
 - id: A4
   title: 会转弯（旁路 meta_decision）
   deps:
@@ -956,6 +1167,11 @@ autonomy_rungs:
   abort_if: 误跳过率>10%
   instrumentation_needed:
   - trace kind meta_decision（旁路决策器写）
+  benefit: 中
+  cost: 中
+  advice: 排队
+  rank: 99
+  rank_derived: true
 - id: A5
   title: 自己走（常驻闭环）
   deps:
@@ -983,3 +1199,8 @@ autonomy_rungs:
   - 一周里我沉淀了几条可复用经验？爬后面的任务是否真的更快了？
   - 有没有"越爬越偏"的漂移迹象？
   abort_if: 7 天内出现 1 次越界或需人工救场 → 暂停闭环
+  benefit: 中
+  cost: 高
+  advice: 排队
+  rank: 99
+  rank_derived: true
