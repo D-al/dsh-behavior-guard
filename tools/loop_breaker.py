@@ -28,6 +28,7 @@ LOOP_PATTERNS = {
     'todo-nag': r'立即停下.*todo_write|连续多步没有更新 todo',
     'verify-stop': r'停止条件.*必须执行',
     'control-turn': r'控制回合.*元决策',
+    'delivery-gate': r'交付闸门.*独立验收痕迹',
 }
 DEFAULT_THRESHOLD = 3
 
