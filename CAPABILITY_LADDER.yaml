@@ -70,7 +70,7 @@ completed_anchors:
   S1_data:
     status: done
     artifact: _evidence_bundle.json
-    note: 8050 行 trace 聚类
+    note: 8147 行 trace 聚类
   GWT_FEP:
     status: done
     verify: test_gwt_fep.mjs 9/9 + trace kind fep_cycle>0
@@ -165,7 +165,7 @@ items:
   unlock:
   - L6
   human_note: AUROC 判据需新建 eval_fsm.py；本机纯统计无显存
-  what: 把 8050 行 trace 压成 FSM，做局部失败预测（重复探测/路径解析/工具报错）
+  what: 把 8147 行 trace 压成 FSM，做局部失败预测（重复探测/路径解析/工具报错）
   why: 长轨迹因果归因交主模型只有 0.56≈随机；但局部可观察信号（FSM）实测 AUROC 0.94，是可靠的前置预警
   benefit_to_self: 能在卡住的早期就知道"这个模式会导致失败"，提前换路，不用烧完 10 步才发现
   caveats:
@@ -603,7 +603,7 @@ autonomy_rungs:
     note: §7 归档 16 项回测 100% PASS
   note: 阶1：roadmap_check.py 对已完成项回测
   what: 给路线图补机器判据 + roadmap_check.py dry-run 核验
-  why: 路线图勾选 100% 人工，完成状态机器读不了，autonomous 无地基
+  why: 路线图已可机器写回(--apply)，但人工勾选仍占多数，autonomous 地基待补
   benefit_to_self: 我不用等人告诉我"这条做完了没"，跑一次脚本就知道
   caveats:
   - 对 §7 归档 16 项回测必须 100% PASS、对未完成项 0 误报才准开 --apply

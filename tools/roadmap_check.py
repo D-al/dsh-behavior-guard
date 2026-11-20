@@ -56,7 +56,9 @@ def load_ladder():
 
 
 def test_sids(data):
-    return set(data.get('meta', {}).get('test_sids', []))
+    # 兼容两处：CAPABILITY_LADDER.yaml 用 meta.test_sids；ROADMAP 机器块历史用顶层 test_sids。
+    # 以前只读 meta 导致 ROADMAP 为源时过滤集为空（2026-11-20 审计抓到的承重 bug）。
+    return set((data.get('meta') or {}).get('test_sids') or data.get('test_sids') or [])
 
 
 def read_jsonl(path):

@@ -36,7 +36,7 @@
 2. **看现状**：[ROADMAP §1 当前位置](ROADMAP.md#1-当前位置30-秒读懂) —— 已完成什么、现在在哪一波、为什么是这个顺序。
 3. **看边界**：[ROADMAP §8 明确不做](ROADMAP.md#8-明确不做防止新人重造轮子--走回头路) + 下面「硬约束」—— 别做与权重零改冲突、或已被证伪的事。
 4. **验证环境没坏**：`node --check index.mjs` → `python tools/regression_check.py`（期望 30/30）→ `python tools/config_check.py`（期望全栈一致）。
-5. **领活**：[ROADMAP §3 短期](ROADMAP.md#3--短期now1-2-周把积累的数据变成能力) 取一条 `[ ]`，先读它挂的方案/ADR 链接，再动手。**任何改动都要跑第 4 步的门禁。**
+5. **领活**：`python tools/roadmap_check.py --next` 选下一张卡（当前 M8），`--card <ID>` 读它的 what/why/坑；§3 短期已归档，新的自治卡在文末附录 A 的权威块里。**任何改动都要跑第 4 步的门禁。**
 
 **关键约定（违反会出事）**：
 - 学习信号只进 `_trace.jsonl` / 学习队列，**不占运行时注入通道**（ADR-0017）。
