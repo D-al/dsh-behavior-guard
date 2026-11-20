@@ -10,8 +10,8 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-OUT = ROOT / 'docs' / '_a16_status.json'
-SID = 'session-06be7982-f672-48f0-bacd-c99830e782c0'
+OUT = ROOT / 'docs' / '_s14_status.json'
+SID = 'session-f3e39abc-03ca-4025-95ac-9a231dfe6c7c'
 SLOTS = 'http://127.0.0.1:8081/slots?model=Qwen3.6-35B-A3B-UD-Q4_K_XL'
 BRIDGE = r'D:\Brain\workspace\bench\dsh-session-bridge'
 NODE = r'C:\Users\Ad\.workbuddy\binaries\node\versions\22.22.2-6\node.exe'  # 计划任务环境 PATH 无 node，必须绝对路径
@@ -57,13 +57,13 @@ def events():
 def artifacts():
     a = {}
     for name, p in (
-        ('test', ROOT / 'tools' / 'test_future_claim_guard.py'),
-        ('doc', ROOT / 'docs' / 'FUTURE_CLAIM_GUARD_20261120.md'),
-        ('reflection', ROOT / 'docs' / 'reflection-A1_6.md'),
+        ('test', ROOT / 'tools' / 'test_edit_protocol.py'),
+        ('doc', ROOT / 'docs' / 'EDIT_PROTOCOL_S14_20261120.md'),
+        ('reflection', ROOT / 'docs' / 'reflection-S14.md'),
     ):
         a[name] = p.exists()
     try:
-        a['index_future_claim'] = 'FUTURE_CLAIM' in (ROOT / 'index.mjs').read_text(encoding='utf-8')
+        a['index_future_claim'] = any(k in (ROOT / 'config' / 'AGENTS.md').read_text(encoding='utf-8') for k in ('紧邻重读','最短唯一锚点'))
     except Exception:
         a['index_future_claim'] = False
     return a

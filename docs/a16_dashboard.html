@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<title>A1_6 推卡实时看板</title>
+<title>S14 推卡实时看板</title>
 <style>
   :root { --bg:#1e1e1e; --card:#2d2d2d; --fg:#e0e0e0; --dim:#9aa0a6; --ok:#4caf50; --warn:#ff9800; --bad:#f44336; --blue:#4fc3f7; }
   * { box-sizing:border-box; }
@@ -22,7 +22,7 @@
 </style>
 </head>
 <body>
-<h1>A1_6 推卡实时看板 <span id="clock" style="color:#888;font-size:12px;font-weight:normal"></span></h1>
+<h1>S14 推卡实时看板 <span id="clock" style="color:#888;font-size:12px;font-weight:normal"></span></h1>
 <div id="banner" class="banner ok">加载中…</div>
 <div class="grid">
   <div class="card" id="c-token"><div class="label">token 活性（唯一可靠判据）</div><div class="value" id="token">—</div><div class="sub" id="token-sub">n_decoded / 5秒采样</div></div>
@@ -36,7 +36,7 @@
 <script>
 async function tick(){
   try{
-    const r = await fetch('_a16_status.json?t='+Date.now());
+    const r = await fetch('_s14_status.json?t='+Date.now());
     const d = await r.json();
     document.getElementById('clock').textContent = '数据时间 '+d.ts;
     // token
