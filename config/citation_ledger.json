@@ -1021,6 +1021,62 @@
       "note": "arXiv官方API L1-L2核实存在+标题；项目仅为列示/背景引用，未做L3-L4数字核对",
       "decision_uses": [],
       "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2512.08296",
+      "type": "paper",
+      "claimed": "Google+MIT 180组实验 顺序任务-39~-70%",
+      "real_title": "Towards a Science of Scaling Agent Systems",
+      "status": "verified",
+      "note": "子任务WebFetch核实：摘要原文+80.8%~-70.0%，核心结论真实；180组是v1数字,v3已改260配置,引用须标版本。支撑ADR-0011。",
+      "decision_uses": [
+        "ADR-0011"
+      ],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2602.12670",
+      "type": "paper",
+      "claimed": "SkillsBench 自动生成技能收益不一致",
+      "real_title": "SkillsBench: Benchmarking How Well Agent Skills Work Across Diverse Tasks",
+      "status": "partial",
+      "note": "子任务核实：v1摘要支持(self-generated no benefit,16/84 tasks negative)，但v4已删该表述改为curated +16.6pp。引用必须注明v1。支撑ADR-0015。",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2604.20087",
+      "type": "paper",
+      "claimed": "SkillLearnBench 持续更新drift/regress",
+      "real_title": "SkillLearnBench: Benchmarking Continual Learning Methods",
+      "status": "verified",
+      "note": "子任务核实：摘要原文\"self-feedback alone induces recursive drift\"，支持但边界是\"无外部新信号的自我反馈\"，勿泛化为所有更新。支撑ADR-0015。",
+      "decision_uses": [
+        "ADR-0015"
+      ],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2601.10338",
+      "type": "paper",
+      "claimed": "marketplace 26.1%技能有漏洞",
+      "real_title": "Agent Skills in the Wild: An Empirical Study of Security Vulnerabilities at Scale",
+      "status": "verified",
+      "note": "子任务核实：摘要原文\"26.1% of skills contain at least one vulnerability\"(31,132样本)逐字吻合。预印本，检出风险模式非确认攻击。支撑ADR-0015。",
+      "decision_uses": [
+        "ADR-0015"
+      ],
+      "verified_at": "2026-11-20"
+    },
+    {
+      "id": "arxiv:2307.07924",
+      "type": "paper",
+      "claimed": "ChatDev失败率>66%(ADR-0011原挂)",
+      "real_title": "ChatDev: Communicative Agents for Software Development",
+      "status": "partial",
+      "note": "论文真实但无失败率数字；66.7%实出自MAST(2503.13657)Fig5(ChatDev success 33.3%)，挂错出处非幻觉。ADR-0011已改挂MAST。",
+      "decision_uses": [],
+      "verified_at": "2026-11-20"
     }
   ]
 }
