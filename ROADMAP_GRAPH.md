@@ -618,7 +618,8 @@ items:
     reason: 用户拍板'哪些进内核'——价值判断，agent 不得自主
   title: 工具面结构改造
   what: 把 28 个工具收敛到最小内核，低频能力进 skill 卡
-  why: 工具面过宽会退化（社区上限约 40），但"哪些进内核"是产品判断
+  why: 工具面过宽会退化:Anthropic官方"10+ tools就该考虑"(Tool Use Examples 72→90%)、弱模型拐点12-15(社区实测)、Prosodica
+    10工具78%→100工具<40%。旧"上限约40"已被推翻——它是模型/描述相关拐点非硬上限。哪些进内核仍是产品判断
   benefit_to_self: 每次决策要在更少的工具里选，减少选择噪声
   caveats:
   - ⛔ 用户拍板项，agent 不得自主决定
@@ -653,7 +654,7 @@ items:
   - 'P-86M-LATENCY: 86M CPU 延迟<500ms'
   - 'P-AB-SPEEDUP: A/B 端到端提速'
   unlocks: []
-  cost: 中高
+  cost: 低
 - id: S6_model
   tier: 3
   deps:
@@ -941,6 +942,14 @@ items:
   - kind: test_pass
     cmd: D:/Python/python.exe -B tools/test_write_verify_all.py
     min: 1
+  what: 把 verify-on-edit 从只覆盖 write/edit 扩展到 DEFAULT_WRITE_TOOLS 全部8种（apply_patch/multi_edit/create_file/str_replace/write_file/notebook_edit），每种按扩展名跑对应语法校验
+  why: 真实trace显示write 0%失败但edit 11.8%失败；verify-on-edit(index.mjs:1042)只认write/edit，其余6种写工具零校验——假绿温床
+  benefit_to_self: 所有写入路径都有语法护栏，不再有"换了写工具就绕过校验"
+  cost: 中
+  caveats:
+  - 别让校验失败阻断正常写入（拦=纠错消息而非硬失败）
+  - 扩展名映射要覆盖.mjs/.js/.py/.json/.yaml
+  abort_if: 无法在不改dsh原生工具的前提下拿到写后内容
 - id: S12
   title: 补丁应用闭环（禁写脚本不落地）
   status: ready
@@ -959,6 +968,14 @@ items:
   - kind: test_pass
     cmd: D:/Python/python.exe -B tools/test_patch_applied.py
     min: 1
+  what: 检测"写了修复脚本但没真正应用"的模式：补丁脚本(_apply_*.py/_fix_*.py)写入后必须有对应的apply证据（目标文件mtime变化+语法通过），否则守卫提示"脚本已写但未应用"
+  why: A1_6一张卡留下5个补丁脚本全没应用，浪费几十分钟——"写了脚本"≠"应用了脚本"是新变体的说要做不做
+  benefit_to_self: 堵住"用写脚本代替改文件"的绕路，把时间花在真正落盘
+  cost: 中
+  caveats:
+  - 别误伤合法的临时分析脚本
+  - apply证据要用环境事实（目标mtime+内容），不认模型声明
+  abort_if: 无法可靠关联补丁脚本与目标文件
 - id: S13
   title: verifyRan收紧（read≠验证）
   status: ready
@@ -976,9 +993,17 @@ items:
   - kind: test_pass
     cmd: D:/Python/python.exe -B tools/test_verify_ran.py
     min: 1
+  what: 把 index.mjs:913 的"read/cat 即 verifyRan"收紧为真实验证证据（语法检查/测试命令/verify_agent），解决A1_6反复read却被认为验证过的假绿
+  why: :913规则当年为修25/26回归误判加的宽松判断，现在成了"读循环被当成验证"的源头——A1_6连续6次read同段无write却一路绿灯
+  benefit_to_self: verify信号可信——"验证过"必须真跑了检查，不是读了文件
+  cost: 中
+  caveats:
+  - 收紧后可能重现25/26回归误判，要用更精确的文件名匹配替代宽松规则
+  - 保留对真实语法检查命令的识别
+  abort_if: 收紧导致正常验证流程被大面积误拦
 - id: S14
   title: 编辑协议升级（降低复现负担）
-  status: ready
+  status: doing
   deps:
   - A1
   risk: low
@@ -997,6 +1022,20 @@ items:
   - kind: test_pass
     cmd: D:/Python/python.exe -B tools/test_edit_protocol.py
     min: 1
+  what: 把 AGENTS.md:105 的裸 read→edit 升级为"短文件(<400行)整块输出、长文件紧邻重读+最短唯一锚点、压缩后强制重读"；失败时回灌精确差异(edit-doctor模式)。不押注结构化diff格式——Diff-XYZ证明小模型换格式收益很小
+  why: '学术证据:RoPE 1D归纳偏置致精确复制失败(arXiv:2607.16072);Diff-XYZ(NeurIPS25w,arXiv:2510.12487)明确"smaller
+    open models benefit little from any formatting choice";Aider 26→59%是GPT-4大模型数据不可套用到35B;Claude
+    Code #26996 tab→空格致6连败;edit-doctor旁路诊断第二次即成功。C-010正是压缩后凭记忆重建1300字符old_string截断'
+  benefit_to_self: 减少要精确复现的字符量——35B在Diff-XYZ属"换格式收益小"区间，降负担才是杠杆
+  cost: 中低
+  caveats:
+  - 别照搬Aider大模型结论到35B——Diff-XYZ明确小模型换格式收益小
+  - 锚点要唯一且从第一个非空白字符起，绕开tab/CRLF/不可见字符
+  - 失败回灌要给可复制文本而非裸重试
+  - 35B属于"格式收益小"区间，重心是降低要复现的字符量
+  abort_if: 无法在dsh原生edit工具约束下实现可验证的锚点协议
+  claimed_at: '2026-11-20T14:18:32.327124+00:00'
+  claimer: unknown-agent
 rungs:
 - id: A0
   deps: []
@@ -1159,7 +1198,7 @@ rungs:
   - diff 校验拦住过哪种绕过？
   - 回滚触发过几次，都是什么原因？
   abort_if: e2e 假阴性（把好改动判坏）反复出现
-  cost: 低
+  cost: 中
 - id: A4
   deps:
   - A3_5

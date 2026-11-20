@@ -1016,6 +1016,7 @@ items:
   cost: 中
   advice: 读写地基第一优先
   rank_derived: false
+  status: ready
 - id: S12
   title: 补丁应用闭环（禁写脚本不落地）
   what: 检测"写了修复脚本但没真正应用"的模式：补丁脚本(_apply_*.py/_fix_*.py)写入后必须有对应的apply证据（目标文件mtime变化+语法通过），否则守卫提示"脚本已写但未应用"
@@ -1030,6 +1031,7 @@ items:
   cost: 中
   advice: 读写地基，与S11并行
   rank_derived: false
+  status: ready
 - id: S13
   title: verifyRan收紧（read≠验证）
   what: 把 index.mjs:913 的"read/cat 即 verifyRan"收紧为真实验证证据（语法检查/测试命令/verify_agent），解决A1_6反复read却被认为验证过的假绿
@@ -1044,6 +1046,7 @@ items:
   cost: 中
   advice: 读写地基最高优先（假绿源头）
   rank_derived: false
+  status: ready
 - id: S14
   title: 编辑协议升级（降低复现负担）
   what: 把 AGENTS.md:105 的裸 read→edit 升级为"短文件(<400行)整块输出、长文件紧邻重读+最短唯一锚点、压缩后强制重读"；失败时回灌精确差异(edit-doctor模式)。不押注结构化diff格式——Diff-XYZ证明小模型换格式收益很小
@@ -1062,6 +1065,9 @@ items:
   cost: 中低
   advice: 读写地基最高优先:学术证据最强(RoPE复制缺陷+Diff-XYZ小模型结论),提示层改动成本低
   rank_derived: false
+  status: doing
+  claimer: unknown-agent
+  claimed_at: '2026-11-20T14:18:32.327124+00:00'
 autonomy_rungs:
 - id: A0
   title: 数据可信（sid 黑名单）

@@ -1,0 +1,21 @@
+{
+  "ts": "22:27:43",
+  "slots": {
+    "processing": true,
+    "decoded": 22,
+    "prompt_used": 942,
+    "task": 20067
+  },
+  "token_growing": true,
+  "sessions": {
+    "error": "'NoneType' object has no attribute 'splitlines'"
+  },
+  "artifacts": {
+    "test": true,
+    "doc": true,
+    "reflection": true,
+    "index_future_claim": true
+  },
+  "tool_counts": {},
+  "recent_events": []
+}
