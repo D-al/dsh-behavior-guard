@@ -1178,4 +1178,21 @@ rungs:
   - 必须要求真实产物+mtime，不能只做文本匹配
   - L1 校验必须仍以环境事实为准，不能只信模型声明
   abort_if: 无法区分"将来时承诺"与"正常下一步说明"导致大量误拦截
+- id: A1_7
+  title: 评审机制可观测性
+  status: ready
+  deps:
+  - A1
+  risk: low
+  autonomous: true
+  verify:
+  - kind: file_grep
+    path: index.mjs
+    regex: critic_review|planner_check
+    min: 1
+  - kind: file_exists
+    path: docs/MECHANISM_TRIGGER_AUDIT_20261120.md
+  - kind: test_pass
+    cmd: D:/Python/python.exe -B tools/test_review_trace.py
+    min: 1
 <!-- ROADMAP_GRAPH_END -->

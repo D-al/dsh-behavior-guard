@@ -1282,3 +1282,18 @@ autonomy_rungs:
   rank_hint: normal
   rank_derived: false
   status: ready
+- id: A1_7
+  title: 评审机制可观测性
+  what: 给 Critic/Planner 调用加专属 trace 打点（rubric_version/dimensions_checked/verdict），让每个评审机制有可审计的触发证据
+  why: 2026-11-20 审计发现：新加的 Critic第6维/Planner假设披露确实进了 prompt，但 callLLM 只记 kind=llm，无法证明评审真的用了新维度——违反证据分层铁律
+  benefit_to_self: 机制上线后能回答"它今天到底触发了吗、拦了什么"——不再靠"代码里写了"自我安慰
+  caveats:
+  - 打点必须含 verdict 和具体维度，不能只记"调用过"造成另一种假绿
+  - trace 写失败不能影响主评审流程
+  abort_if: 无法在不改 callLLM 签名的前提下拿到 rubric 版本与维度判定
+  rank: 2
+  benefit: 中高
+  cost: 中
+  advice: 机制可观测性，A1_6之后做
+  rank_hint: normal
+  rank_derived: false
