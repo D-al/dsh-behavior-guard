@@ -207,19 +207,19 @@ harness 会按当前轨迹特征自动检索最相关的教训并以【相关教
 #### read — 读取文件内容
 | 场景 | 参数 |
 |------|------|
-| 最小用法（短文件一次读完） | `{file_path: "README.md", limit: 200}` |
-| 真实路径（定位到目标行±5行做锚点） | `{file_path: "memory/2026-11-16.md", offset: 45, limit: 10}` |
+| 最小用法（短文件一次读完） | `{file_path: "LLAMA_OPTIMIZATION_GUIDE.md", limit: 200}` |
+| 真实路径（定位到目标行±5行做锚点） | `{file_path: "cordis.patch.yml", offset: 45, limit: 10}` |
 
 #### write — 创建或完全覆盖文件
 | 场景 | 参数 |
 |------|------|
-| 最小用法（新文件写入几行文本） | `{file_path: "notes.txt", content: "# 临时笔记\n第一行\n第二行"}` |
-| 真实路径（写工作区内的配置文件） | `{file_path: "config/settings.json", content: "{\n  \"debug\": false,\n  \"log_level\": \"info\"\n}"}` |
+| 最小用法（新文件写入几行文本） | `{file_path: "notes.md", content: "# 临时笔记\n第一行\n第二行"}`（notes.md 为示意可新建）|
+| 真实路径（写工作区内的配置文件） | `{file_path: "p/bench/_scratch.json", content: "{\n  \"debug\": false\n}"}`（写前确认父目录存在）|
 
 #### edit — 替换已有文件中的指定文本
 | 场景 | 参数 |
 |------|------|
-| 最小用法（单行精确替换） | `{file_path: "CHANGELOG.md", old_string: "v1.0", new_string: "v1.1"}` |
+| 最小用法（单行精确替换） | `{file_path: "LLAMA_OPTIMIZATION_GUIDE.md", old_string: "旧文本", new_string: "新文本"}`（old_string 须逐字存在于文件）|
 | 真实路径（长文件中用唯一锚点修改一处） | `{file_path: "p/bench/skills/tool-boundaries.md", old_string: "read → glob → grep → es", new_string: "read → glob → grep → es → pwsh", replace_all: false}` |
 
 ---
