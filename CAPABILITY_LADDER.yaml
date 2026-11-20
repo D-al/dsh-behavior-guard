@@ -968,6 +968,22 @@ items:
   advice: 已完成，见 evidence
   rank: 99
   rank_derived: true
+- id: M10
+  title: 会话生命周期治理（刹车）
+  what: 给 bridge 加 stop/abort 命令、给 freeze_watch 加会话级无进展检测，让 observer 能可靠停止僵尸会话
+  why: 2026-11-20 僵尸会话在"已停止"后复活并改坏 index.mjs（语法垃圾）；bridge 8 命令无 stop、dsh API 全 404、看门狗只盯
+    llama 冻死
+  benefit_to_self: 自治闭环终于有刹车——不用靠人工发极简 STOP + 肉眼复查工作树
+  caveats:
+  - 不能误杀正常推理中的会话（必须有明确的无进展判据）
+  - 停止必须是幂等的、可复查的
+  abort_if: 停止机制误杀正常会话，或 dsh 侧根本没有可用的会话控制通道
+  rank: 2
+  benefit: 高
+  cost: 中
+  advice: 自治闭环前置刹车，优先做
+  rank_hint: normal
+  rank_derived: false
 autonomy_rungs:
 - id: A0
   title: 数据可信（sid 黑名单）
@@ -1222,3 +1238,18 @@ autonomy_rungs:
   rank: 99
   rank_derived: true
   rank_hint: normal
+- id: A1_5
+  title: 判据元验证（防假绿）
+  what: 写 check_verify.py 检测判据自身的四类病：自引用递归、格式不匹配、恒真判据、测试sid污染
+  why: A1 判据曾递归6分钟不停、^PASS格式不匹配假FAIL、管道吞rc假绿；A1只管卡状态核验，不管判据本身可信
+  benefit_to_self: 自治信任建立在判据可信上——避免"全绿但没做"
+  caveats:
+  - 元验证器自己不能递归（必须独立于 roadmap_check 的 evaluate）
+  - 用构造的假判据样本验证必须全判FAIL
+  abort_if: 无法构造稳定的假判据样本，或元验证器本身产生假绿
+  rank: 2
+  benefit: 高
+  cost: 中
+  advice: 判据地基体检，与会话治理并行
+  rank_hint: normal
+  rank_derived: false

@@ -868,6 +868,26 @@ items:
   - tools/test_fakeok.mjs（新建）
   unlocks: []
   cost: 低
+- id: M10
+  title: 会话生命周期治理（刹车）
+  status: ready
+  tier: 2
+  deps:
+  - A1
+  risk: low
+  autonomous: true
+  verify:
+  - kind: file_grep
+    path: bench/dsh-session-bridge/bridge.mjs
+    regex: case 'stop'|case 'abort'
+    min: 1
+  - kind: file_grep
+    path: bench/freeze_watch.py
+    regex: session.*(stall|zombie|僵尸)|会话.*(停|僵)
+    min: 1
+    flags: IGNORECASE
+  - kind: file_exists
+    path: docs/SESSION_LIFECYCLE_20261120.md
 rungs:
 - id: A0
   deps: []
@@ -1086,4 +1106,22 @@ rungs:
   - 有没有"越爬越偏"的漂移迹象？
   abort_if: 7 天内出现 1 次越界或需人工救场 → 暂停闭环
   cost: 高
+- id: A1_5
+  title: 判据元验证（防假绿）
+  status: ready
+  deps:
+  - A1
+  risk: low
+  autonomous: true
+  verify:
+  - kind: file_exists
+    path: tools/check_verify.py
+  - kind: test_pass
+    cmd: D:/Python/python.exe -B tools/check_verify.py
+    min: 1
+  - kind: file_grep
+    path: tools/check_verify.py
+    regex: recursive|递归|self.?ref
+    min: 1
+    flags: IGNORECASE
 <!-- ROADMAP_GRAPH_END -->
