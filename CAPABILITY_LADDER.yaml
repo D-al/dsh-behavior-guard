@@ -1000,7 +1000,7 @@ items:
   advice: GPU争抢治本，A1_6之后
   rank_hint: blocked
   rank_derived: false
-  status: ready
+  status: manual-blocked
 autonomy_rungs:
 - id: A0
   title: 数据可信（sid 黑名单）
@@ -1297,9 +1297,16 @@ autonomy_rungs:
   advice: 防线的防线，比A1_5更优先
   rank_hint: normal
   rank_derived: false
-  status: doing
+  status: done
   claimer: unknown-agent
   claimed_at: '2026-11-20T13:12:01.950856+00:00'
+  evidence_log:
+  - at: '2026-11-20T13:49:00.488751+00:00'
+    commit: 16497fe
+    checks:
+    - 2 hits in index.mjs
+    - rc=0 PASS=8
+    - D:\Brain\publish\dsh-behavior-guard\docs\FUTURE_CLAIM_GUARD_20261120.md
 - id: A1_7
   title: 评审机制可观测性
   what: 给 Critic/Planner 调用加专属 trace 打点（rubric_version/dimensions_checked/verdict），让每个评审机制有可审计的触发证据

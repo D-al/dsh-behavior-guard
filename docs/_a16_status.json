@@ -1,19 +1,19 @@
 {
-  "ts": "21:21:36",
+  "ts": "21:49:02",
   "slots": {
-    "processing": true,
-    "decoded": 998,
-    "prompt_used": 787,
-    "task": 8703
+    "processing": false,
+    "decoded": 0,
+    "prompt_used": 0,
+    "task": 14700
   },
-  "token_growing": true,
+  "token_growing": false,
   "sessions": {
     "error": "'NoneType' object has no attribute 'splitlines'"
   },
   "artifacts": {
-    "test": false,
-    "doc": false,
-    "reflection": false,
+    "test": true,
+    "doc": true,
+    "reflection": true,
     "index_future_claim": true
   },
   "tool_counts": {},

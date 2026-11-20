@@ -915,13 +915,13 @@ items:
   - kind: test_pass
     cmd: D:/Python/python.exe -B tools/test_frame_limiter_effect.py
     min: 1
-  what: 给 frame_limiter 加效果回读：THROTTLE 后采样目标 3D 是否下降，N 轮无下降则升级手段或记 WARN，不再"降过就算数"
-  why: 2026-11-20 实测：EcoQoS 调用成功(THROTTLE 事件存在)但 WorkBuddy gpu-process 3D 66→62.5%基本无效；且降帧只做一次永不复查——机制存在≠效果达成
+  what: 废除"单帧硬件快照判推理活性"，改用 token 计数连续采样(n_decoded/n_prompt_tokens 5-10秒增长)作为唯一判据
+  why: 我用单帧100%/1%/25W误判为spin-wait并开卡，用户实证两窗口全开推理正常；相位间隙的瞬态被当成稳态
   benefit_to_self: 限帧从"调用了就算"升级为"有效才算"——避免静默无效 6 小时
   cost: 中
   caveats:
-  - 回读采样本身有开销，别把 frame_limiter 变成新的 3D 源
-  - 升级手段(PriorityClass=Idle)要可回滚
+  - token计数要在同task内比较，跨task会跳变
+  - 别再回到聚合util%判据
   abort_if: 无法可靠回读单进程3D占用，或升级手段影响系统稳定性
   human_note: 2026-11-20 21:12 用户实证推翻前提：两窗口全开推理正常(n_decoded 1211→1356/5s，带宽22-29%功耗36-41W)。原"3D抢占致spin-wait"是单帧采样撞相位间隙的误判。S10原目标(降帧效果回读)前提不成立，阻塞待重定义。
 rungs:
@@ -1180,7 +1180,7 @@ rungs:
     - 7 hits in tools/check_verify.py
 - id: A1_6
   title: 守卫 L1 补将来时承诺检测
-  status: doing
+  status: done
   deps:
   - A1
   risk: low
@@ -1207,6 +1207,14 @@ rungs:
   abort_if: 无法区分"将来时承诺"与"正常下一步说明"导致大量误拦截
   claimed_at: '2026-11-20T13:12:01.950856+00:00'
   claimer: unknown-agent
+  done_at: '2026-11-20T13:49:00.488751+00:00'
+  evidence_log:
+  - at: '2026-11-20T13:49:00.488751+00:00'
+    commit: 16497fe
+    checks:
+    - 2 hits in index.mjs
+    - rc=0 PASS=8
+    - D:\Brain\publish\dsh-behavior-guard\docs\FUTURE_CLAIM_GUARD_20261120.md
 - id: A1_7
   title: 评审机制可观测性
   status: ready
