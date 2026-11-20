@@ -46,6 +46,8 @@ else
 fi
 if command -v "$PYTHON" >/dev/null 2>&1; then
     run_test "config-check" "$PYTHON \"$ROOT/tools/config_check.py\""
+    # 引用-决策对应守卫（2026-11-20 用户架构级要求）：决策引用幻觉证据即 FAIL
+    run_test "citation-guard" "$PYTHON \"$ROOT/tools/citation_guard.py\" --quiet"
 else
     echo "[skip] python not found"
 fi
