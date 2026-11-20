@@ -1397,4 +1397,6 @@ autonomy_rungs:
   advice: 机制可观测性，A1_6之后做
   rank_hint: normal
   rank_derived: false
-  status: ready
+  status: doing
+  claimer: unknown-agent
+  claimed_at: '2026-11-20T16:45:21.583892+00:00'

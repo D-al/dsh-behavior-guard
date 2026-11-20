@@ -1338,7 +1338,7 @@ rungs:
     - D:\Brain\publish\dsh-behavior-guard\docs\FUTURE_CLAIM_GUARD_20261120.md
 - id: A1_7
   title: 评审机制可观测性
-  status: ready
+  status: doing
   deps:
   - A1
   risk: low
@@ -1361,4 +1361,6 @@ rungs:
   - 打点必须含 verdict 和具体维度，不能只记"调用过"造成另一种假绿
   - trace 写失败不能影响主评审流程
   abort_if: 无法在不改 callLLM 签名的前提下拿到 rubric 版本与维度判定
+  claimed_at: '2026-11-20T16:45:21.583892+00:00'
+  claimer: unknown-agent
 <!-- ROADMAP_GRAPH_END -->

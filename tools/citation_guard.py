@@ -92,6 +92,30 @@ def check():
                     when = e.get('verified_at', '?')
                     results.append(('PASS', f'{f.name}:{i+1}:{aid}',
                                     f'verified@{when} | 真实标题: {real}'))
+
+    # ADR 决策纪律硬门控（2026-11-21 起的新 ADR）：
+    # 用户明确"把软纪律硬化成 guard"——不依赖 agent 记得，靠机器在 run_all 时强制检查。
+    # 只检查 2026-11-21 及之后的 ADR；老 ADR 的历史欠账不追杀（否则 19 个全红）。
+    DISCIPLINE_SINCE = '2026-11-21'
+    REQUIRED = [
+        ('决策层级', r'决策层级[：:]\s*(一般决策\s*G|重要决策\s*I|关键决策\s*K)'),
+        ('方案对比', r'##\s*Options|##\s*方案'),
+        ('反证段', r'##\s*Counter-evidence|##\s*反证'),
+        ('验证条件', r'验证[：:]|怎么知道|如何确认|判据[：:]'),
+    ]
+    for f in decision_files():
+        txt = f.read_text(encoding='utf-8')
+        if f.name == 'ROADMAP.md' or not re.search(r'^#\s*ADR-\d+', txt, re.M):
+            continue  # ROADMAP 和非 ADR 文档不套 ADR 模板（ADR 前缀在标题里，不在文件名里）
+        m = re.search(r'^-\s*日期[：:]\s*(\d{4}-\d{2}-\d{2})', txt, re.M)
+        if not m or m.group(1) < DISCIPLINE_SINCE:
+            continue  # 老 ADR 或日期缺失 → 历史欠账，不检查
+        missing = [name for name, pat in REQUIRED if not re.search(pat, txt, re.I)]
+        if missing:
+            results.append(('FAIL', f'{f.name}:decision-discipline',
+                            f'新ADR缺必填字段: {", ".join(missing)}'))
+        else:
+            results.append(('PASS', f'{f.name}:decision-discipline', '四字段齐全'))
     return results
 
 

@@ -44,7 +44,7 @@
 > | **M1 情景检索进主循环** | ✅ done | 证据见 `evidence_log` + `docs/reflection-M1.md` |
 > | **M8 轨迹 FSM 监控器** | ✅ done | 证据见 `evidence_log` + `docs/reflection-M8.md` |
 > | **S14 编辑协议升级（降低复现负担）** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S14.md` |
-> | **下一项** | 🟢 A1_7 | `A1_7` 已 ready，可 `--claim` |
+> | **下一项** | 🟢 S11 | `S11` 已 ready，可 `--claim` |
 >
 > 机器真相 = [ROADMAP_GRAPH.md](ROADMAP_GRAPH.md)；本表由 `--apply` 自动写，人读与机器不漂移。
 <!-- HUMAN_PROGRESS_END -->
@@ -126,7 +126,7 @@ v2.24 同时做了**深度维护**：修 1 个 P0（安全注入被次数闸门�
 - **坑/边界**：收紧后可能重现25/26回归误判，要用更精确的文件名匹配替代宽松规则；保留对真实语法检查命令的识别
 - **何时停**：收紧导致正常验证流程被大面积误拦
 
-**`A1_7` 评审机制可观测性** · 分 `1.0` · 状态 `ready` · 桶 `normal`
+**`A1_7` 评审机制可观测性** · 分 `1.0` · 状态 `doing` · 桶 `normal`
 - **性价比**：收益 中高 / 成本 中 / 建议 机制可观测性，A1_6之后做
 - **依赖→解锁**：A1 → —
 - **做什么**：给 Critic/Planner 调用加专属 trace 打点（rubric_version/dimensions_checked/verdict），让每个评审机制有可审计的触发证据
