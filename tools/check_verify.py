@@ -21,7 +21,7 @@ import sys
 import json
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent   # tools/check_verify.py -> 仓库根（2026-11-20 修正：原少一层导致 test_sids 永远加载为0）
 TEST_SIDS_FILE = ROOT / 'test_sids.json'
 LADDER_YAML = ROOT / 'CAPABILITY_LADDER.yaml'
 GRAPH_MD = ROOT / 'ROADMAP_GRAPH.md'
@@ -96,7 +96,14 @@ def detect_format_mismatch(item_id, verify_list):
             # 这可能是一个潜在的格式不匹配风险——但不一定真的有问题
             pass
     
-    # 更实用的方法：对构造样本中的特定模式做硬编码检测
+    # 实用检测（2026-11-20 补）：cmd 明示输出非标准格式（如 '[PASS  ]'），
+    # 但判据没有 format_hint / regex 声明期待格式 → evaluate 的 PASS 计数可能错配。
+    for v in verify_list:
+        if v.get('kind') != 'test_pass':
+            continue
+        cmd = str(v.get('cmd', ''))
+        if ('[PASS' in cmd or '\\[PASS' in cmd) and not v.get('format_hint') and 'regex' not in v:
+            return True, f'test_pass cmd emits nonstandard PASS format but no format_hint declared: {cmd[:60]}'
     return False, ""
 
 

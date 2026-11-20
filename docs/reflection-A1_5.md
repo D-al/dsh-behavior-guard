@@ -42,6 +42,20 @@ action: "已开 A1_6 卡：L1 扩展到将来时承诺检测，仍以环境事�
 priority: high
 ```
 
+## 3.5 补记：元验证器自己的假阴性（20:55 实修）
+
+上线后发现 agent 版本的 `check_verify.py` 自测只有 **2/4**——两个 buggy 样本没被检出：
+- `ROOT = Path(__file__).parent` 指到 `tools/`，但 `test_sids.json` 在仓库根 → **少一层路径**，
+  `load_test_sids()` 永远返回空集 → sid 污染检测永远不触发
+- `detect_format_mismatch()` 是空实现（`return False, ""`）
+
+修复：ROOT 上移一层 + format 检测实现（cmd 输出 `[PASS  ]` 但无 format_hint → 标记）。
+重跑自测 **4/4**、real scan 正确加载 11 个 test sid、verify A1_5 3/3。
+
+**教训**：我自己在 20:26 提交前没重跑判据就 `git add -A`，把一个自测 2/4 的版本推了上去——
+和批评 agent"说要做不做"是同一类错误（没验证就宣称完成）。
+元验证器这种"防假绿的防线"，上线前必须自己先过自测；否则就是**防线的防线上有洞**。
+
 ## 4. 元层观察（用户要求的"留意决策过程"）
 
 - **正面**：claim 后先读 roadmap_check.py 前 200 行 + LADDER 卡定义，无 read 循环，顺序正确。
