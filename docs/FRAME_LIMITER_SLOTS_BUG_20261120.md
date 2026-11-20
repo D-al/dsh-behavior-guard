@@ -60,3 +60,15 @@ SLOTS = "http://127.0.0.1:8081/slots?model=Qwen3.6-35B-A3B-UD-Q4_K_XL"
   否则静默失效几周都没人发现（本次从 14:54 启动到 20:55 发现，静默 6 小时）。
 - **最小化 dsh 窗口无效**：我试过 `bridge.mjs minimize`，指标无变化——真凶不是 dsh 窗口，
   是 frame_limiter 失效导致所有 3D 进程都没被限速。
+
+## 6. 系统性排查（避免过度归因）
+
+我一度以为"所有承重脚本都漏了 model 参数"，实测纠正：
+- ✅ `freeze_watch.py`（看门狗）和 `gpu_engine_guard.py`（GPU守护）**是对的**——它们先调
+  `loaded_model()` 从 `/v1/models` 拿模型名，再拼 `?model=`（freeze_watch:40-48 / guard:124-134）
+- ❌ 只有 `frame_limiter.py` hardcode 了裸 URL
+- ⚠️ `live_trace.py`/`stall_sampler.py`/`sweep.py`/`final_check.py` 等诊断基准脚本确实裸调，
+  但它们不是承重守护，静默失效影响有限（记为低优先级清理）
+
+**结论**：这是单点 bug，不是系统性崩塌。但教训普适——凡是 hardcode 路由 URL 的地方都要过一遍
+"router 模式必须带 model"的检查清单。
