@@ -20,6 +20,7 @@
 | **我是 agent，想自己成长 / 找下一件可做的事** | [能力阶梯](CAPABILITY_LADDER.yaml)（机器可读成长卡片：what/why/解锁/好处/代价/坑/反思）+ `python tools/roadmap_check.py --next` 选下一项、`--card M1` 读任意卡片、`--dry-run` 验判据。设计见 [成长卡片说明](docs/GROWTH_CARD_DESIGN_20261120.md)|
 | **我是谁、我从哪里来、为什么相信这些** | [认知谱系](lineage/README.md)（独立于路线图/操作手册的身份家谱：五层依赖链演化史 ORIGIN + 51 个决策的依据与严格性评级 DECISION_LEDGER + 三层决策链 + 决策主体与最优性 + 认识论 + 身份锚）|
 | **我有哪些资产、在哪、何时调用** | [资产地图](lineage/ASSET_MAP.md)（人读）+ [资产索引](config/ASSET_INDEX.json)（机器可读）：16 项资产的调度中枢，含证据生产工具与工作契约 [技能卡](skills/literacy.md)（读写识字率）|
+| **怎么当场做决策 / 这套方法真能用吗** | [一页纸决策卡](lineage/QUICK_DECISION_CARD.md) · [方法论自审](lineage/METHODOLOGY_AUDIT.md) · [操作化与器官受益](lineage/OPERATIONALIZING.md)；反仪式检查 `python tools/decision_impact_audit.py`（首测 19 ADR 100% 无验证条件）|
 | **想确认 GitHub/权威/生产是否一致** | `python tools/consistency_guard.py`（零 LLM 守卫，exit 0/1/2；清单 `config/GUARD_MANIFEST.yaml`，设计见 [守卫设计](docs/CONSISTENCY_GUARD_DESIGN_20261120.md)）|
 | **窗口一开 GPU 就卡死** | [3D/Copy 争抢诊断与降帧](docs/GPU_ENGINE_GUARD.md)（含守护脚本）|
 | **为什么压缩后重复干活/看不到角色** | [压缩与角色诊断](docs/COMPACTION_AND_ROLES_DIAGNOSIS.md)（含存档去重修复）|

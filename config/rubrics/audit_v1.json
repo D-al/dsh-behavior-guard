@@ -1,5 +1,5 @@
 {
-  "_note": "审计员规则手册。deterministic 字段是'外置规则 × 代码门控'的联动点：非空表示该检查已由确定性代码覆盖，审计员 prompt 会显示'已自动检测'——避免重复劳动，同时让审计员宏观知道全量职责。",
+  "_note": "审计员规则手册。deterministic 字段是'外置规则 × 代码门控'的联动点：非空表示该检查已由确定性代码覆盖，审计员 prompt 会显示'已自动检测'——避免重复劳动，同时让审计员宏观知道全量职责。 新增检查项 E\"绿灯依据\"（2026-11-21，依据 automation bias 研究 + 项目自审 §5.5）。",
   "version": "audit-v1",
   "name": "会话过程审计",
   "checks": [
@@ -26,13 +26,34 @@
       "name": "遗漏",
       "description": "本该发生但没发生——任务要求的关键步骤在轨迹里找不到",
       "deterministic": null
+    },
+    {
+      "id": "E",
+      "name": "绿灯依据",
+      "description": "是否把\"测试全绿/守卫 PASS/文档已填\"当成独立证据，而未核实原始依据？（Mosier 1998：连续绿灯会让核查停止；本项目 2026-11-21 实证：我先标\"已核实\"后补核实）",
+      "deterministic": null
     }
   ],
   "gates": [
-    { "id": "repeated-failure", "when": "轨迹 FAIL/UNPRODUCTIVE ≥ 2" },
-    { "id": "low-draft-acceptance", "when": "llama-server draft acceptance < 0.65（MTP 信心信号）" },
-    { "id": "no-progress", "when": "连续 ≥6 步无生产性调用（无 write/edit/todo）" },
-    { "id": "pre-delivery", "when": "present 已调用（交付前风险最高点）" },
-    { "id": "post-compaction", "when": "刚经历上下文压缩（状态重建高危期）" }
+    {
+      "id": "repeated-failure",
+      "when": "轨迹 FAIL/UNPRODUCTIVE ≥ 2"
+    },
+    {
+      "id": "low-draft-acceptance",
+      "when": "llama-server draft acceptance < 0.65（MTP 信心信号）"
+    },
+    {
+      "id": "no-progress",
+      "when": "连续 ≥6 步无生产性调用（无 write/edit/todo）"
+    },
+    {
+      "id": "pre-delivery",
+      "when": "present 已调用（交付前风险最高点）"
+    },
+    {
+      "id": "post-compaction",
+      "when": "刚经历上下文压缩（状态重建高危期）"
+    }
   ]
 }
