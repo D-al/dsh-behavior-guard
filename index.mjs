@@ -1552,17 +1552,29 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
     })
   }
 
+  // ── formatCorrection — v1 (2026-11-21) ──
+  // 纯函数：无副作用、零外部依赖；规范副本在 tools/format_correction.mjs。
+  // 设计原则：确定性/零 LLM/fail-closed。action 未识别时返回 null。
   function formatCorrection(pkg) {
-    if (pkg.action === 'retry_with' && pkg.tool) {
+    if (!pkg || typeof pkg !== 'object') return null
+
+    const action = pkg.action
+    const reason = pkg.reason || '见证据'
+
+    if (action === 'retry_with' && pkg.tool) {
       const argsStr = JSON.stringify(pkg.args ?? {}, null, 0)
-      return `[harness 系统修正] 独立纠正器依据环境证据确定了正确参数（理由：${pkg.reason || '见证据'}）。请原样调用：${pkg.tool}，参数：${argsStr}。这是一次性的参数修正——调用时不要改动任何字段。`
+      return `[harness 系统修正] 独立纠正器依据环境证据确定了正确参数（理由：${reason}）。请原样调用：${pkg.tool}，参数：${argsStr}。这是一次性的参数修正——调用时不要改动任何字段。`
     }
-    if (pkg.action === 'ask_user') {
+
+    if (action === 'ask_user') {
       return `[harness 系统修正] 独立纠正器认为环境证据不足以继续，需要用户澄清：${pkg.reason || '请向用户确认下一步。'}请立即向用户提问。`
     }
-    if (pkg.action === 'abandon') {
+
+    if (action === 'abandon') {
       return `[harness 系统修正] 独立纠正器依据环境证据判定该目标不可达：${pkg.reason || '目标不存在'}。停止尝试，从任务清单中移除该项并向用户说明。`
     }
+
+    // action 未识别 → fail-closed，返回 null 让上游决定
     return null
   }
 
