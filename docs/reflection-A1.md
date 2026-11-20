@@ -75,7 +75,7 @@ priority: high
 ## 4. 终态验收（全绿）
 
 ```
-roadmap_check --graph: 42 nodes / 22 edges / 0 cycle
+roadmap_check --graph: 41 nodes / 22 edges / 0 cycle
 roadmap_check --dry-run: PASS=27 FAIL=11 MANUAL=15（未完成卡无误报）
 roadmap_check --verify A1: 2/2 PASS（rc=0 PASS=13）
 backtest_archive.py: 13/13 PASS / 0 FAIL（7 秒，零递归）

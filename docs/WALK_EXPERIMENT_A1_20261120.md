@@ -44,7 +44,7 @@
 ## 5. 终态（全绿，除 verify A1 仍在跑）
 
 ```
-graph: 42 nodes / 22 edges / 0 cycle
+graph: 41 nodes / 22 edges / 0 cycle
 dry-run: PASS=16 FAIL=4 MANUAL=15（未完成卡零误报）
 self-test 14/14 | a35 4/4 | run_all 17/17
 reflection-A1.md 已写
