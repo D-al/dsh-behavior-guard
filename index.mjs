@@ -405,7 +405,13 @@ print(json.dumps(missing))`
       } catch { /* ignore */ }
       // 路径引用检查（仅绝对路径 D:/ 或 C:/ 开头的引用）
       try {
-        const refs = [...src.matchAll(/[A-Za-z]:[\\/][^\s`"'()\[\]]{4,}/g)].map((m) => m[0].replace(/[.,;:]+$/, ''))
+        // 2026-11-21 生产实证：文档里的"路径映射示意"（p/bench/xxx.py = D:/Brain/workspace/bench/xxx.py）
+        // 被深检当成真实引用 → REJECT → 模型反复改 → 死循环。占位符路径必须排除——
+        // 与 ADR 的"守卫正则只认执行动作，绝不扫内容"同类坑。
+        const PLACEHOLDER = /[\/\\](xxx|yyy|zzz|example|sample|foo|bar|baz|test|placeholder|your[-_]?\w*|tbd|todo)(\.|_|[\\/]|$)/i
+        const refs = [...src.matchAll(/[A-Za-z]:[\\/][^\s`"'()\[\]]{4,}/g)]
+          .map((m) => m[0].replace(/[.,;:]+$/, ''))
+          .filter((r) => !PLACEHOLDER.test(r))
         const missing = refs.filter((r) => !existsSync(r)).slice(0, 3)
         if (missing.length) issues.push('引用了不存在的路径: ' + missing.join(', '))
       } catch { /* ignore */ }

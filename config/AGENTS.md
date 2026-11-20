@@ -202,6 +202,26 @@ harness 会按当前轨迹特征自动检索最相关的教训并以【相关教
 `job_*` 已禁用；`web_fetch` 不可用（一律 web_search）。
 相似工具怎么区分（名字→es、路径模式→glob、内容→grep、已知→read）见 skill `tool-boundaries`。
 
+### input_examples（高频工具调用示范）
+
+#### read — 读取文件内容
+| 场景 | 参数 |
+|------|------|
+| 最小用法（短文件一次读完） | `{file_path: "README.md", limit: 200}` |
+| 真实路径（定位到目标行±5行做锚点） | `{file_path: "memory/2026-11-16.md", offset: 45, limit: 10}` |
+
+#### write — 创建或完全覆盖文件
+| 场景 | 参数 |
+|------|------|
+| 最小用法（新文件写入几行文本） | `{file_path: "notes.txt", content: "# 临时笔记\n第一行\n第二行"}` |
+| 真实路径（写工作区内的配置文件） | `{file_path: "config/settings.json", content: "{\n  \"debug\": false,\n  \"log_level\": \"info\"\n}"}` |
+
+#### edit — 替换已有文件中的指定文本
+| 场景 | 参数 |
+|------|------|
+| 最小用法（单行精确替换） | `{file_path: "CHANGELOG.md", old_string: "v1.0", new_string: "v1.1"}` |
+| 真实路径（长文件中用唯一锚点修改一处） | `{file_path: "p/bench/skills/tool-boundaries.md", old_string: "read → glob → grep → es", new_string: "read → glob → grep → es → pwsh", replace_all: false}` |
+
 ---
 
 # 三、收工：验收与协作
