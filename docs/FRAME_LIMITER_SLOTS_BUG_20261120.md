@@ -73,7 +73,18 @@ SLOTS = "http://127.0.0.1:8081/slots?model=Qwen3.6-35B-A3B-UD-Q4_K_XL"
 **结论**：这是单点 bug，不是系统性崩塌。但教训普适——凡是 hardcode 路由 URL 的地方都要过一遍
 "router 模式必须带 model"的检查清单。
 
-## 7. 降帧效果实测：EcoQoS 调用成功，但对 Chromium gpu-process 实质无效（21:08）
+## 7. ⚠️ 本节结论已作废（2026-11-20 21:12 纠错）
+
+**用户实证推翻了本节前提**：两窗口全开时推理正常——`n_decoded` 5 秒涨 145、
+带宽 22-29%、功耗 36-41W。我用的单帧 100%/1%/25W 是**相位间隙瞬态**，不是稳态。
+详见 [DIAGNOSIS_CORRECTION_20261120.md](DIAGNOSIS_CORRECTION_20261120.md)。
+
+本节保留作为错误记录，但"降帧无效导致推理卡死"的结论**不成立**，S10 卡已据此重定义。
+（SLOTS 缺 model 的 bug 本身是真的，修复保留。）
+
+---
+
+<details><summary>以下为作废的原始分析（保留供审计）</summary>
 
 用户问"同时降帧是否有效果？"——做了证据链核查，答案：**机制通了，效果没有**。
 
@@ -99,3 +110,4 @@ SLOTS = "http://127.0.0.1:8081/slots?model=Qwen3.6-35B-A3B-UD-Q4_K_XL"
 **待优化**（可开卡）：frame_limiter 应加"降帧效果回读"——采样 THROTTLE 后 3D 是否下降，
 若 N 轮无下降则升级手段（设 ProcessPriorityClass=Idle 或记 WARN），而不是假装降过就算数。
 这又是"机制存在 ≠ 效果达成"的典型——和今天 A1_7（评审可观测性）同类。
+</details>

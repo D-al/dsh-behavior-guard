@@ -986,20 +986,21 @@ items:
   rank_derived: false
   status: ready
 - id: S10
-  title: 降帧效果回读（限帧治假绿）
-  what: 给 frame_limiter 加效果回读：THROTTLE 后采样目标 3D 是否下降，N 轮无下降则升级手段或记 WARN，不再"降过就算数"
-  why: 2026-11-20 实测：EcoQoS 调用成功(THROTTLE 事件存在)但 WorkBuddy gpu-process 3D 66→62.5%基本无效；且降帧只做一次永不复查——机制存在≠效果达成
+  title: 推理活性判据纠偏（取消单帧采样）
+  what: 废除"单帧硬件快照判推理活性"，改用 token 计数连续采样(n_decoded/n_prompt_tokens 5-10秒增长)作为唯一判据
+  why: 我用单帧100%/1%/25W误判为spin-wait并开卡，用户实证两窗口全开推理正常；相位间隙的瞬态被当成稳态
   benefit_to_self: 限帧从"调用了就算"升级为"有效才算"——避免静默无效 6 小时
   caveats:
-  - 回读采样本身有开销，别把 frame_limiter 变成新的 3D 源
-  - 升级手段(PriorityClass=Idle)要可回滚
+  - token计数要在同task内比较，跨task会跳变
+  - 别再回到聚合util%判据
   abort_if: 无法可靠回读单进程3D占用，或升级手段影响系统稳定性
   rank: 3
   benefit: 中
   cost: 中
   advice: GPU争抢治本，A1_6之后
-  rank_hint: normal
+  rank_hint: blocked
   rank_derived: false
+  status: ready
 autonomy_rungs:
 - id: A0
   title: 数据可信（sid 黑名单）
@@ -1296,7 +1297,9 @@ autonomy_rungs:
   advice: 防线的防线，比A1_5更优先
   rank_hint: normal
   rank_derived: false
-  status: ready
+  status: doing
+  claimer: unknown-agent
+  claimed_at: '2026-11-20T13:12:01.950856+00:00'
 - id: A1_7
   title: 评审机制可观测性
   what: 给 Critic/Planner 调用加专属 trace 打点（rubric_version/dimensions_checked/verdict），让每个评审机制有可审计的触发证据
