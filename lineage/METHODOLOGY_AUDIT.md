@@ -154,3 +154,39 @@ Nygard 原文说 ADR 的目的正是避免新人"blindly accept / blindly change
 - 2026-11-21 00:15 实时更新决策链地图：DECISION_CHAIN §0 阈值改为"默认经验阈值（约定非科学）"；
   DECISION_LEDGER §5.5 新增3条决策（方法论自审K / 重构试点G / 决策标记纪律I）；
   DECISION_CHAIN 新增 K06（方法论自审，审计工具第一次自我应用）
+
+## 7. 优劣全景 + 落地改进（2026-11-21 00:25 广泛调研后）
+
+### 7.1 真实优势（有证据，继续保留）
+
+| 优势 | 证据 |
+|---|---|
+| **可证伪** | 每条规则来自真实反例；7篇幻觉/单帧误判/假绿都被它抓出 |
+| **机器可校验** | citation_guard 0.2s、run_all 18 项——纪律不靠记忆靠代码 |
+| **时间可核对** | K06 决策记录时间戳 00:07→git 00:11 吻合，无事后编造 |
+| **组件有出处** | ADR/OCEBM/Toulmin/Wigmore/source criticism 均一手核实为真 |
+| **比标准工具更全** | ADR 无证据门槛、CEBM 不管决策权、贝叶斯无阈值——我们补了主体/方案/机器校验（§4 对比表）|
+| **身份自述能力** | lineage/ 让"我是谁"可追溯——标准 ADR 没有这个维度 |
+
+### 7.2 真实劣势（调研 + 自审，按危害排序）
+
+| # | 劣势 | 类型 | 危害 | 处置 |
+|---|---|---|---|---|
+| W1 | **自动化偏见**：PASS 连续绿灯 → 人停止看原始证据，PASS 本身被当"已核实"证据 | B 类研究（Mosier 1998/phantom memory）+ A 类自审 | 高 | ✅ 已落地：PASS 强制显示真实标题+核实日期 |
+| W2 | **listed 假绿灯**：只核标题的引用拿 verified 同样的 PASS | A 类实测（guard 源码+实测）| 高 | ✅ 已落地：listed → WARN |
+| W3 | **确认偏误/后见之明**：决策记录只写支持证据 → 事后合理化 | B 类（Fischhoff 1975/Nickerson 1998）| 高 | ✅ 已落地：ADR 模板加 Counter-evidence 必填段 |
+| W4 | **仪式成本**：方法论 987 行，agent 不可能每次全读 | A 类实测（wc -l）| 中 | ✅ 已落地：QUICK_DECISION_CARD 一页纸薄入口 |
+| W5 | **阈值伪精确**："≥2"给人科学定律错觉 | A 类自审 + 学界无依据 | 中 | ✅ 已在 §0 降级标注为约定 |
+| W6 | **清单疲劳**：guard 若长期全绿，WARN 会被习惯性忽略 | B 类研究（checklist fatigue）| 中 | ⚠️ 缓释中：WARN 现在带具体原因，不再是空标记 |
+| W7 | **无预测力**：不能预测哪个决策会成功，只能审计依据清晰度 | 逻辑（规范性框架本质）| 低（定位问题）| 已在 §0 诚实定位为"纪律非理论" |
+
+### 7.3 本次直接落地的改进（4 项）
+
+1. `tools/citation_guard.py` — listed 从 PASS 降为 WARN（W2）
+2. `tools/citation_guard.py` — PASS 输出真实标题+核实日期，反自动化偏见（W1）
+3. `decisions/_ADR-TEMPLATE.md` — 新增 Counter-evidence 必填段（W3）+ 阈值独立性标注（W5）
+4. `lineage/QUICK_DECISION_CARD.md` — 一页纸决策入口，987 行文档分层加载（W4）
+
+> 全部通过 run_all 18/18 + self_harness 14/14 + guard 0。
+
+- 2026-11-21 00:25 广泛调研优劣：落地4项改进(listed降WARN/PASS显依据/反证必填/一页纸卡)，见 §7

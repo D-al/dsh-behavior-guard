@@ -78,8 +78,20 @@ def check():
                     results.append(('FAIL', f'{f.name}:{i+1}:{aid}', f'禁止作为决策依据: {st}'))
                 elif st == 'partial':
                     results.append(('WARN', f'{f.name}:{i+1}:{aid}', f'仅背景非唯一依据: {e.get("note", "")[:60]}'))
+                elif st == 'listed':
+                    # 2026-11-21 方法论自审修复：listed 只过了 L1-L2（存在+标题），
+                    # 旧逻辑落进 else 被当 verified 放行 = "打勾文化"漏洞。
+                    # 决策引用只核了标题的论文必须 WARN，不能拿绿灯。
+                    results.append(('WARN', f'{f.name}:{i+1}:{aid}',
+                                    '仅L1-L2核实(存在+标题)，未核结论/数字——不得作决策唯一依据'))
                 else:
-                    results.append(('PASS', f'{f.name}:{i+1}:{aid}', 'verified'))
+                    # 反自动化偏见（2026-11-21）：PASS 不能只说 "verified"——
+                    # 连续绿灯会让人停止看原始证据，把 PASS 本身当成"已核实"的证据。
+                    # 强制随 PASS 显示真实标题+核实日期，保持"看的动作"不消失。
+                    real = str(e.get('real_title', ''))[:70]
+                    when = e.get('verified_at', '?')
+                    results.append(('PASS', f'{f.name}:{i+1}:{aid}',
+                                    f'verified@{when} | 真实标题: {real}'))
     return results
 
 
