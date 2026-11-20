@@ -109,7 +109,7 @@ items:
   - GWT_FEP
   risk: low
   autonomous: true
-  status: ready
+  status: done
   verify:
   - kind: file_grep
     path: index.mjs
@@ -141,6 +141,16 @@ items:
   - 注入的 3 条里有几条真被后续动作引用？没被引用的为什么没用？
   - 有没有"想起来的经验是错的/过时的"？怎么进可控遗忘？
   abort_if: D5 审计额度被挤占，或长任务 token 增幅>10% 且无质量提升
+  claimed_at: '2026-11-20T06:38:36.373402+00:00'
+  claimer: unknown-agent
+  done_at: '2026-11-20T06:59:04.502943+00:00'
+  evidence_log:
+  - at: '2026-11-20T06:59:04.502943+00:00'
+    commit: 6a08e97
+    checks:
+    - 1 hits in index.mjs
+    - 1 hits in index.mjs
+    - evidence_cited=1 (real sid)
 - id: M8
   tier: 1
   deps:
@@ -711,24 +721,16 @@ rungs:
 ## 1. 当前位置（30 秒读懂）
 
 <!-- HUMAN_PROGRESS_BEGIN v1：由 roadmap_check.py --apply 自动生成，勿手改 -->
-> ### 🟢 自主化进度（2026-11-20 实测，人读版）
+> ### 🟢 自主化进度（自动同步）
 >
-> **能力阶梯已真实爬完低风险区**：
->
-> | 卡片 | 状态 | 完成证据（人可点） |
+> | 卡片 | 状态 | 完成证据 |
 > |---|---|---|
-> | **A0 数据可信（sid 黑名单）** | ✅ done | `test_sids.json` + 3 个脚本过滤 + [反思](docs/reflection-A0.md) |
-> | **A3_5 安全地基（真实 diff + e2e + 回滚）** | ✅ done | gate 14/14 self-test + run_all 17/17 + [反思](docs/reflection-A3_5.md) |
-> | **下一项** | ⏸ 空 | `--next` 返回空：剩余全是 `manual/human` 轨，需人工开闸 |
+> | **A0 数据可信（sid 黑名单）** | ✅ done | 证据见 `evidence_log` + `docs/reflection-A0.md` |
+> | **A3_5 安全地基（真实 diff + e2e + 回滚）** | ✅ done | 证据见 `evidence_log` + `docs/reflection-A3_5.md` |
+> | **M1 情景检索进主循环** | ✅ done | 证据见 `evidence_log` + `docs/reflection-M1.md` |
+> | **下一项** | 🟢 M8 | `M8` 已 ready，可 `--claim` |
 >
-> **这是 agent 自己爬的**，不是我手工勾的：两轮实战实验记录在
-> [A0](docs/WALK_EXPERIMENT_20261120.md) / [A3_5](docs/WALK_EXPERIMENT_A3_5_20261120.md)。
-> 机器真相仍是 §1 上方内嵌块（`roadmap_check.py` 读写）；**本表由 `--apply` 自动同步**——
-> 人读的表格与机器块从此不再漂移。
->
-> ⚠️ **边界**：1/1 + 1/1 低风险卡成功，高风险档未测、不外推。详细教训见上面的实验报告。
->
-> ---
+> 机器真相 = 上方 ROADMAP_GRAPH 块；本表由 `--apply` 自动写，人读与机器不漂移。
 <!-- HUMAN_PROGRESS_END -->
 
 **项目是什么**：给 dsh（DeepSeek Harness）的一个 cordis 插件，通过**模型外部**的确定性脚手架

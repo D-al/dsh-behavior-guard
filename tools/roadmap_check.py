@@ -251,8 +251,9 @@ def save_authoritative(data):
                     lambda _m: GRAPH_BEGIN + '\n' + inner + GRAPH_END, md, flags=re.S)
     # 同步人类可读进度表（设计稿承诺：机器块与人类视图不再漂移）
     sm = status_map_of(data)
-    autonomy = [i for i in data['rungs']]
-    done = [i for i in autonomy if sm.get(i['id']) == 'done']
+    # 人工视图必须同时列自主化阶(A)与心智器官(M/L)——只看 rungs 会漏掉 M1 这类已完成卡
+    all_cards = list(data['rungs']) + list(data['items'])
+    done = [i for i in all_cards if sm.get(i['id']) == 'done']
     nxt = find_next(data)
     rows = '\n'.join(
         f'> | **{i["id"]} {i.get("title", "")}** | ✅ done | 证据见 `evidence_log` + `docs/reflection-{i["id"]}.md` |'

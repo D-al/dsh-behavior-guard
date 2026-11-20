@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "date": "2026-11-19",
+  "date": "2026-11-20",
   "description": "Self-Harness 可编辑面白名单（ADR-0018）：只有这些面允许候选修改；其余一律禁改。",
   "rule": "一个候选只改一个 surface；改完必须 node --check + regression_check.py 30/30 通过；候选写隔离目录，不碰运行版。",
   "editable": [
@@ -8,43 +8,90 @@
       "id": "SURF-PROMPT-CONTROL",
       "kind": "prompt",
       "target": "index.mjs:CONTROL_PROMPT / parts.push 文案",
-      "allows": ["控制回合注入文案措辞", "⑦ 思考预算提示文案", "mind_state 中性事实文案"],
-      "forbids": ["质疑式措辞（ADR-0014）", "注入频率/预算数值（频次已实测校准）"]
+      "allows": [
+        "控制回合注入文案措辞",
+        "⑦ 思考预算提示文案",
+        "mind_state 中性事实文案"
+      ],
+      "forbids": [
+        "质疑式措辞（ADR-0014）",
+        "注入频率/预算数值（频次已实测校准）"
+      ]
     },
     {
       "id": "SURF-PROMPT-CRITIC",
       "kind": "prompt",
       "target": "index.mjs:CRITIC_PROMPT",
-      "allows": ["rubric 维度措辞", "输出格式示例"],
-      "forbids": ["AC3 独立纪律条款", "异质采样参数"]
+      "allows": [
+        "rubric 维度措辞",
+        "输出格式示例"
+      ],
+      "forbids": [
+        "AC3 独立纪律条款",
+        "异质采样参数"
+      ]
     },
     {
       "id": "SURF-PROMPT-VERIFY",
       "kind": "prompt",
       "target": "index.mjs:verify-on-stop 提示文案",
-      "allows": ["中性提醒措辞"],
-      "forbids": ["verify 闸门开关本身", "verifyRan 置位逻辑"]
+      "allows": [
+        "中性提醒措辞"
+      ],
+      "forbids": [
+        "verify 闸门开关本身",
+        "verifyRan 置位逻辑"
+      ]
     },
     {
       "id": "SURF-THRESHOLD-ADAPTIVE",
       "kind": "runtime-threshold",
       "target": "index.mjs:cfg.adaptiveSimpleThreshold",
-      "allows": ["0.70 ~ 0.95 区间内的阈值"],
-      "forbids": ["adaptiveThinkEnabled 默认值（需端到端证据才开，见 S4）"]
+      "allows": [
+        "0.70 ~ 0.95 区间内的阈值"
+      ],
+      "forbids": [
+        "adaptiveThinkEnabled 默认值（需端到端证据才开，见 S4）"
+      ]
     },
     {
       "id": "SURF-THRESHOLD-MINDSTATE",
       "kind": "runtime-threshold",
       "target": "index.mjs:cfg.mindStateLoopThreshold",
-      "allows": ["重复检测阈值微调"],
-      "forbids": ["注入通道开关"]
+      "allows": [
+        "重复检测阈值微调"
+      ],
+      "forbids": [
+        "注入通道开关"
+      ]
     },
     {
       "id": "SURF-SKILL-DRAFT",
       "kind": "skill-file",
       "target": "bench/_skill_drafts/*.md",
-      "allows": ["新增/修改技能草稿"],
-      "forbids": ["自动 promote（ADR-0015：需人工审批）", "覆盖已有正式技能卡"]
+      "allows": [
+        "新增/修改技能草稿"
+      ],
+      "forbids": [
+        "自动 promote（ADR-0015：需人工审批）",
+        "覆盖已有正式技能卡"
+      ]
+    },
+    {
+      "id": "SURF-EPISODIC-INJECT",
+      "kind": "control-turn-integration",
+      "target": "index.mjs:episodicSearch / evidence_cited / parts.push",
+      "allows": [
+        "控制回合内调用 episodicSearch（tools/episodic_search.py）并注入 top-3 摘要",
+        "新增 trace({kind:'evidence_cited'}) 埋点（含 sid、来源指针、引用标记）",
+        "读取 episodicSearchEnabled 开关（已存在，默认 true）"
+      ],
+      "forbids": [
+        "改运行时注入通道（ADR-0017：学习信号不占 D5 额度）",
+        "改注入频率/预算数值",
+        "改 D1-D5 判定逻辑、GWT/FEP 通道、verify 闸门",
+        "把 s1/outcome- 等测试 sid 计入检索结果"
+      ]
     }
   ],
   "forbidden_always": [
@@ -58,9 +105,12 @@
     "模型权重 / llama-server 启动参数"
   ],
   "acceptance": {
-    "splits": ["held-in", "held-out"],
+    "splits": [
+      "held-in",
+      "held-out"
+    ],
     "min_repeats": 2,
-    "max_pass_rate_variance": 0.10,
+    "max_pass_rate_variance": 0.1,
     "rule": "任一 split 不退化 且 至少一个 split 提升；否则保持原 harness",
     "decline_is_valid": true
   }

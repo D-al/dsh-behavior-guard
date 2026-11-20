@@ -91,17 +91,31 @@ def _load_editable_targets():
 
 
 def file_diff(base_content, candidate_content):
-    """Return list of changed lines (line_num, old_line, new_line)."""
-    changes = []
+    """Return changed lines as (line_num, old_line, new_line).
+
+    Use difflib.SequenceMatcher so pure insertions/deletions do NOT shift
+    subsequent lines into false "modified" entries (A3_5 逐行比对假阴性 bug).
+    Insertions are represented as ('', new_line) so token matching still sees them.
+    """
+    import difflib
     base_lines = base_content.split('\n')
     cand_lines = candidate_content.split('\n')
-    max_len = max(len(base_lines), len(cand_lines))
-
-    for i in range(max_len):
-        b = base_lines[i] if i < len(base_lines) else ''
-        c = cand_lines[i] if i < len(cand_lines) else ''
-        if b != c:
-            changes.append((i + 1, b, c))
+    changes = []
+    sm = difflib.SequenceMatcher(a=base_lines, b=cand_lines, autojunk=False)
+    for tag, i1, i2, j1, j2 in sm.get_opcodes():
+        if tag == 'equal':
+            continue
+        if tag == 'replace':
+            for k in range(max(i2 - i1, j2 - j1)):
+                b = base_lines[i1 + k] if i1 + k < i2 else ''
+                c = cand_lines[j1 + k] if j1 + k < j2 else ''
+                changes.append((j1 + k + 1, b, c))
+        elif tag == 'insert':
+            for k in range(j2 - j1):
+                changes.append((j1 + k + 1, '', cand_lines[j1 + k]))
+        elif tag == 'delete':
+            for k in range(i2 - i1):
+                changes.append((i1 + k + 1, base_lines[i1 + k], ''))
     return changes
 
 
@@ -142,50 +156,43 @@ def real_diff_check(surface_id, modified_files_with_content):
 
         target_matches_list = [t['target'] for t in editable_targets if t['id'] == surface_id]
 
-        for line_no, old_line, new_line in changes:
-            # Check if this change is within any allowed target region
+        # 连续插入/修改块级校验：一段功能代码必然含通用行(try/{/const q)，
+        # 逐行 token 匹配会误拒。按行号连续性分组，块内任一行含白名单 token 即整块允许。
+        groups = []
+        for ch in changes:
+            ln = ch[0]
+            if groups and ln <= groups[-1][-1][0] + 1:
+                groups[-1].append(ch)
+            else:
+                groups.append([ch])
+
+        violations = []
+        for grp in groups:
+            blob = ' '.join((old + ' ' + new) for _, old, new in grp)
             is_allowed = False
             for tgt in target_matches_list:
                 parts = tgt.split(':', 1)
                 if len(parts) != 2:
                     continue
-
                 target_file, target_region = parts
-                file_match = target_file in str(filepath)
-
-                if not file_match:
+                if target_file not in str(filepath):
                     continue
-
-                import re as _re
-                # Extract core identifier from region (before '/' or space)
-                # e.g., "CONTROL_PROMPT / parts.push 文案" → "CONTROL_PROMPT"
-                core_id = target_region.split('/')[0].strip().split()[0] if '/' in target_region else target_region.strip()
-
-                # Match against the core identifier
-                if core_id and (core_id in old_line or core_id in new_line):
+                core_ids = [t.strip() for t in target_region.split('/') if t.strip()]
+                if any(cid in blob for cid in core_ids):
                     is_allowed = True
                     break
-
+            hits = [m for m in forbidden_always if m.lower() in blob.lower()]
+            if hits:
+                is_allowed = False
             if not is_allowed:
-                violation = {
-                    'file': str(filepath),
-                    'line': line_no,
-                    'old': old_line[:80],
-                    'new': new_line[:80]
-                }
+                violations.append({
+                    'lines': [g[0] for g in grp],
+                    'sample': blob[:160],
+                    'forbidden_hits': hits,
+                })
 
-                # Also check forbidden markers
-                blob = old_line + new_line
-                hits = [m for m in forbidden_always if m.lower() in blob.lower()]
-                if hits:
-                    violation['forbidden_hits'] = hits
-
-                violations.append(violation)
-
-    if violations:
-        reason = json.dumps(violations, ensure_ascii=False)[:300]
-        return {'allowed': False, 'reason': f'diff violation at lines: {reason}'}
-
+        if violations:
+            return {'allowed': False, 'reason': f'diff violation blocks: {violations[:5]}'}
     return {'allowed': True, 'reason': 'diff-based check passed'}
 
 

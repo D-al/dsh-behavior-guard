@@ -10,6 +10,7 @@ repos:
       - package.json
       - index.mjs
       - cordis.patch.yml
+      - surfaces.json
       - ROADMAP.md
       - CAPABILITY_LADDER.yaml
       - tools/roadmap_check.py

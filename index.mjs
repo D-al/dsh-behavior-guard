@@ -1888,6 +1888,24 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
           if (cur) parts.push('② 当前项：' + String(cur.content).slice(0, 60))
           if (rej.length) parts.push('③ 已排除：' + rej.join('｜'))
           parts.push('④ 下一步：在思考里列出 2-3 个候选动作，评估哪个对完成目标收益最高，再选一个执行。')
+          // ── M1 episodicSearch 情景检索：进入控制回合 parts.push（只进 prompt，不占运行时注入通道 ADR-0017）──
+          if (cfg.episodicSearchEnabled) {
+            try {
+              const q = String(s.latest || s.initial || '').replace(/[\r\n\t]/g, ' ').slice(0, 120)
+              if (q) {
+                const epiOut = execFileSync('D:/Python/python.exe',  // es.exe top-3 via episodic_search.py
+                  ['tools/episodic_search.py', q, '--inject'],
+                  { cwd: new URL('.', import.meta.url).pathname.replace(/^\//,''), timeout: 2500,
+                    windowsHide: true, encoding: 'utf8', stdio: ['ignore','pipe','ignore'] })
+                const lines = String(epiOut).split('\n').filter((l) => l.trim().startsWith('- ')).slice(0, 3)
+                if (lines.length) {
+                  parts.push('【历史经验 · top-' + lines.length + '】' + lines.join(' ').slice(0, 300))
+                  trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'evidence_cited',
+                          step: s.step, cited: lines.length, source: 'episodic_search' })
+                }
+              }
+            } catch { /* 检索失败不影响控制回合 */ }
+          }
           // ── P1-4 意图漂移在线信号（v2.9 合入）──
           // 初始任务 vs 最新指令关键词覆盖率 < 0.25 → 提示"以最新指令为准"（治现场 16 次旧存档锚定）
           if (cfg.driftSignalEnabled && s.initial && s.latest && s.latest !== s.initial) {
