@@ -365,8 +365,8 @@ items:
   preconditions:
   - 'P-86M-LATENCY: 86M CPU 延迟<500ms'
   - 'P-AB-SPEEDUP: A/B 端到端提速'
-  benefit: 中
-  cost: 中高
+  benefit: 高
+  cost: 低
   advice: 降级：收益存疑，先验证 86M
   rank: 7
   rank_derived: false
@@ -1001,6 +1001,48 @@ items:
   rank_hint: blocked
   rank_derived: false
   status: manual-blocked
+- id: S11
+  title: 写后校验覆盖全部写工具
+  what: 把 verify-on-edit 从只覆盖 write/edit 扩展到 DEFAULT_WRITE_TOOLS 全部8种（apply_patch/multi_edit/create_file/str_replace/write_file/notebook_edit），每种按扩展名跑对应语法校验
+  why: 真实trace显示write 0%失败但edit 11.8%失败；verify-on-edit(index.mjs:1042)只认write/edit，其余6种写工具零校验——假绿温床
+  benefit_to_self: 所有写入路径都有语法护栏，不再有"换了写工具就绕过校验"
+  caveats:
+  - 别让校验失败阻断正常写入（拦=纠错消息而非硬失败）
+  - 扩展名映射要覆盖.mjs/.js/.py/.json/.yaml
+  abort_if: 无法在不改dsh原生工具的前提下拿到写后内容
+  rank_hint: normal
+  benefit: 高
+  cost: 中
+  advice: 读写地基第一优先
+  rank_derived: false
+- id: S12
+  title: 补丁应用闭环（禁写脚本不落地）
+  what: 检测"写了修复脚本但没真正应用"的模式：补丁脚本(_apply_*.py/_fix_*.py)写入后必须有对应的apply证据（目标文件mtime变化+语法通过），否则守卫提示"脚本已写但未应用"
+  why: A1_6一张卡留下5个补丁脚本全没应用，浪费几十分钟——"写了脚本"≠"应用了脚本"是新变体的说要做不做
+  benefit_to_self: 堵住"用写脚本代替改文件"的绕路，把时间花在真正落盘
+  caveats:
+  - 别误伤合法的临时分析脚本
+  - apply证据要用环境事实（目标mtime+内容），不认模型声明
+  abort_if: 无法可靠关联补丁脚本与目标文件
+  rank_hint: normal
+  benefit: 高
+  cost: 中
+  advice: 读写地基，与S11并行
+  rank_derived: false
+- id: S13
+  title: verifyRan收紧（read≠验证）
+  what: 把 index.mjs:913 的"read/cat 即 verifyRan"收紧为真实验证证据（语法检查/测试命令/verify_agent），解决A1_6反复read却被认为验证过的假绿
+  why: :913规则当年为修25/26回归误判加的宽松判断，现在成了"读循环被当成验证"的源头——A1_6连续6次read同段无write却一路绿灯
+  benefit_to_self: verify信号可信——"验证过"必须真跑了检查，不是读了文件
+  caveats:
+  - 收紧后可能重现25/26回归误判，要用更精确的文件名匹配替代宽松规则
+  - 保留对真实语法检查命令的识别
+  abort_if: 收紧导致正常验证流程被大面积误拦
+  rank_hint: normal
+  benefit: 高
+  cost: 中
+  advice: 读写地基最高优先（假绿源头）
+  rank_derived: false
 autonomy_rungs:
 - id: A0
   title: 数据可信（sid 黑名单）
@@ -1183,7 +1225,7 @@ autonomy_rungs:
     checks:
     - 31 hits in tools/self_harness_gate.py
     - D:\Brain\publish\dsh-behavior-guard\tools\run_all.sh
-  benefit: —（已完成）
+  benefit: 高
   cost: 低
   advice: 已完成，见 evidence
   rank: 99

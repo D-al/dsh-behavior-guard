@@ -924,6 +924,58 @@ items:
   - 别再回到聚合util%判据
   abort_if: 无法可靠回读单进程3D占用，或升级手段影响系统稳定性
   human_note: 2026-11-20 21:12 用户实证推翻前提：两窗口全开推理正常(n_decoded 1211→1356/5s，带宽22-29%功耗36-41W)。原"3D抢占致spin-wait"是单帧采样撞相位间隙的误判。S10原目标(降帧效果回读)前提不成立，阻塞待重定义。
+- id: S11
+  title: 写后校验覆盖全部写工具
+  status: ready
+  deps:
+  - A1
+  risk: low
+  autonomous: true
+  verify:
+  - kind: file_grep
+    path: index.mjs
+    regex: DEFAULT_WRITE_TOOLS.*verify|verifyOnWriteFor|writeTools.*check
+    min: 1
+  - kind: file_exists
+    path: tools/test_write_verify_all.py
+  - kind: test_pass
+    cmd: D:/Python/python.exe -B tools/test_write_verify_all.py
+    min: 1
+- id: S12
+  title: 补丁应用闭环（禁写脚本不落地）
+  status: ready
+  deps:
+  - A1
+  risk: low
+  autonomous: true
+  verify:
+  - kind: file_grep
+    path: index.mjs
+    regex: patch.*applied|补丁.*应用|applyEvidence
+    min: 1
+    flags: IGNORECASE
+  - kind: file_exists
+    path: tools/test_patch_applied.py
+  - kind: test_pass
+    cmd: D:/Python/python.exe -B tools/test_patch_applied.py
+    min: 1
+- id: S13
+  title: verifyRan收紧（read≠验证）
+  status: ready
+  deps:
+  - A1
+  risk: low
+  autonomous: true
+  verify:
+  - kind: file_grep
+    path: index.mjs
+    regex: verifyEvidence|真实.*验证|s\.verifyRan = true[^\n]*syntax
+    min: 1
+  - kind: file_exists
+    path: tools/test_verify_ran.py
+  - kind: test_pass
+    cmd: D:/Python/python.exe -B tools/test_verify_ran.py
+    min: 1
 rungs:
 - id: A0
   deps: []
