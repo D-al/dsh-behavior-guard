@@ -234,6 +234,7 @@ items:
   rank: 99
   rank_derived: true
   unlocks: *id003
+  rank_hint: normal
 - id: M9
   title: 意图分类器
   tier: 2
@@ -271,6 +272,7 @@ items:
   rank: 4
   rank_derived: false
   unlocks: *id004
+  rank_hint: normal
 - id: M2
   title: 会话树实时化
   tier: 2
@@ -308,6 +310,7 @@ items:
   rank: 5
   rank_derived: false
   unlocks: *id005
+  rank_hint: normal
 - id: M5
   title: 工具面结构改造
   tier: 3
@@ -337,6 +340,7 @@ items:
   rank: 6
   rank_derived: false
   unlocks: *id006
+  rank_hint: blocked
 - id: M7
   title: 格式修复器（降级）
   tier: 3
@@ -367,6 +371,7 @@ items:
   rank: 7
   rank_derived: false
   unlocks: *id007
+  rank_hint: explore
 - id: S6_model
   title: S6 模型层升级
   tier: 3
@@ -395,6 +400,7 @@ items:
   rank: 8
   rank_derived: false
   unlocks: *id008
+  rank_hint: blocked
 - id: L2
   title: 标准化 eval
   tier: 4
@@ -425,6 +431,7 @@ items:
   rank: 9
   rank_derived: false
   unlocks: *id009
+  rank_hint: normal
 - id: L6
   title: 专属误差预测器
   tier: 4
@@ -454,6 +461,7 @@ items:
   rank: 11
   rank_derived: false
   unlocks: *id010
+  rank_hint: normal
 - id: L1
   title: FEP 深化 → 世界模型
   tier: 4
@@ -487,6 +495,7 @@ items:
   rank: 10
   rank_derived: false
   unlocks: *id011
+  rank_hint: last
 - id: L8
   title: 多标签心智编码器
   tier: 4
@@ -517,6 +526,7 @@ items:
   rank: 12
   rank_derived: false
   unlocks: *id012
+  rank_hint: normal
 - id: L5
   title: 小模型 Critic 预警（降级）
   tier: 4
@@ -547,6 +557,7 @@ items:
   rank: 13
   rank_derived: false
   unlocks: *id013
+  rank_hint: explore
 - id: L3
   title: 脑功能分区空白区
   tier: 4
@@ -576,6 +587,7 @@ items:
   rank: 14
   rank_derived: false
   unlocks: *id014
+  rank_hint: explore
 - id: L4
   title: 独立轨道（上游 PR）
   tier: 4
@@ -606,6 +618,7 @@ items:
   rank: 15
   rank_derived: false
   unlocks: *id015
+  rank_hint: explore
 - id: L7
   title: FAKEOK 抑制（探索）
   tier: 4
@@ -635,6 +648,7 @@ items:
   rank: 99
   rank_derived: false
   unlocks: *id016
+  rank_hint: explore
 - id: S1
   title: Self-Harness P0-P2
   tier: 1
@@ -1072,6 +1086,7 @@ autonomy_rungs:
   advice: 排队
   rank: 99
   rank_derived: true
+  rank_hint: normal
 - id: A3
   title: 会迈步（预批低风险队列取任务）
   deps:
@@ -1100,6 +1115,7 @@ autonomy_rungs:
   advice: 排队
   rank: 99
   rank_derived: true
+  rank_hint: normal
 - id: A3_5
   title: 安全地基（真实 diff + e2e + 回滚）
   deps: []
@@ -1172,6 +1188,7 @@ autonomy_rungs:
   advice: 排队
   rank: 99
   rank_derived: true
+  rank_hint: normal
 - id: A5
   title: 自己走（常驻闭环）
   deps:
@@ -1204,3 +1221,4 @@ autonomy_rungs:
   advice: 排队
   rank: 99
   rank_derived: true
+  rank_hint: normal

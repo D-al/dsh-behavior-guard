@@ -271,10 +271,6 @@ def fmt_field(v):
     return str(v) if v else '—'
 
 
-QUICKREF_BEGIN = '<!-- HUMAN_QUICKREF_BEGIN v1'
-QUICKREF_END = '<!-- HUMAN_QUICKREF_END -->'
-
-
 def fmt_list(v):
     """把 list 渲染成中文顿号串（空则 —）。"""
     if isinstance(v, list):
@@ -282,71 +278,95 @@ def fmt_list(v):
     return str(v) if v else '—'
 
 
-def render_quickref(data, mirror):
-    """从卡片字段自动渲染性价比速查表（单一真相源：卡片）。
 
-    取代原 §2/§4/§5 三张手工表。字段全部取自 LADDER 卡片：
-    rank（排序）/ benefit（收益）/ cost（成本）/ deps（依赖）/ unlocks（解锁）/ advice（建议）；
-    状态取机器源 GRAPH。rank_derived=true 的行标 ※（由 risk/tier 推导，非人工 adjudicate）。
+# 中文评级 → 数值（线性，收益÷成本；35B 建议的立方放大因自相矛盾不采纳，见 docs/ROI_SORT_DECISION）
+BENEFIT_NUM = {'极高': 5, '高': 4, '中高': 3, '中': 2, '中低': 1.5, '低': 1}
+COST_NUM = {'低': 1, '中低': 2, '中': 3, '中高': 4, '高': 5, '极高': 6}
+HINT_ORDER = {'normal': 0, 'blocked': 1, 'explore': 2, 'last': 3}
+
+
+def _level_num(s, table):
+    s = str(s or '')
+    for k in sorted(table, key=len, reverse=True):
+        if k in s:
+            return table[k]
+    return 2
+
+
+def roi_score(c):
+    """线性性价比 = 收益 ÷ 成本（可解释：每单位成本换多少收益）。"""
+    b = _level_num(c.get('benefit'), BENEFIT_NUM)
+    cost = _level_num(c.get('cost'), COST_NUM)
+    return round(b / cost, 3)
+
+
+def sort_cards_by_roi(allc, sm, sem):
+    """Kahn 拓扑（依赖先行）+ 层内性价比降序 + rank_hint 结构约束分桶。
+
+    结构约束来自卡片显式字段 rank_hint（normal/blocked/explore/last），不硬编码卡 id、
+    不扫中文文本——避免"守卫正则扫内容误判"类坑。35B 与我的方案在 Kahn 算法上独立一致。
     """
-    sm = status_map_of(data)
-    sem = {i['id']: i for i in mirror.get('items', []) + mirror.get('autonomy_rungs', [])}
-    allc = list(data['rungs']) + list(data['items'])
-    # 只列非 done 卡（done 卡在进度表已有）；按 rank 排序，未 adjudicate 的排最后
-    rows = [c for c in allc if sm.get(c['id']) != 'done']
-    rows.sort(key=lambda c: (sem.get(c['id'], {}).get('rank', 99), c['id']))
-    out = [f'{QUICKREF_BEGIN}：由 roadmap_check.py --apply 从卡片字段自动渲染，勿手改 -->',
-           '> ### 性价比速查（由卡片自动生成 · 收益/成本/依赖/解锁/建议）',
-           '> 全部字段取自卡片单一真相源（CAPABILITY_LADDER.yaml），状态取自 ROADMAP_GRAPH.md；不要手工改本表。',
-           '> 排序 = 卡片 `rank`（人工 adjudicate）；标 ※ 者为由 risk/tier 推导的未定序卡。深度信息见下方卡片详情。',
-           '',
-           '| 排序 | 卡片 | 收益 | 成本 | 依赖 | 解锁 | 建议 | 状态 |',
-           '|---|---|---|---|---|---|---|---|']
-    for c in rows:
-        s = sem.get(c['id'], {})
-        rank = s.get('rank', 99)
-        rk = f'{rank}' if not s.get('rank_derived') else f'※{rank}'
-        st = sm.get(c['id'], '?')
-        tag = {'ready': '🟢ready', 'backlog': '🟡backlog',
-               'manual-blocked': '⛔blocked'}.get(st, st)
-        out.append(f"| {rk} | **{c['id']}** {c.get('title', s.get('title', ''))} "
-                   f"| {fmt_list(s.get('benefit'))} | {fmt_list(s.get('cost'))} "
-                   f"| {fmt_list(s.get('deps') or c.get('deps'))} "
-                   f"| {fmt_list(s.get('unlocks') or s.get('unlock'))} "
-                   f"| {fmt_list(s.get('advice'))} | {tag} |")
-    out.append(f'\n> 共 {len(rows)} 张活跃卡；已完成的 {sum(1 for c in allc if sm.get(c["id"]) == "done")} 张见 §1 自动进度表 / §7 归档。')
-    out.append(QUICKREF_END)
-    return '\n'.join(out)
+    active = [c for c in allc if sm.get(c['id']) != 'done']
+    byid = {c['id']: c for c in active}
+    ids = set(byid)
+    deps = {cid: [d for d in (sem.get(cid, {}).get('deps') or c.get('deps') or []) if d in ids]
+            for cid, c in byid.items()}
+    indeg = {cid: len(ds) for cid, ds in deps.items()}
+    children = {}
+    for cid, ds in deps.items():
+        for d in ds:
+            children.setdefault(d, []).append(cid)
+
+    def key(cid):
+        hint = sem.get(cid, {}).get('rank_hint', 'normal')
+        return (HINT_ORDER.get(hint, 0), -roi_score(sem.get(cid, byid[cid])), cid)
+
+    # 分桶：先按 rank_hint 分组，组内做拓扑（结构约束优先于性价比）
+    result = []
+    for hint in ('normal', 'blocked', 'explore', 'last'):
+        bucket = [cid for cid in byid if sem.get(cid, {}).get('rank_hint', 'normal') == hint]
+        bset = set(bucket)
+        bindeg = {cid: sum(1 for d in deps[cid] if d in bset) for cid in bucket}
+        bchildren = {}
+        for cid in bucket:
+            for d in deps[cid]:
+                if d in bset:
+                    bchildren.setdefault(d, []).append(cid)
+        ready = sorted([cid for cid in bucket if bindeg[cid] == 0], key=key)
+        while ready:
+            cid = ready.pop(0)
+            result.append(byid[cid])
+            for ch in bchildren.get(cid, []):
+                bindeg[ch] -= 1
+                if bindeg[ch] == 0:
+                    ready.append(ch); ready.sort(key=key)
+    return result
 
 
 def render_human_cards(data, mirror):
-    """从 LADDER 语义源渲染 20 张非 done 卡的人读详情（what/why/benefit/坑/反思/何时停）。
+    """从 LADDER 语义源渲染非 done 卡的人读详情（what/why/benefit/坑/反思/何时停）。
 
     状态取机器源 data，语义取 mirror——两源各司其职，块内零手工副本。
-    按 ready → backlog → manual-blocked 分组，让人一眼看到"现在能做什么、为什么、坑在哪"。
+    按性价比自动排序（Kahn 拓扑 + 结构约束分桶），高性价比在前、探索/last 在后。
     """
     sm = status_map_of(data)
     sem = {i['id']: i for i in mirror.get('items', []) + mirror.get('autonomy_rungs', [])}
     allc = list(data['rungs']) + list(data['items'])
-    groups = [('🟢 可开干（ready）', 'ready'),
-              ('🟡 排队（backlog）', 'backlog'),
-              ('⛔ 需人工拍板（manual-blocked）', 'manual-blocked')]
+    ordered = sort_cards_by_roi(allc, sm, sem)
     out = [f'{CARDS_BEGIN}：由 roadmap_check.py --apply 从 LADDER 语义源生成，勿手改 -->',
-           '> ### 📇 卡片详情（人读版 · 为什么做每张卡）',
-           '> 语义来自 CAPABILITY_LADDER.yaml，状态来自 ROADMAP_GRAPH.md；本块每次 `--apply` 自动重写。',
-           '> 机器判据/验证方法见 `--card <ID>`；这里只回答"做什么 / 为什么 / 对我有啥好处 / 坑 / 何时停"。',
+           '> ### 📇 卡片详情（按性价比自动排序 · 高在前）',
+           '> 排序 = 收益÷成本（线性性价比）+ 依赖拓扑（依赖必在前）+ 结构约束桶（normal→blocked→explore→last）。',
+           '> 全部字段来自卡片单一真相源（CAPABILITY_LADDER.yaml），状态来自 ROADMAP_GRAPH.md；本块自动重写，勿手改。',
+           '> 机器判据见 `--card <ID>`；每行 `分` = 性价比分数，`桶` = rank_hint（见卡片字段）。',
            '> ⚠️ 全局铁律（所有卡通用，故不再逐条重复）：说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 ≠ 进程活着。',
            '']
     total = 0
-    for label, st in groups:
-        cards = [c for c in allc if sm.get(c['id']) == st]
-        if not cards:
-            continue
-        out.append(f'#### {label}（{len(cards)} 张）')
-        out.append('')
-        for c in cards:
+    for c in ordered:
             s = sem.get(c['id'], {})
-            out.append(f"**`{c['id']}` {c.get('title', s.get('title', ''))}**")
+            st = sm.get(c['id'], '?')
+            hint = s.get('rank_hint', 'normal')
+            out.append(f"**`{c['id']}` {c.get('title', s.get('title', ''))}** · 分 `{roi_score(s)}` · "
+                       f"状态 `{st}` · 桶 `{hint}`")
             # 速查字段也进卡片详情——两者同源、互不脱节
             out.append(f"- **性价比**：收益 {fmt_list(s.get('benefit'))} / 成本 {fmt_list(s.get('cost'))} "
                        f"/ 建议 {fmt_list(s.get('advice'))}")
@@ -399,12 +419,8 @@ def save_authoritative(data):
     if HUMAN_BEGIN in new_md and HUMAN_END in new_md:
         pat = re.escape(HUMAN_BEGIN) + r'[^\n]*-->' + r'.*?' + re.escape(HUMAN_END)
         new_md = re.sub(pat, lambda _m: human, new_md, flags=re.S)
-    # 人读视图全部从卡片单一源渲染：性价比速查 + 卡片详情（零手工副本）
+    # 人读视图全部从卡片单一源渲染：卡片详情按性价比排序（零手工副本、无独立速查表）
     mirror_pre = yaml.safe_load(LADDER.read_text(encoding='utf-8')) if LADDER.exists() else {}
-    quick_md = render_quickref(data, mirror_pre)
-    if QUICKREF_BEGIN in new_md and QUICKREF_END in new_md:
-        pat = re.escape(QUICKREF_BEGIN) + r'[^\n]*-->' + r'.*?' + re.escape(QUICKREF_END)
-        new_md = re.sub(pat, lambda _m: quick_md, new_md, flags=re.S)
     cards_md, n_cards = render_human_cards(data, mirror_pre)
     if CARDS_BEGIN in new_md and CARDS_END in new_md:
         pat = re.escape(CARDS_BEGIN) + r'[^\n]*-->' + r'.*?' + re.escape(CARDS_END)
@@ -566,15 +582,13 @@ def main():
         # 只重渲染 ROADMAP.md 的三个自动块，不改 GRAPH/LADDER（纯视图刷新）
         md = ROADMAP.read_text(encoding='utf-8')
         mirror = yaml.safe_load(LADDER.read_text(encoding='utf-8')) if LADDER.exists() else {}
-        quick = render_quickref(data, mirror)
         cards, n = render_human_cards(data, mirror)
-        for begin, end, body in ((QUICKREF_BEGIN, QUICKREF_END, quick),
-                                 (CARDS_BEGIN, CARDS_END, cards)):
+        for begin, end, body in ((CARDS_BEGIN, CARDS_END, cards),):
             if begin in md and end in md:
                 pat = re.escape(begin) + r'[^\n]*-->' + r'.*?' + re.escape(end)
                 md = re.sub(pat, lambda _m, b=body: b, md, flags=re.S)
         ROADMAP.write_text(md, encoding='utf-8')
-        print(f'REFRESHED: 速查表 + 卡片详情（{n} 张卡）；卡片状态未改动')
+        print(f'REFRESHED: 卡片详情按性价比排序（{n} 张卡）；卡片状态未改动')
         return 0
     cmd_dryrun(data)
     return 0
