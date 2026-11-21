@@ -38,12 +38,26 @@ if (inlineMatch) {
 }
 
 // ── 测试 4：验证 runCorrector 仍然能正确调用（通过检查源码中的调用点） ──
+// 子任务反向检验修正(2026-11-21)：原测试4是纯存在性断言(if match → check true)，
+// 等于恒真假绿。改为真检查：runCorrector 函数体内必须真的调用 collectCorrectorInput，
+// 且调用点带 .trail 参数——这才是"接入生效"的证据，而非"函数存在"。
 const runCorrectorMatch = indexContent.match(/async function\s+runCorrector\s*\([^)]*\)\s*\{[\s\S]*?\n  \}/)
 if (runCorrectorMatch) {
-  check('4. runCorrector 函数存在且格式正确', true)
+  const body = runCorrectorMatch[0]
+  const callsFn = /collectCorrectorInput\s*\(\s*s\s*\)/.test(body)
+  check('4a. runCorrector 真调用 collectCorrectorInput(s)', callsFn,
+    callsFn ? '' : '函数体内无调用——存在性不等于接入')
 } else {
-  check('4. runCorrector 函数存在', false, '未找到 runCorrector 定义')
+  check('4a&4b. runCorrector 函数存在', false, '未找到 runCorrector 定义')
 }
+
+// 4b: 转发函数体必须取 s.trail 传给外置版（外置函数签名只吃 trail）
+check('4b. 转发体取 s.trail 传外置函数',
+  /function\s+collectCorrectorInput\s*\(s\)\s*\{\s*return\s+_collectCorrectorInput\s*\(\s*s\.trail\s*\)/.test(indexContent))
+
+// ── 负对照：证明上面的文本判据不是恒真（防止未来被空文件骗过）──
+check('5. 负对照：空源码不应匹配 import 判据',
+  !/import\s+{.*collectCorrectorInput.*}/.test('// empty file'))
 
 // ── 输出结果 ──
 console.log(`\n${pass}/${pass + fail} pass`)

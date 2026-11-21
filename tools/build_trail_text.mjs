@@ -35,7 +35,7 @@ export function buildTrailText(trail) {
 }
 
 // CLI 入口：当直接运行此脚本时，读取 stdin JSON 并输出结果
-if (import.meta.url.startsWith('file:') && process.argv[1]?.endsWith('build_trail_text.mjs')) {
+if (import.meta.url.startsWith('file:') && (process.argv[1] || '').split(/[\\/]/).pop() === 'build_trail_text.mjs') {
   let data = ''
   process.stdin.on('data', (chunk) => { data += chunk })
   process.stdin.on('end', () => {
