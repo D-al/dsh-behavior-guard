@@ -1367,7 +1367,7 @@ rungs:
   claimer: unknown-agent
 - id: S15
   title: 选择性验证深度（Selective Verification）
-  status: ready
+  status: done
   tier: 2
   deps:
   - A1

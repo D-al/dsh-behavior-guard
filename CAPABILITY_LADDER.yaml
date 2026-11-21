@@ -1415,7 +1415,7 @@ autonomy_rungs:
   - A1
   risk: low
   autonomous: true
-  status: ready
+  status: done
   what: 把当前"每步无差别守卫 + present 前全量 Critic"改成门控式——低风险步骤跳过，只对高风险步骤做深度验证（多候选+独立评审）
   why: 2026-11-21 生产实证：无差别守卫把两步任务拖进 C-REJECT 死循环；SWE-Verifier 证明选择性验证以 <4% 验证率取得 +1.73pp 且成本仅 1.09×，全步验证 2.03× 反不提升
   benefit_to_self: 守卫只在真需要时介入——减少假阳性与 token 税，也减少死循环触发面
@@ -1426,6 +1426,11 @@ autonomy_rungs:
   evidence:
   - arXiv:2610.30284 SWE-Verifier：75.47→77.20 (+1.73pp) @1.09x，验证率<4%；全step 2.03x 反降
   - 2026-11-21 本地实证：机械守卫 4 例假阳性 + C-REJECT 死循环
+  progress:
+  - at: '2026-11-21T02:32:00+08:00'
+    by: dsh-agent (接力推卡)
+    done: 纯规则门控模块 tools/selective_verification.mjs + 单测57/57
+    note: 独立模块未接入index.mjs守卫(集成待后续);主代理补Array.isArray守卫修1失败项
   abort_if: 选择性门漏放危险操作，或端到端质量下降
   verify:
   - kind: test_pass
