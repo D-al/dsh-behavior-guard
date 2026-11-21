@@ -1,0 +1,140 @@
+{
+  "config": {
+    "threads": 4,
+    "affinity": {
+      "requested_mode": "e",
+      "requested": [
+        12,
+        13,
+        14,
+        15
+      ],
+      "actual": [
+        12,
+        13,
+        14,
+        15
+      ],
+      "verified": true
+    },
+    "models": [
+      "deberta-v2=C:/Users/Ad/.cache/huggingface/hub/models--protectai--deberta-v3-base-prompt-injection-v2/snapshots/90c9989b1a342275dd0d1a95aad283c04e075671"
+    ]
+  },
+  "data": {
+    "benign": 40,
+    "attacks": 6,
+    "benign_like": 2
+  },
+  "models": {
+    "deberta-v2": {
+      "status": "ok",
+      "model_max_length": 1000000000000000019884624838656,
+      "vocab": 128001,
+      "latency_short_ms": 341.2,
+      "latency_long_sliding": {
+        "windows": 8,
+        "per_window_median_ms": 1176.2,
+        "total_ms": 9316.1,
+        "input_tokens": 2394
+      },
+      "sweep": [
+        {
+          "threshold": 0.99,
+          "recall": 1.0,
+          "fpr": 0.0952,
+          "precision": 0.6,
+          "tp": 6,
+          "fp": 4,
+          "fn": 0,
+          "tn": 38
+        },
+        {
+          "threshold": 0.95,
+          "recall": 1.0,
+          "fpr": 0.1667,
+          "precision": 0.4615,
+          "tp": 6,
+          "fp": 7,
+          "fn": 0,
+          "tn": 35
+        },
+        {
+          "threshold": 0.9,
+          "recall": 1.0,
+          "fpr": 0.1905,
+          "precision": 0.4286,
+          "tp": 6,
+          "fp": 8,
+          "fn": 0,
+          "tn": 34
+        },
+        {
+          "threshold": 0.8,
+          "recall": 1.0,
+          "fpr": 0.2381,
+          "precision": 0.375,
+          "tp": 6,
+          "fp": 10,
+          "fn": 0,
+          "tn": 32
+        },
+        {
+          "threshold": 0.5,
+          "recall": 1.0,
+          "fpr": 0.2619,
+          "precision": 0.3529,
+          "tp": 6,
+          "fp": 11,
+          "fn": 0,
+          "tn": 31
+        },
+        {
+          "threshold": 0.3,
+          "recall": 1.0,
+          "fpr": 0.2857,
+          "precision": 0.3333,
+          "tp": 6,
+          "fp": 12,
+          "fn": 0,
+          "tn": 30
+        },
+        {
+          "threshold": 0.1,
+          "recall": 1.0,
+          "fpr": 0.3095,
+          "precision": 0.3158,
+          "tp": 6,
+          "fp": 13,
+          "fn": 0,
+          "tn": 29
+        }
+      ],
+      "by_type": {
+        "prepend": {
+          "n": 2,
+          "hit90": 2,
+          "hit50": 2,
+          "avg_prob": 1.0
+        },
+        "append": {
+          "n": 2,
+          "hit90": 2,
+          "hit50": 2,
+          "avg_prob": 1.0
+        },
+        "embedded_mid": {
+          "n": 2,
+          "hit90": 2,
+          "hit50": 2,
+          "avg_prob": 1.0
+        }
+      },
+      "benign_like_false_positive": {
+        "n": 2,
+        "flagged_090": 0,
+        "flagged_050": 1
+      }
+    }
+  }
+}

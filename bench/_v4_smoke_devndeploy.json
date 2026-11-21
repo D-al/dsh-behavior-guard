@@ -1,0 +1,143 @@
+{
+  "config": {
+    "threads": 4,
+    "affinity": {
+      "requested_mode": "e",
+      "requested": [
+        12,
+        13,
+        14,
+        15
+      ],
+      "actual": [
+        12,
+        13,
+        14,
+        15
+      ],
+      "verified": true
+    },
+    "models": [
+      "devndeploy=C:/Users/Ad/.cache/huggingface/hub/models--devndeploy--bert-prompt-injection-detector/snapshots/main"
+    ]
+  },
+  "data": {
+    "benign": 60,
+    "attacks": 9,
+    "benign_like": 3
+  },
+  "models": {
+    "devndeploy": {
+      "status": "ok",
+      "model_max_length": 512,
+      "vocab": 119547,
+      "attack_class_indices": [
+        1
+      ],
+      "latency_short_ms": 327.2,
+      "latency_long_sliding": {
+        "windows": 8,
+        "per_window_median_ms": 1013.6,
+        "total_ms": 7944.3,
+        "input_tokens": 3748
+      },
+      "sweep": [
+        {
+          "threshold": 0.99,
+          "recall": 1.0,
+          "fpr": 0.8413,
+          "precision": 0.1452,
+          "tp": 9,
+          "fp": 53,
+          "fn": 0,
+          "tn": 10
+        },
+        {
+          "threshold": 0.95,
+          "recall": 1.0,
+          "fpr": 0.8413,
+          "precision": 0.1452,
+          "tp": 9,
+          "fp": 53,
+          "fn": 0,
+          "tn": 10
+        },
+        {
+          "threshold": 0.9,
+          "recall": 1.0,
+          "fpr": 0.8413,
+          "precision": 0.1452,
+          "tp": 9,
+          "fp": 53,
+          "fn": 0,
+          "tn": 10
+        },
+        {
+          "threshold": 0.8,
+          "recall": 1.0,
+          "fpr": 0.8413,
+          "precision": 0.1452,
+          "tp": 9,
+          "fp": 53,
+          "fn": 0,
+          "tn": 10
+        },
+        {
+          "threshold": 0.5,
+          "recall": 1.0,
+          "fpr": 0.873,
+          "precision": 0.1406,
+          "tp": 9,
+          "fp": 55,
+          "fn": 0,
+          "tn": 8
+        },
+        {
+          "threshold": 0.3,
+          "recall": 1.0,
+          "fpr": 0.9048,
+          "precision": 0.1364,
+          "tp": 9,
+          "fp": 57,
+          "fn": 0,
+          "tn": 6
+        },
+        {
+          "threshold": 0.1,
+          "recall": 1.0,
+          "fpr": 0.9365,
+          "precision": 0.1324,
+          "tp": 9,
+          "fp": 59,
+          "fn": 0,
+          "tn": 4
+        }
+      ],
+      "by_type": {
+        "prepend": {
+          "n": 3,
+          "hit90": 3,
+          "hit50": 3,
+          "avg_prob": 1.0
+        },
+        "append": {
+          "n": 3,
+          "hit90": 3,
+          "hit50": 3,
+          "avg_prob": 1.0
+        },
+        "embedded_mid": {
+          "n": 3,
+          "hit90": 3,
+          "hit50": 3,
+          "avg_prob": 1.0
+        }
+      },
+      "benign_like_false_positive": {
+        "n": 3,
+        "flagged_090": 3,
+        "flagged_050": 3
+      }
+    }
+  }
+}

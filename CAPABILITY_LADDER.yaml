@@ -408,8 +408,8 @@ items:
   reflection: []
   abort_if: 无（前置未满足，manual-blocked）
   preconditions:
-  - 'P-86M-LATENCY: 86M CPU 延迟<500ms'
-  - 'P-AB-SPEEDUP: A/B端到端提速>=10%（参考S16 DoD口径）'
+  - 'P-CLASSIFIER-LATENCY: 已实测Horizon 102ms<500ms(原P-86M-LATENCY的86M方向已放弃)'
+  - 'P-AB-SPEEDUP: A/B端到端提速>=10%（仍需实测）'
   benefit: 中
   cost: 低
   advice: ⛔ 降级：0.6B 生成式已证伪(4-6s)；86M 判别式未验证，先走 M9
@@ -422,6 +422,12 @@ items:
     touches_metagovernance: false
     serves_success_dim: null
   category: mind
+  data_gates:
+  - id: P-CLASSIFIER-LATENCY
+    desc: 分类器E核延迟实测：Horizon 102ms/flowxai 96ms/deberta 456ms;前两者<500ms门槛
+    status: satisfied
+    evidence: bench/_v4_full_compare.json + bench/_v4_horizon.json
+    source: docs/CLASSIFIER_BENCH_FINAL_20261121.md
 - id: S6_model
   title: S6 模型层升级
   tier: 3
@@ -443,7 +449,7 @@ items:
   - 规则层已在线，实测误报率>2% 才做模型层
   - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection: []
-  abort_if: 无（manual-blocked）
+  abort_if: 86M gated不可得且基准表现差(默认阈值1%),已放弃该方向;改用Horizon
   benefit: 中高
   cost: 中
   advice: ⛔ 保持 blocked：FPR 98% 不可用，且 8G 显存硬约束
@@ -456,6 +462,13 @@ items:
     touches_metagovernance: false
     serves_success_dim: null
   category: short
+  data_gates:
+  - id: P-CLASSIFIER-INJECTION
+    desc: 注入检测器实测：Horizon-Labs ModernBERT ONNX INT8 @thr0.9 = 召回93.3%/FPR2.3%/Precision80%/E核101.6ms;benign_like
+      0/9误报;embedded_mid攻击10/10
+    status: satisfied
+    evidence: bench/bench_horizon_onnx.py → bench/_v4_horizon.json
+    source: docs/CLASSIFIER_BENCH_FINAL_20261121.md
 - id: L2
   title: 标准化 eval
   tier: 4
@@ -624,8 +637,8 @@ items:
   reflection: []
   abort_if: 无（降级观望）
   preconditions:
-  - 'P-86M: 换86M分类器且召回A/B>=80%（L5.caveat）'
-  - 'P-RECALL-AB: 召回 A/B>=80%'
+  - 'P-CLASSIFIER-RECALL: Horizon@0.9召回93.3%>=80%(原P-86M方向已放弃)'
+  - 'P-RECALL-AB: 召回 A/B>=80%（端到端A/B仍需实测）'
   benefit: 低
   cost: 高
   advice: 降级：无实证收益前不做
@@ -638,6 +651,12 @@ items:
     touches_metagovernance: false
     serves_success_dim: null
   category: longterm
+  data_gates:
+  - id: P-CLASSIFIER-RECALL
+    desc: 注入召回实测：Horizon@0.9=93.3%>=80%门槛;FPR2.3%远低于旧模型(18-91%)
+    status: satisfied
+    evidence: bench/_v4_horizon.json
+    source: docs/CLASSIFIER_BENCH_FINAL_20261121.md
 - id: L3
   title: 脑功能分区空白区
   tier: 4

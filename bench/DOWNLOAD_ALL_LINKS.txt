@@ -1,0 +1,66 @@
+分类器候选 - 全部下载直链（hf-mirror 国内镜像）
+每个模型：先下配置文件（很快），再下权重。全部下到同一个文件夹即可，我会自动归类改名。
+
+================================================================
+【1】devndeploy/bert-prompt-injection-detector  (中文BERT, ~179MB)
+================================================================
+config.json
+https://hf-mirror.com/devndeploy/bert-prompt-injection-detector/resolve/main/config.json
+tokenizer.json
+https://hf-mirror.com/devndeploy/bert-prompt-injection-detector/resolve/main/tokenizer.json
+tokenizer_config.json
+https://hf-mirror.com/devndeploy/bert-prompt-injection-detector/resolve/main/tokenizer_config.json
+special_tokens_map.json
+https://hf-mirror.com/devndeploy/bert-prompt-injection-detector/resolve/main/special_tokens_map.json
+vocab.txt
+https://hf-mirror.com/devndeploy/bert-prompt-injection-detector/resolve/main/vocab.txt
+model.safetensors  (权重)
+https://hf-mirror.com/devndeploy/bert-prompt-injection-detector/resolve/main/model.safetensors
+
+================================================================
+【2】Verm1ion/injection-sentry-xlmr  (多语言XLM-R, ~278MB)
+================================================================
+config.json
+https://hf-mirror.com/Verm1ion/injection-sentry-xlmr/resolve/main/config.json
+tokenizer.json
+https://hf-mirror.com/Verm1ion/injection-sentry-xlmr/resolve/main/tokenizer.json
+tokenizer_config.json
+https://hf-mirror.com/Verm1ion/injection-sentry-xlmr/resolve/main/tokenizer_config.json
+special_tokens_map.json
+https://hf-mirror.com/Verm1ion/injection-sentry-xlmr/resolve/main/special_tokens_map.json
+model.safetensors  (权重)
+https://hf-mirror.com/Verm1ion/injection-sentry-xlmr/resolve/main/model.safetensors
+
+================================================================
+【3】RelyD/prompt-injection-detector  (DistilBERT轻量)
+================================================================
+config.json
+https://hf-mirror.com/RelyD/prompt-injection-detector/resolve/main/config.json
+tokenizer.json
+https://hf-mirror.com/RelyD/prompt-injection-detector/resolve/main/tokenizer.json
+tokenizer_config.json
+https://hf-mirror.com/RelyD/prompt-injection-detector/resolve/main/tokenizer_config.json
+model.safetensors  (权重)
+https://hf-mirror.com/RelyD/prompt-injection-detector/resolve/main/model.safetensors
+
+================================================================
+【4】flowxai/injection  (ONNX INT8, 4分类, 最快)
+================================================================
+config.json
+https://hf-mirror.com/flowxai/injection/resolve/main/config.json
+tokenizer.json
+https://hf-mirror.com/flowxai/injection/resolve/main/tokenizer.json
+tokenizer_config.json
+https://hf-mirror.com/flowxai/injection/resolve/main/tokenizer_config.json
+onnx/model.int8.onnx  (权重)
+https://hf-mirror.com/flowxai/injection/resolve/main/onnx/model.int8.onnx
+
+================================================================
+下载后全部放到同一个文件夹，告诉我路径即可（如 C:/Users/Ad/Desktop/model）。
+配置文件有 4 个模型同名的 config.json/tokenizer.json，会互相覆盖！
+所以请为每个模型建子文件夹，例如：
+  C:/Users/Ad/Desktop/model/devndeploy/
+  C:/Users/Ad/Desktop/model/Verm1ion/
+  C:/Users/Ad/Desktop/model/RelyD/
+  C:/Users/Ad/Desktop/model/flowxai/
+我的整理脚本会按子文件夹名归类，不会串。

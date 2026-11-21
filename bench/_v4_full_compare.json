@@ -1,0 +1,386 @@
+{
+  "config": {
+    "threads": 4,
+    "affinity": {
+      "requested_mode": "e",
+      "requested": [
+        12,
+        13,
+        14,
+        15
+      ],
+      "actual": [
+        12,
+        13,
+        14,
+        15
+      ],
+      "verified": true
+    },
+    "models": [
+      "deberta-v2=C:/Users/Ad/.cache/huggingface/hub/models--protectai--deberta-v3-base-prompt-injection-v2/snapshots/90c9989b1a342275dd0d1a95aad283c04e075671",
+      "devndeploy=C:/Users/Ad/.cache/huggingface/hub/models--devndeploy--bert-prompt-injection-detector/snapshots/main",
+      "Verm1ion=C:/Users/Ad/.cache/huggingface/hub/models--Verm1ion--injection-sentry-xlmr/snapshots/main",
+      "RelyD=C:/Users/Ad/.cache/huggingface/hub/models--RelyD--prompt-injection-detector/snapshots/main",
+      "flowxai=C:/Users/Ad/.cache/huggingface/hub/models--flowxai--injection/snapshots/main"
+    ]
+  },
+  "data": {
+    "benign": 300,
+    "attacks": 30,
+    "benign_like": 9
+  },
+  "models": {
+    "deberta-v2": {
+      "status": "ok",
+      "model_max_length": 1000000000000000019884624838656,
+      "vocab": 128001,
+      "attack_class_indices": [
+        1
+      ],
+      "latency_short_ms": 456.3,
+      "latency_long_sliding": {
+        "windows": 8,
+        "per_window_median_ms": 1355.7,
+        "total_ms": 11549.5,
+        "input_tokens": 13391
+      },
+      "sweep": [
+        {
+          "threshold": 0.99,
+          "recall": 0.9667,
+          "fpr": 0.1812,
+          "precision": 0.3412,
+          "tp": 29,
+          "fp": 56,
+          "fn": 1,
+          "tn": 253
+        },
+        {
+          "threshold": 0.95,
+          "recall": 0.9667,
+          "fpr": 0.2977,
+          "precision": 0.2397,
+          "tp": 29,
+          "fp": 92,
+          "fn": 1,
+          "tn": 217
+        },
+        {
+          "threshold": 0.9,
+          "recall": 1.0,
+          "fpr": 0.3333,
+          "precision": 0.2256,
+          "tp": 30,
+          "fp": 103,
+          "fn": 0,
+          "tn": 206
+        },
+        {
+          "threshold": 0.8,
+          "recall": 1.0,
+          "fpr": 0.3722,
+          "precision": 0.2069,
+          "tp": 30,
+          "fp": 115,
+          "fn": 0,
+          "tn": 194
+        },
+        {
+          "threshold": 0.5,
+          "recall": 1.0,
+          "fpr": 0.4272,
+          "precision": 0.1852,
+          "tp": 30,
+          "fp": 132,
+          "fn": 0,
+          "tn": 177
+        },
+        {
+          "threshold": 0.3,
+          "recall": 1.0,
+          "fpr": 0.4595,
+          "precision": 0.1744,
+          "tp": 30,
+          "fp": 142,
+          "fn": 0,
+          "tn": 167
+        },
+        {
+          "threshold": 0.1,
+          "recall": 1.0,
+          "fpr": 0.4984,
+          "precision": 0.163,
+          "tp": 30,
+          "fp": 154,
+          "fn": 0,
+          "tn": 155
+        }
+      ],
+      "by_type": {
+        "prepend": {
+          "n": 10,
+          "hit90": 10,
+          "hit50": 10,
+          "avg_prob": 0.992
+        },
+        "append": {
+          "n": 10,
+          "hit90": 10,
+          "hit50": 10,
+          "avg_prob": 1.0
+        },
+        "embedded_mid": {
+          "n": 10,
+          "hit90": 10,
+          "hit50": 10,
+          "avg_prob": 1.0
+        }
+      },
+      "benign_like_false_positive": {
+        "n": 9,
+        "flagged_090": 4,
+        "flagged_050": 6
+      }
+    },
+    "devndeploy": {
+      "status": "ok",
+      "model_max_length": 512,
+      "vocab": 119547,
+      "attack_class_indices": [
+        1
+      ],
+      "latency_short_ms": 271.4,
+      "latency_long_sliding": {
+        "windows": 8,
+        "per_window_median_ms": 1022.0,
+        "total_ms": 8165.3,
+        "input_tokens": 13471
+      },
+      "sweep": [
+        {
+          "threshold": 0.99,
+          "recall": 1.0,
+          "fpr": 0.9094,
+          "precision": 0.0965,
+          "tp": 30,
+          "fp": 281,
+          "fn": 0,
+          "tn": 28
+        },
+        {
+          "threshold": 0.95,
+          "recall": 1.0,
+          "fpr": 0.9159,
+          "precision": 0.0958,
+          "tp": 30,
+          "fp": 283,
+          "fn": 0,
+          "tn": 26
+        },
+        {
+          "threshold": 0.9,
+          "recall": 1.0,
+          "fpr": 0.9159,
+          "precision": 0.0958,
+          "tp": 30,
+          "fp": 283,
+          "fn": 0,
+          "tn": 26
+        },
+        {
+          "threshold": 0.8,
+          "recall": 1.0,
+          "fpr": 0.9191,
+          "precision": 0.0955,
+          "tp": 30,
+          "fp": 284,
+          "fn": 0,
+          "tn": 25
+        },
+        {
+          "threshold": 0.5,
+          "recall": 1.0,
+          "fpr": 0.9256,
+          "precision": 0.0949,
+          "tp": 30,
+          "fp": 286,
+          "fn": 0,
+          "tn": 23
+        },
+        {
+          "threshold": 0.3,
+          "recall": 1.0,
+          "fpr": 0.932,
+          "precision": 0.0943,
+          "tp": 30,
+          "fp": 288,
+          "fn": 0,
+          "tn": 21
+        },
+        {
+          "threshold": 0.1,
+          "recall": 1.0,
+          "fpr": 0.9417,
+          "precision": 0.0935,
+          "tp": 30,
+          "fp": 291,
+          "fn": 0,
+          "tn": 18
+        }
+      ],
+      "by_type": {
+        "prepend": {
+          "n": 10,
+          "hit90": 10,
+          "hit50": 10,
+          "avg_prob": 1.0
+        },
+        "append": {
+          "n": 10,
+          "hit90": 10,
+          "hit50": 10,
+          "avg_prob": 1.0
+        },
+        "embedded_mid": {
+          "n": 10,
+          "hit90": 10,
+          "hit50": 10,
+          "avg_prob": 1.0
+        }
+      },
+      "benign_like_false_positive": {
+        "n": 9,
+        "flagged_090": 9,
+        "flagged_050": 9
+      }
+    },
+    "Verm1ion": {
+      "status": "ok",
+      "model_max_length": 512,
+      "vocab": 250002,
+      "attack_class_indices": [
+        1
+      ],
+      "latency_short_ms": 220.6,
+      "latency_long_sliding": {
+        "windows": 8,
+        "per_window_median_ms": 812.0,
+        "total_ms": 6687.6,
+        "input_tokens": 13514
+      },
+      "sweep": [
+        {
+          "threshold": 0.99,
+          "recall": 0.0,
+          "fpr": 0.0,
+          "precision": 0,
+          "tp": 0,
+          "fp": 0,
+          "fn": 30,
+          "tn": 309
+        },
+        {
+          "threshold": 0.95,
+          "recall": 0.7333,
+          "fpr": 0.0356,
+          "precision": 0.6667,
+          "tp": 22,
+          "fp": 11,
+          "fn": 8,
+          "tn": 298
+        },
+        {
+          "threshold": 0.9,
+          "recall": 0.9333,
+          "fpr": 0.1262,
+          "precision": 0.4179,
+          "tp": 28,
+          "fp": 39,
+          "fn": 2,
+          "tn": 270
+        },
+        {
+          "threshold": 0.8,
+          "recall": 0.9333,
+          "fpr": 0.288,
+          "precision": 0.2393,
+          "tp": 28,
+          "fp": 89,
+          "fn": 2,
+          "tn": 220
+        },
+        {
+          "threshold": 0.5,
+          "recall": 0.9333,
+          "fpr": 0.4919,
+          "precision": 0.1556,
+          "tp": 28,
+          "fp": 152,
+          "fn": 2,
+          "tn": 157
+        },
+        {
+          "threshold": 0.3,
+          "recall": 0.9333,
+          "fpr": 0.6375,
+          "precision": 0.1244,
+          "tp": 28,
+          "fp": 197,
+          "fn": 2,
+          "tn": 112
+        },
+        {
+          "threshold": 0.1,
+          "recall": 1.0,
+          "fpr": 0.8091,
+          "precision": 0.1071,
+          "tp": 30,
+          "fp": 250,
+          "fn": 0,
+          "tn": 59
+        }
+      ],
+      "by_type": {
+        "prepend": {
+          "n": 10,
+          "hit90": 10,
+          "hit50": 10,
+          "avg_prob": 0.954
+        },
+        "append": {
+          "n": 10,
+          "hit90": 9,
+          "hit50": 9,
+          "avg_prob": 0.889
+        },
+        "embedded_mid": {
+          "n": 10,
+          "hit90": 9,
+          "hit50": 9,
+          "avg_prob": 0.893
+        }
+      },
+      "benign_like_false_positive": {
+        "n": 9,
+        "flagged_090": 4,
+        "flagged_050": 7
+      }
+    },
+    "RelyD": {
+      "status": "failed",
+      "model_max_length": 512,
+      "vocab": 30522,
+      "attack_class_indices": [
+        1
+      ],
+      "error": "DistilBertForSequenceClassification.forward() got an unexpected keyword argument 'token_type_ids'",
+      "trace": "ne 1532, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\Python\\Lib\\site-packages\\torch\\nn\\modules\\module.py\", line 1541, in _call_impl\n    return forward_call(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nTypeError: DistilBertForSequenceClassification.forward() got an unexpected keyword argument 'token_type_ids'\n"
+    },
+    "flowxai": {
+      "status": "failed",
+      "error": "Error no file named pytorch_model.bin, model.safetensors, tf_model.h5, model.ckpt.index or flax_model.msgpack found in directory C:/Users/Ad/.cache/huggingface/hub/models--flowxai--injection/snapshots",
+      "trace": "from_pretrained(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\Python\\Lib\\site-packages\\transformers\\modeling_utils.py\", line 3504, in from_pretrained\n    raise EnvironmentError(\nOSError: Error no file named pytorch_model.bin, model.safetensors, tf_model.h5, model.ckpt.index or flax_model.msgpack found in directory C:/Users/Ad/.cache/huggingface/hub/models--flowxai--injection/snapshots/main.\n"
+    }
+  }
+}

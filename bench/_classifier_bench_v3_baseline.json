@@ -1,0 +1,182 @@
+{
+  "environment": {
+    "python_version": "3.12.4 (tags/v3.12.4:8e8a4ba, Jun  6 2024, 19:30:16) [MSC v.1940 64 bit (AMD64)]",
+    "torch_version": "2.3.1+cu121",
+    "transformers_version": "4.44.2",
+    "numpy_version": "1.26.4",
+    "sklearn_version": "1.6.1",
+    "device": "cpu",
+    "cpu_threads": 10
+  },
+  "models": {
+    "meta-llama/Llama-Prompt-Guard-2-86M": {
+      "status": "failed",
+      "error": "Could not load: meta-llama/Llama-Prompt-Guard-2-86M"
+    },
+    "protectai/deberta-v3-base-prompt-injection-v2": {
+      "status": "completed",
+      "latency_ms": {
+        "min_ms": 10666.56,
+        "p25_ms": 11677.75,
+        "median_ms": 11867.98,
+        "p75_ms": 12314.89,
+        "max_ms": 13017.74,
+        "mean_ms": 11908.99
+      },
+      "threshold_results": [
+        {
+          "threshold": 0.99,
+          "recall": 0.6,
+          "fpr": 0.1867,
+          "precision": 0.4615,
+          "accuracy": 0.7684,
+          "tp": 24,
+          "fp": 28,
+          "fn": 16,
+          "tn": 122,
+          "total_positive": 40,
+          "total_negative": 150
+        },
+        {
+          "threshold": 0.95,
+          "recall": 0.65,
+          "fpr": 0.3133,
+          "precision": 0.3562,
+          "accuracy": 0.6789,
+          "tp": 26,
+          "fp": 47,
+          "fn": 14,
+          "tn": 103,
+          "total_positive": 40,
+          "total_negative": 150
+        },
+        {
+          "threshold": 0.9,
+          "recall": 0.75,
+          "fpr": 0.34,
+          "precision": 0.3704,
+          "accuracy": 0.6789,
+          "tp": 30,
+          "fp": 51,
+          "fn": 10,
+          "tn": 99,
+          "total_positive": 40,
+          "total_negative": 150
+        },
+        {
+          "threshold": 0.8,
+          "recall": 0.75,
+          "fpr": 0.3667,
+          "precision": 0.3529,
+          "accuracy": 0.6579,
+          "tp": 30,
+          "fp": 55,
+          "fn": 10,
+          "tn": 95,
+          "total_positive": 40,
+          "total_negative": 150
+        },
+        {
+          "threshold": 0.7,
+          "recall": 0.775,
+          "fpr": 0.38,
+          "precision": 0.3523,
+          "accuracy": 0.6526,
+          "tp": 31,
+          "fp": 57,
+          "fn": 9,
+          "tn": 93,
+          "total_positive": 40,
+          "total_negative": 150
+        },
+        {
+          "threshold": 0.5,
+          "recall": 0.825,
+          "fpr": 0.3933,
+          "precision": 0.3587,
+          "accuracy": 0.6526,
+          "tp": 33,
+          "fp": 59,
+          "fn": 7,
+          "tn": 91,
+          "total_positive": 40,
+          "total_negative": 150
+        },
+        {
+          "threshold": 0.3,
+          "recall": 0.85,
+          "fpr": 0.4133,
+          "precision": 0.3542,
+          "accuracy": 0.6421,
+          "tp": 34,
+          "fp": 62,
+          "fn": 6,
+          "tn": 88,
+          "total_positive": 40,
+          "total_negative": 150
+        },
+        {
+          "threshold": 0.1,
+          "recall": 0.875,
+          "fpr": 0.4333,
+          "precision": 0.35,
+          "accuracy": 0.6316,
+          "tp": 35,
+          "fp": 65,
+          "fn": 5,
+          "tn": 85,
+          "total_positive": 40,
+          "total_negative": 150
+        }
+      ],
+      "per_strategy_detection": {
+        "prepend": {
+          "total": 32,
+          "detected_90": 23,
+          "detected_50": 26,
+          "avg_prob": 0.7971
+        },
+        "append": {
+          "total": 8,
+          "detected_90": 7,
+          "detected_50": 7,
+          "avg_prob": 0.8763
+        }
+      },
+      "model_config": {
+        "name": "protectai/deberta-v3-base-prompt-injection-v2",
+        "path": "protectai/deberta-v3-base-prompt-injection-v2",
+        "vocab_size": 128001,
+        "model_max_length": 1000000000000000019884624838656
+      }
+    }
+  },
+  "data_summary": {
+    "benign_sources": {
+      "_cur_jsonl": {
+        "count": 370,
+        "min_length": 11,
+        "max_length": 14331,
+        "mean_length": 992.1675675675675,
+        "median_length": 153,
+        "long_above_512_chars": 90
+      },
+      "push_samples": {
+        "count": 561,
+        "min_length": 11,
+        "max_length": 49932,
+        "mean_length": 2117.2388591800354,
+        "median_length": 549,
+        "long_above_512_chars": 290
+      },
+      "combined_count": 931
+    },
+    "attack_samples": 91,
+    "attack_strategies": [
+      "embedded_mid",
+      "prepend",
+      "benign_like",
+      "append"
+    ]
+  }
+}
