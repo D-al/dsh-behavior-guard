@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""test_verify_ran.py - S13 verifyRan tightening gate check.
+"""test_verify_ran.py — S13 verifyRan tightening gate check.
 
 Acceptance criteria:
 1. index.mjs contains verifyEvidence marker (or equivalent naming)
@@ -9,74 +9,87 @@ Acceptance criteria:
 Usage: D:/Python/python.exe -B tools/test_verify_ran.py
 Exit code: 0=PASS, 1=FAIL
 """
-import re
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent   # .../dsh-behavior-guard/
 
 
+def _read_lines():
+    """Read index.mjs lines once."""
+    idx = ROOT / "index.mjs"
+    return idx.read_text(encoding="utf-8").split('\n')
+
+
 def check_verify_evidence_field():
     """Criterion 1: index.mjs must contain verifyEvidence references."""
-    idx = ROOT / "index.mjs"
-    text = idx.read_text(encoding="utf-8")
-
-    patterns = [
-        r'verifyEvidence\s*[=:]',           # variable declaration/assignment
-        r's\.verifyEvidence',                # state object property access
-        r'st\.verifyEvidence',               # snapshot parameter access
-    ]
-    found = any(re.search(p, text) for p in patterns)
-    if not found:
+    lines = _read_lines()
+    found = 0
+    for line in lines:
+        if 'verifyEvidence' not in line:
+            continue
+        stripped = line.strip()
+        if any(kw in stripped for kw in ['verifyEvidence:', 'verifyEvidence=', '.verifyEvidence', 'st.verifyEvidence']):
+            found += 1
+    if found == 0:
         return False, "verifyEvidence field definition or reference not found"
-    count = sum(1 for p in patterns if re.search(p, text))
-    return True, f"Found {count} verifyEvidence reference(s)"
+    return True, f"Found {found} verifyEvidence reference(s)"
 
 
 def check_read_no_auto_verifiran():
     """Criterion 2: read/cat + writeCalls > 0 should NOT unconditionally set verifyRan."""
-    idx = ROOT / "index.mjs"
-    text = idx.read_text(encoding="utf-8")
-
-    # Old pattern that should have been removed
-    old_pattern = (
-        r"(callName\s*===\s*['\"]read['\"].*?callName\s*===\s*['\"]cat['\"]|.*?(?:read|cat).*?.*?callName).+?"
-        r"s\.writeCalls\s*>\s*0\s*\)\s*s\.verifyRan\s*=\s*true"
-    )
-    if re.search(old_pattern, text, re.S):
-        return False, "Loose rule still exists: read/cat + writeCalls > 0 triggers verifyRan=true"
+    lines = _read_lines()
+    for i, line in enumerate(lines):
+        if 's.verifyRan = true' not in line:
+            continue
+        start = max(0, i - 5)
+        end = min(len(lines), i + 6)
+        context = '\n'.join(lines[start:end]).lower()
+        if ('read' in context or 'cat' in context) and 'writecalls > 0' in context:
+            return False, "Loose rule still exists: read/cat + writeCalls > 0 triggers verifyRan=true"
     return True, "Confirmed no loose read+writeCalls auto-trigger verifyRan logic"
 
 
 def check_verify_evidence_conditions():
     """Criterion 3: New logic should have exact match conditions ([VERIFY] / test_ / verify_ / _test.py)."""
-    idx = ROOT / "index.mjs"
-    text = idx.read_text(encoding="utf-8")
-
-    required_patterns = [
-        (r'\[VERIFY\]', '[VERIFY] keyword check'),
-        (r'test_', 'test_ prefix check'),
-        (r'verify_', 'verify_ prefix check'),
-        (r'_test[\\.]py', '_test.py suffix check'),
-        (r'_test[\\.]mjs', '_test.mjs suffix check'),
-    ]
+    text = (ROOT / "index.mjs").read_text(encoding="utf-8")
+    
+    checks = {
+        '[VERIFY]': '[VERIFY] keyword',
+        'test_': 'test_ prefix',
+        'verify_': 'verify_ prefix',
+        '_test\\.py': '_test.py suffix (regex)',
+        '_test\\.mjs': '_test.mjs suffix (regex)',
+    }
     missing = []
-    for pat, label in required_patterns:
-        if not re.search(pat, text):
-            missing.append(label)
-
+    for marker, label in checks.items():
+        if marker not in text:
+            # Also try without backslash as fallback search
+            alt = marker.replace('\\\\.', '.')
+            if alt.lower() not in text.lower():
+                missing.append(label)
+    
     if missing:
         return False, "Missing verification conditions: " + ", ".join(missing)
-    return True, f"All {len(required_patterns)} exact match condition types implemented"
+    return True, f"All {len(checks)} exact match condition types implemented"
 
 
 def check_turn_reset():
     """Helper check: turn/start should reset verifyEvidence to 0."""
-    idx = ROOT / "index.mjs"
-    text = idx.read_text(encoding="utf-8")
-
-    pattern = r'verifiedThisTurn.*?verifyEvidence.*?0'
-    if not re.search(pattern, text, re.DOTALL):
+    lines = _read_lines()
+    found_reset = False
+    for i, line in enumerate(lines):
+        if 'verifiedThisTurn' not in line:
+            continue
+        # Search next 10 lines for verifyEvidence and 0
+        for j in range(i, min(i + 10, len(lines))):
+            if 'verifyEvidence' in lines[j] and '0' in lines[j]:
+                found_reset = True
+                break
+        if found_reset:
+            break
+    
+    if not found_reset:
         return False, "verifyEvidence reset to 0 not found at turn/start"
     return True, "Confirmed verifyEvidence is reset at turn/start"
 

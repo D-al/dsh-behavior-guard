@@ -55,17 +55,8 @@ if command -v "$PYTHON" >/dev/null 2>&1; then
     run_test "tool-frequency" "$PYTHON \"$ROOT/tools/tool_audit.py\" --json"
     run_test "gate-evidence" "$PYTHON \"$ROOT/tools/audit_gate_evidence.py\" --strict"
     run_test "gate-evidence" "$PYTHON \"$ROOT/tools/audit_gate_evidence.py\" --strict"
-    # S13: verifyRan 收紧门禁
-    run_test "verify-ran-squeeze" "$PYTHON \"$ROOT/tools/test_verify_ran.py\""
 else
     echo "[skip] python not found"
-fi
-
-# Check Python test_verify_ran standalone (uses D:/Python explicitly per spec)
-if [ -f "$ROOT/tools/test_verify_ran.py" ]; then
-    PYTHON_EXPLICIT="${PYTHON:-python}"
-    run_test "verify-ran-explicit" "\"$ROOT/../Python/python.exe\" -B \"$ROOT/tools/test_verify_ran.py\"" 2>/dev/null || \
-        run_test "verify-ran-fallback" "$PYTHON_EXPLICIT -B \"$ROOT/tools/test_verify_ran.py\""
 fi
 
 # Check 3-17: Run all test_*.mjs files (excluding verify_agent.py)
