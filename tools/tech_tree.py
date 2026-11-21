@@ -196,7 +196,7 @@ h1{margin:0 0 6px;font-size:18px;font-weight:600}
 .chip{display:inline-block;padding:0 4px;border-radius:8px;color:#fff;font-size:9px}
 .roi{float:right;font:10px ui-monospace,monospace;color:#854F0B;background:#FAEEDA;padding:0 4px;border-radius:6px}
 .ok{color:#1D9E75;font-weight:600}
-svg.links{position:absolute;top:0;left:0;pointer-events:none;z-index:1}
+svg.links{position:absolute;top:0;left:0;pointer-events:none;z-index:5}
 .node{position:relative;z-index:2}
 .node.dim{opacity:.13!important;filter:grayscale(1)}
 .node.sel{box-shadow:0 0 0 2px #2C2C2A,0 2px 8px rgba(0,0,0,.2);opacity:1!important}
@@ -268,7 +268,8 @@ function render(){
  // 每层内：未完成靠上、已完成靠下（当前该做的自然浮到视线里）
  const rank=n=>(n.status==='done'?1:0);
  // 列定义：已排除(红) | 证据 | 第0..N层
- const specs=[{key:'rejected',head:'⛔ 明确不做'},{key:'gate',head:'⏳ 前置闸门'},{key:'evidence',head:'▤ 证据/地基'}];
+ // 顺序：旁挂区(不做/证据)在左，闸门紧贴第0层——减少跨列连线穿过卡片
+ const specs=[{key:'rejected',head:'⛔ 明确不做'},{key:'evidence',head:'▤ 证据/地基'},{key:'gate',head:'⏳ 前置闸门'}];
  for(let d=0;d<=maxd;d++)specs.push({key:'layer'+d,head:'第'+d+'层·'+(LAYER[d]||'')});
  const cols=specs.map(sp=>{
   let arr;
@@ -330,7 +331,7 @@ function drawLinks(ns){
   const col=style==='gate'?'#BA7517':(soft?'#7F77DD':'#b4b2a9');
   // 箭头让互连方向可见：从上游(from)指向下游(to)
   const midX=(x1+x2)/2;
-  paths+=`<path class="${cls}" d="M${x1},${y1} C${x1+18},${y1} ${x2-18},${y2} ${x2},${y2}" fill="none" stroke="${col}" stroke-width="${style==='gate'?'1.5':'1'}" ${soft?'stroke-dasharray="4 3"':''} marker-end="url(#arrow-${style==='gate'?'gate':soft?'unlock':'dep'})"/>`;
+  paths+=`<path class="${cls}" d="M${x1},${y1} C${x1+18},${y1} ${x2-18},${y2} ${x2},${y2}" fill="none" stroke="${col}" stroke-width="${style==='gate'?'1.8':'1.4'}" opacity="${hot?'0.95':'0.5'}" ${soft?'stroke-dasharray="4 3"':''} marker-end="url(#arrow-${style==='gate'?'gate':soft?'unlock':'dep'})"/>`;
  };
  EDGES.forEach(e=>{
   const soft=e.kind!=='dep';
