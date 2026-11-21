@@ -162,7 +162,7 @@ items:
     path: index.mjs
     regex: fsm.*signal|FSM_SIGNAL
     min: 1
-  unlock: &id002
+  unlock:
   - L6
   human_note: AUROC 判据需新建 eval_fsm.py；本机纯统计无显存
   what: 把 8147 行 trace 压成 FSM，做局部失败预测（重复探测/路径解析/工具报错）
@@ -193,7 +193,11 @@ items:
   advice: ✅ **已完成**（v2.26.6）：heldout_auc=0.8927，`FSM_SIGNAL` 已接入
   rank: 2
   rank_derived: false
-  unlocks: *id002
+  unlocks:
+  - L6
+  - S7
+  - S8
+  - S9
   strategy_flags:
     violates_non_goal: null
     touches_metagovernance: false
@@ -221,7 +225,7 @@ items:
     sid_filter: exclude_tests
     min: 1
     note: BDI 三槽写进现有 mind_state kind，不新造 kind
-  unlock: &id003
+  unlock: &id002
   - M9
   - L1
   human_note: 改 index.mjs 的 bdi 状态结构，需人工确认（非白名单细粒度 target）
@@ -244,7 +248,7 @@ items:
   advice: 排队
   rank: 99
   rank_derived: true
-  unlocks: *id003
+  unlocks: *id002
   rank_hint: normal
   strategy_flags:
     violates_non_goal: null
@@ -262,7 +266,7 @@ items:
   verify:
   - kind: manual
     reason: 需验证中文表现 + embedding 编码器（8G 显存硬约束）
-  unlock: &id004
+  unlock: &id003
   - L1
   human_note: 本机 8G 不可行挂编码器；先验证 86M CPU 分类器，暂 manual-blocked
   what: 用意图分类器填 BDI 意图槽，高置信直接用、低置信交三角色
@@ -287,7 +291,7 @@ items:
   advice: embedding+LR 1-20ms/92-93%
   rank: 4
   rank_derived: false
-  unlocks: *id004
+  unlocks: *id003
   rank_hint: normal
   strategy_flags:
     violates_non_goal: null
@@ -310,7 +314,7 @@ items:
   - kind: test_pass
     cmd: node tools/test_trace_context.mjs
     min: 5
-  unlock: &id005 []
+  unlock: &id004 []
   human_note: 涉及 append-only 历史语义，人工确认
   what: 让 session_tree.py 从事后分析变实时写 parent 指针，支持从任一节点 fork
   why: 现在只能事后重建会话树，无法在长任务中实时知道"我现在是哪条支线"
@@ -330,7 +334,7 @@ items:
   advice: 中期后半
   rank: 5
   rank_derived: false
-  unlocks: *id005
+  unlocks: *id004
   rank_hint: normal
   strategy_flags:
     violates_non_goal: null
@@ -347,7 +351,7 @@ items:
   verify:
   - kind: manual
     reason: 用户拍板'哪些进内核'——价值判断，agent 不得自主
-  unlock: &id006 []
+  unlock: &id005 []
   human_note: ⛔ 永久人工闸门
   what: 把 28 个工具收敛到最小内核，低频能力进 skill 卡
   why: 工具面过宽会退化:Anthropic官方"10+ tools就该考虑"(Tool Use Examples 72→90%)、弱模型拐点12-15(社区实测)、Prosodica
@@ -366,7 +370,7 @@ items:
   advice: 不阻塞别人，等决策
   rank: 6
   rank_derived: false
-  unlocks: *id006
+  unlocks: *id005
   rank_hint: blocked
   strategy_flags:
     violates_non_goal: null
@@ -383,7 +387,7 @@ items:
   verify:
   - kind: manual
     reason: 需先验证 86M 分类器 + A/B 端到端提速
-  unlock: &id007 []
+  unlock: &id006 []
   human_note: 降级项，前置未满足
   what: 格式修复器：只做格式重写、不判断对错，35B 首轮兜底
   why: 模型输出格式错误浪费后续步骤，但前置 86M 分类器还没验证
@@ -402,7 +406,7 @@ items:
   advice: ⛔ 降级：0.6B 生成式已证伪(4-6s)；86M 判别式未验证，先走 M9
   rank: 7
   rank_derived: false
-  unlocks: *id007
+  unlocks: *id006
   rank_hint: last
   strategy_flags:
     violates_non_goal: null
@@ -420,7 +424,7 @@ items:
   verify:
   - kind: manual
     reason: 86M Prompt-Guard + 阈值重标定；FPR 98% 教训
-  unlock: &id008 []
+  unlock: &id007 []
   human_note: 规则层够用，待实测误报率 >2%
   what: S6 从规则层升级到 86M Prompt-Guard 模型层
   why: 规则层够用；模型层是误报率兜底，但 FPR 98% 的教训在前
@@ -436,7 +440,7 @@ items:
   advice: ⛔ 保持 blocked：FPR 98% 不可用，且 8G 显存硬约束
   rank: 8
   rank_derived: false
-  unlocks: *id008
+  unlocks: *id007
   rank_hint: last
   strategy_flags:
     violates_non_goal: null
@@ -453,7 +457,7 @@ items:
   verify:
   - kind: manual
     reason: 迁移 SWE-bench Verified 子集，外部基准
-  unlock: &id009
+  unlock: &id008
   - L1
   human_note: 长期优先但高成本
   what: 把自建 P3/P4/P5 评测迁移到 SWE-bench Verified 子集
@@ -472,7 +476,7 @@ items:
   advice: 长期优先
   rank: 9
   rank_derived: false
-  unlocks: *id009
+  unlocks: *id008
   rank_hint: normal
   strategy_flags:
     violates_non_goal: null
@@ -490,7 +494,7 @@ items:
   verify:
   - kind: manual
     reason: 单次蒸馏 n=1 + 保留 UNCERTAIN；需 35B 标注
-  unlock: &id010 []
+  unlock: &id009 []
   human_note: 由 M8 解锁，不再是空中楼阁
   what: 用 trace + 35B 标注训 0.5B 二分类误差预测器
   why: 由 M8 的 FSM 局部信号解锁，不再空中楼阁
@@ -507,7 +511,7 @@ items:
   advice: 由 M8 解锁，不再是空中楼阁
   rank: 11
   rank_derived: false
-  unlocks: *id010
+  unlocks: *id009
   rank_hint: normal
   strategy_flags:
     violates_non_goal: null
@@ -527,7 +531,7 @@ items:
   verify:
   - kind: manual
     reason: 产物内容满足 what 的断言精度/召回可测
-  unlock: &id011 []
+  unlock: &id010 []
   human_note: 最后做，依赖 M1+M3+M9
   what: FEP 从"产物是否存在"升级为"产物内容满足 what"的世界模型断言
   why: 存在性判据太浅，产物写错内容也能过
@@ -546,7 +550,7 @@ items:
   advice: 最后做
   rank: 10
   rank_derived: false
-  unlocks: *id011
+  unlocks: *id010
   rank_hint: last
   strategy_flags:
     violates_non_goal: null
@@ -564,7 +568,7 @@ items:
   verify:
   - kind: manual
     reason: GLiClass 中文表现验证；128 标签仅掉 7-20% 吞吐
-  unlock: &id012 []
+  unlock: &id011 []
   human_note: 新探索，8G 可行性待证
   what: 一个前向同时输出意图+风险+难度，写进 GWT 共享状态
   why: 现在三个判断分散，128 标签仅掉 7-20% 吞吐可行
@@ -582,7 +586,7 @@ items:
   advice: 一个前向输出意图+风险+难度
   rank: 12
   rank_derived: false
-  unlocks: *id012
+  unlocks: *id011
   rank_hint: normal
   strategy_flags:
     violates_non_goal: null
@@ -599,7 +603,7 @@ items:
   verify:
   - kind: manual
     reason: 须换 86M 且召回 A/B ≥80%；0.6B 已证伪
-  unlock: &id013 []
+  unlock: &id012 []
   human_note: 无实证收益前不做
   what: 86M 小模型 Critic 做轻量预警
   why: 0.6B 扫一次 5s 不实用；但小 judge 一致率仅 45-60%，需谨慎
@@ -618,7 +622,7 @@ items:
   advice: 降级：无实证收益前不做
   rank: 13
   rank_derived: false
-  unlocks: *id013
+  unlocks: *id012
   rank_hint: explore
   strategy_flags:
     violates_non_goal: null
@@ -635,7 +639,7 @@ items:
   verify:
   - kind: manual
     reason: 调研完成，待决定是否落 ADR
-  unlock: &id014 []
+  unlock: &id013 []
   human_note: 观望
   what: 补眶额价值/脑干稳态的脑功能空白
   why: BRAIN_PARITY 盘点的空白区
@@ -653,7 +657,7 @@ items:
   advice: 观望
   rank: 14
   rank_derived: false
-  unlocks: *id014
+  unlocks: *id013
   rank_hint: explore
   strategy_flags:
     violates_non_goal: null
@@ -670,7 +674,7 @@ items:
   verify:
   - kind: manual
     reason: 'autoparser 上游 PR #29307 未合并，本地补丁还在'
-  unlock: &id015 []
+  unlock: &id014 []
   human_note: 不插队，等上游
   what: 上游 autoparser PR 合并后撤本地补丁，升级引擎
   why: 跟上游减少维护负担
@@ -689,7 +693,7 @@ items:
   advice: 不插队
   rank: 15
   rank_derived: false
-  unlocks: *id015
+  unlocks: *id014
   rank_hint: explore
   strategy_flags:
     violates_non_goal: null
@@ -706,7 +710,7 @@ items:
   verify:
   - kind: manual
     reason: S4 发现 ⑦，先小规模对照，不占正式坑
-  unlock: &id016 []
+  unlock: &id015 []
   human_note: 探索项
   what: 验证"防提前假装完成"的轻量机制
   why: S4 发现提示让 FAKEOK→PASS（token 未降）
@@ -724,7 +728,7 @@ items:
   advice: 不占坑，先小规模验证
   rank: 99
   rank_derived: false
-  unlocks: *id016
+  unlocks: *id015
   rank_hint: explore
   strategy_flags:
     violates_non_goal: null
@@ -755,6 +759,8 @@ items:
     touches_metagovernance: false
     serves_success_dim: null
   category: short
+  unlocks:
+  - rebaseline
 - id: S2
   title: 可控遗忘常态化
   tier: 1
@@ -962,6 +968,8 @@ items:
     touches_metagovernance: false
     serves_success_dim: null
   category: mind
+  unlocks:
+  - rebaseline
 - id: M6
   title: 安全规则不可覆盖
   tier: 1
@@ -1641,6 +1649,8 @@ autonomy_rungs:
     touches_metagovernance: false
     serves_success_dim: null
   category: autonomy
+  unlocks:
+  - A1
 - id: A1
   title: 会记路（机器判据 + dry-run 核验）
   deps:
@@ -1687,6 +1697,22 @@ autonomy_rungs:
     touches_metagovernance: false
     serves_success_dim: null
   category: autonomy
+  unlocks:
+  - A1_5
+  - A1_6
+  - A1_7
+  - A2
+  - A5
+  - M10
+  - S10
+  - S11
+  - S12
+  - S13
+  - S14
+  - S15
+  - S18
+  - S19
+  - S21
 - id: A2
   title: 会指路（自动勾选，只写权威源）
   deps:
@@ -1722,6 +1748,9 @@ autonomy_rungs:
     touches_metagovernance: false
     serves_success_dim: null
   category: autonomy
+  unlocks:
+  - A3
+  - A5
 - id: A3
   title: 会迈步（预批低风险队列取任务）
   deps:
@@ -1757,6 +1786,8 @@ autonomy_rungs:
     touches_metagovernance: false
     serves_success_dim: null
   category: autonomy
+  unlocks:
+  - A5
 - id: A3_5
   title: 安全地基（真实 diff + e2e + 回滚）
   deps: []
@@ -1805,6 +1836,9 @@ autonomy_rungs:
     touches_metagovernance: false
     serves_success_dim: null
   category: autonomy
+  unlocks:
+  - A4
+  - A5
 - id: A4
   title: 会转弯（旁路 meta_decision）
   deps:
@@ -1845,6 +1879,8 @@ autonomy_rungs:
     touches_metagovernance: false
     serves_success_dim: null
   category: autonomy
+  unlocks:
+  - A5
 - id: A5
   title: 自己走（常驻闭环）
   deps:

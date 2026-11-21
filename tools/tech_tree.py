@@ -43,10 +43,10 @@ LAYER_MEANING = {
 }
 CAT_LABEL = {'short': '短期', 'mind': '心智', 'infra': '工程',
              'longterm': '长期', 'governance': '治理', 'autonomy': '自主',
-             'evidence': '证据', 'rejected': '不做'}
+             'evidence': '证据', 'rejected': '不做', 'gate': '闸门'}
 CAT_COLOR = {'short': '#378ADD', 'mind': '#7F77DD', 'infra': '#1D9E75',
              'longterm': '#BA7517', 'governance': '#A32D2D', 'autonomy': '#0F6E56',
-             'evidence': '#185FA5', 'rejected': '#A32D2D'}
+             'evidence': '#185FA5', 'rejected': '#A32D2D', 'gate': '#BA7517'}
 STATUS_LABEL = {'done': '已完成', 'ready': '可领取', 'backlog': '待办',
                 'manual-blocked': '人工阻塞'}
 
@@ -84,9 +84,17 @@ def load():
 def build(g, sem, rejected=None):
     items = g['items'] + g['rungs']
     anchors = set((g.get('anchors') or {}).keys())
+    gates = {}
+    for i in items:
+        for pre in (sem.get(i['id'], {}).get('preconditions') or []):
+            pid = str(pre).split(':')[0].strip()
+            desc = str(pre).split(':', 1)[1].strip() if ':' in str(pre) else ''
+            gates.setdefault(pid, {'title': desc or pid, 'cards': []})
+            gates[pid]['cards'].append(i['id'])
     nodes = []
     for i in items:
         s = sem.get(i['id'], {})
+        preids = [str(x).split(':')[0].strip() for x in (s.get('preconditions') or [])]
         nodes.append({
             'id': i['id'],
             'title': i.get('title', s.get('title', '')),
@@ -100,6 +108,7 @@ def build(g, sem, rejected=None):
             'risk': i.get('risk', ''), 'kind': 'card',
             'roi': roi_score(s),
             'roi_valid': '已完成' not in str(s.get('benefit', '')),
+            'gates': preids,
         })
     # 证据卡：anchors 是"卡也是证据"，被其他卡 deps 引用；画出来才能看清依赖来源
     ANCHOR_TITLE = {'ground': '地基数据/规则', 'S1_data': '8147行trace证据',
@@ -114,6 +123,14 @@ def build(g, sem, rejected=None):
                       'why': meta.get('verify', '') or '证据节点：其他卡依赖它',
                       'unlocks': [n['id'] for n in nodes if a in n['deps']],
                       'risk': 'evidence', 'kind': 'evidence'})
+    # 前置闸门卡：卡在"条件未验证"上，橙色；跨卡共享 P-ID 只画一个
+    for pid, meta in sorted(gates.items()):
+        nodes.append({'id': pid, 'title': meta['title'][:34], 'status': 'gate',
+                      'tier': 0, 'category': 'gate', 'deps': [],
+                      'what': '前置条件：' + meta['title'],
+                      'why': '闸门未满足则依赖它的卡 blocked。相关卡：' + ', '.join(meta['cards']),
+                      'unlocks': meta['cards'], 'risk': 'gate', 'kind': 'gate',
+                      'roi': 0, 'roi_valid': False, 'gates': []})
     # 明确不做：红色科技卡，独立列（最左）
     for x in (rejected or []):
         nodes.append({'id': x['id'], 'title': x['title'], 'status': 'rejected',
@@ -139,7 +156,7 @@ def layout(nodes, anchors):
         if not changed:
             break
     for n in nodes:
-        if n.get('kind') == 'rejected':
+        if n.get('kind') in ('rejected', 'gate'):
             n['depth'] = -1          # 独立最左列"已排除"
         elif n.get('kind') == 'evidence':
             n['depth'] = 0           # 证据列（与第0层卡同层但在渲染时分组）
@@ -209,11 +226,25 @@ button{font:inherit;padding:4px 10px;border:1px solid var(--line);background:#ff
 <button onclick="setMode('done')">只看已完成</button>
 <button onclick="highlightHubs()">高亮枢纽 A1</button></div>
 </header>
-<div class="wrap"><div id="tree"><svg class="links" id="links"></svg><div id="cols"></div></div>
+<div class="wrap"><div id="tree"><svg class="links" id="links"><defs>
+<marker id="arrow-dep" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M2 1L8 5L2 9" fill="none" stroke="#b4b2a9" stroke-width="1.5"/></marker>
+<marker id="arrow-unlock" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M2 1L8 5L2 9" fill="none" stroke="#7F77DD" stroke-width="1.5"/></marker>
+<marker id="arrow-gate" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M2 1L8 5L2 9" fill="none" stroke="#BA7517" stroke-width="1.5"/></marker>
+</defs></svg><div id="cols"></div></div>
 <aside id="side"><h2>点击节点看详情</h2><div class="sub">依赖链、解锁项、判据状态都在这里。</div></aside></div>
 <script>
 const DATA=__DATA__;
 const CATL=__CATL__,CATC=__CATC__,SL=__SL__,LAYER=__LAYER__;
+// 统一边集：每条关系一条线，from=上游(前置)，to=下游(依赖方)。双向遍历都基于它。
+const EDGES=(()=>{const m=new Map(),PRI={dep:0,gate:1,unlock:2},add=(f,t,kind)=>{
+  if(!DATA.some(n=>n.id===f)||!DATA.some(n=>n.id===t))return;
+  const key=f+'>'+t,prev=m.get(key);
+  if(!prev||PRI[kind]<PRI[prev.kind])m.set(key,{from:f,to:t,kind})};  // 同一对只留一条，硬关系优先
+ DATA.forEach(n=>{
+  (n.deps||[]).forEach(d=>add(d,n.id,'dep'));
+  (n.gates||[]).forEach(g=>add(g,n.id,'gate'));
+  (n.unlocks||[]).forEach(t=>add(n.id,t,'unlock'));
+ });return [...m.values()]})();
 const $=s=>document.querySelector(s);
 function esc(s){return String(s||'').replace(/[<>]/g,'')}
 function setMode(m){window.__mode=m;render()}
@@ -237,11 +268,12 @@ function render(){
  // 每层内：未完成靠上、已完成靠下（当前该做的自然浮到视线里）
  const rank=n=>(n.status==='done'?1:0);
  // 列定义：已排除(红) | 证据 | 第0..N层
- const specs=[{key:'rejected',head:'⛔ 明确不做'},{key:'evidence',head:'▤ 证据/地基'}];
+ const specs=[{key:'rejected',head:'⛔ 明确不做'},{key:'gate',head:'⏳ 前置闸门'},{key:'evidence',head:'▤ 证据/地基'}];
  for(let d=0;d<=maxd;d++)specs.push({key:'layer'+d,head:'第'+d+'层·'+(LAYER[d]||'')});
  const cols=specs.map(sp=>{
   let arr;
   if(sp.key==='rejected')arr=ns.filter(n=>n.kind==='rejected');
+  else if(sp.key==='gate')arr=ns.filter(n=>n.kind==='gate');
   else if(sp.key==='evidence')arr=ns.filter(n=>n.kind==='evidence');
   else arr=ns.filter(n=>n.kind==='card'&&n.depth===Number(sp.key.slice(5)));
   // 未完成在前；组内按性价比(ROI)降序——最划算的浮到最上面
@@ -252,7 +284,7 @@ function render(){
  $('#cols').innerHTML=cols.map(col=>{
   const todo=col.nodes.filter(n=>n.status!=='done'&&n.kind==='card').length;
   const done=col.nodes.filter(n=>n.status==='done').length;
-  const prog=(col.key!=='rejected'&&col.key!=='evidence')?` · <span style="color:#A32D2D">${todo} 待办</span> / <span style="color:#1D9E75">${done} 完成</span>`:'';
+  const prog=(col.key!=='rejected'&&col.key!=='evidence'&&col.key!=='gate')?` · <span style="color:#A32D2D">${todo} 待办</span> / <span style="color:#1D9E75">${done} 完成</span>`:'';
   return `<div class="col"><div class="col-h">${col.head}${prog}</div>`+
   col.nodes.map(n=>{
    const done=n.status==='done';
@@ -281,7 +313,7 @@ function drawLinks(ns){
   pos[el.dataset.id]={x:r.left-p.left+tree.scrollLeft,y:r.top-p.top+tree.scrollTop+10,w:r.width};
  });
  let paths='';
- const edge=(from,to,soft)=>{
+ const edge=(from,to,soft,style)=>{
   const a=pos[from],b=pos[to];if(!a||!b)return;
   const x1=a.x+a.w,y1=a.y,x2=b.x,y2=b.y;
   const hot=window.__chain && window.__chain.has(from) && window.__chain.has(to);
@@ -294,27 +326,25 @@ function drawLinks(ns){
     if(toInUp)dir='up';
     else if(fromInDown)dir='down';
   }
-  const cls=(hot?'link-hot':'')+(soft?' link-unlock':'')+(dir?' dir-'+dir:'');
-  paths+=`<path class="${cls}" d="M${x1},${y1} C${x1+18},${y1} ${x2-18},${y2} ${x2},${y2}" fill="none" stroke="${soft?'#7F77DD':'#b4b2a9'}" stroke-width="1" ${soft?'stroke-dasharray="4 3"':''}/>`;
+  const cls=(hot?'link-hot':'')+(soft?' link-unlock':'')+(dir?' dir-'+dir:'')+(style==='gate'?' link-gate':'');
+  const col=style==='gate'?'#BA7517':(soft?'#7F77DD':'#b4b2a9');
+  // 箭头让互连方向可见：从上游(from)指向下游(to)
+  const midX=(x1+x2)/2;
+  paths+=`<path class="${cls}" d="M${x1},${y1} C${x1+18},${y1} ${x2-18},${y2} ${x2},${y2}" fill="none" stroke="${col}" stroke-width="${style==='gate'?'1.5':'1'}" ${soft?'stroke-dasharray="4 3"':''} marker-end="url(#arrow-${style==='gate'?'gate':soft?'unlock':'dep'})"/>`;
  };
- ns.forEach(n=>n.deps.forEach(d=>edge(d,n.id,false)));         // 硬依赖：灰实线
- ns.forEach(n=>(n.unlocks||[]).forEach(t=>{                    // 逻辑解锁：紫虚线（仅deps没有的）
-   if(!n.deps.includes(t)&&!DATA.find(y=>y.id===t)?.deps.includes(n.id))edge(n.id,t,true);
- }));
+ EDGES.forEach(e=>{
+  const soft=e.kind!=='dep';
+  edge(e.from,e.to,soft,e.kind);   // 一条边只画一次，方向/颜色由 kind 决定
+ });
  svg.setAttribute('width',tree.scrollWidth);svg.setAttribute('height',tree.scrollHeight);
  svg.innerHTML=paths;
 }
 function chainOf(id){
- // 递归上游(deps)+下游(谁依赖它)，返回整条链的 id 集合
+ // 基于统一边集双向递归：上游=所有指向我的边的起点，下游=所有我从它出发的边的终点
  const up=new Set([id]),down=new Set([id]);
- const go=(x,seen,get)=>{get(x).forEach(d=>{if(!seen.has(d)){seen.add(d);go(d,seen,get)}})};
- go(id,up,x=>{const n=DATA.find(y=>y.id===x);return n?n.deps:[]});
- go(id,down,x=>{
-   const node=DATA.find(y=>y.id===x);
-   const byDep=DATA.filter(y=>y.deps.includes(x)).map(y=>y.id);
-   const byUnlock=node?(node.unlocks||[]):[];  // 逻辑解锁也是依赖链
-   return [...new Set([...byDep,...byUnlock])];
- });
+ const go=(x,seen,byNode)=>{byNode(x).forEach(d=>{if(!seen.has(d)){seen.add(d);go(d,seen,byNode)}})};
+ go(id,up,x=>EDGES.filter(e=>e.to===x).map(e=>e.from));      // 反向：谁指向我(含deps/unlocks/gates)
+ go(id,down,x=>EDGES.filter(e=>e.from===x).map(e=>e.to));    // 正向：我指向谁
  return {up,down,all:new Set([...up,...down])};
 }
 function show(id){
@@ -324,6 +354,7 @@ function show(id){
  const rev=DATA.filter(x=>x.deps.includes(id)).map(x=>x.id);
  $('#side').innerHTML=`<h2>${esc(n.id)} · ${esc(n.title)}</h2>
  <div class="sub">${CATL[n.category]} · ${SL[n.status]} · tier ${n.tier} · ${esc(n.risk)}</div>
+ <div class="field"><b>前置闸门 · 未满足则 blocked（橙虚线）</b>${(n.gates||[]).map(d=>`<span class="kbd" style="background:#FAEEDA">${esc(d)}</span>`).join(' ')||'无'}</div>
  <div class="field"><b>实际依赖 · 必须先完成（灰实线）</b>${n.deps.map(d=>`<span class="kbd">${esc(d)}</span>`).join(' ')||'无'}</div>
  <div class="field"><b>解锁 · 逻辑声明（紫虚线）</b>${(n.unlocks||[]).map(d=>`<span class="kbd">${esc(d)}</span>`).join(' ')||'无'}</div>
  <div class="field"><b>解锁 · 硬依赖反推（灰实线）</b>${rev.filter(d=>!(n.unlocks||[]).includes(d)).map(d=>`<span class="kbd">${esc(d)}</span>`).join(' ')||'无'}</div>
@@ -349,7 +380,9 @@ def main():
         print('FAIL 节点ID重复'); return 1
     if any(n['depth'] > 30 for n in nodes):
         print('FAIL 依赖层级异常（可能有环）'); return 1
+    gates = [n for n in nodes if n.get('kind') == 'gate']
     print(f'OK {len(nodes)} 卡 / {len(anchors)} anchors / 层级 0-{max(n["depth"] for n in nodes)}')
+    print(f'GATE_COUNT={len(gates)}')
     if check:
         return 0
     payload = json.dumps(nodes, ensure_ascii=False)

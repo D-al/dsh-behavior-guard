@@ -51,6 +51,7 @@ if command -v "$PYTHON" >/dev/null 2>&1; then
     run_test "strategy-alignment" "$PYTHON \"$ROOT/tools/test_strategy_alignment.py\""
     run_test "verify-audit" "$PYTHON \"$ROOT/tools/audit_verify.py\" --strict"
     run_test "tech-tree" "$PYTHON \"$ROOT/tools/tech_tree.py\" --check"
+    run_test "implicit-deps" "$PYTHON \"$ROOT/tools/audit_implicit_deps.py\" --strict"
 else
     echo "[skip] python not found"
 fi
