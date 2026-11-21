@@ -1,11 +1,12 @@
 # 路线图（活文档）
 
-> **怎么读这份文件**（2026-11-21 重构，按人的阅读顺序）：
-> **① 当前这张卡**（正在做/下一张）→ **② 未来要做哪些卡**（脉络与依赖）→ **③ 已完成哪些卡** → **④ 明确不做**。
-> 机器真相在 [ROADMAP_GRAPH.md](ROADMAP_GRAPH.md)，语义字段在 [CAPABILITY_LADDER.yaml](CAPABILITY_LADDER.yaml)；
-> **🌳 想一眼看依赖和完成状态：打开 [TECH_TREE.html](TECH_TREE.html)**（交互科技树，随 `--refresh` 自动重生成）。
-> 本文件是人读视图，§1-§3 自动块由 `tools/roadmap_check.py --refresh` 生成，勿手改。
-> 更新于 **2026-11-21**（v2.26.6）；入口 [README](README.md) · 细节 [docs/](docs/README.md) · 决策依据 [decisions/](decisions/README.md)。
+> **🌳 首选视图：[TECH_TREE.html](TECH_TREE.html)** — 交互科技树：依赖链上下游高亮（蓝=上游/红=下游）、
+> 实线=实际依赖 / 紫虚线=语义解锁、未完成在上已完成在下、层语义、ROI、红色"不做"卡。**日常看这个就够。**
+>
+> **本文件（ROADMAP.md）= 文字索引 + 判据状态**，供 GitHub 阅读与机器引用；两份都是自动生成的，不手工维护。
+> §1 当前卡 → §2 未来卡 → §3 已完成 → §4 明确不做。机器真相 [ROADMAP_GRAPH.md](ROADMAP_GRAPH.md)，语义 [CAPABILITY_LADDER.yaml](CAPABILITY_LADDER.yaml)。
+> **提交时自动更新**：pre-commit hook 会跑 `tools/roadmap_check.py --refresh` 重生成本文件 + 科技树（安装：`bash tools/install_hook.sh`）。
+> 入口 [README](README.md) · 细节 [docs/](docs/README.md) · 决策 [decisions/](decisions/README.md)。
 
 ---
 

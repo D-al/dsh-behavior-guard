@@ -1,0 +1,24 @@
+#!/bin/bash
+# pre-commit hook：提交时自动重渲染路线图人读视图 + 科技树（2026-11-21）
+# 用户要求："写个东西让科技树和机器路线图能提交时更新，不用每次写脚本渲染"
+# 安装：bash tools/install_hook.sh  （或 cp tools/pre-commit .git/hooks/pre-commit）
+
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+PY="D:/Python/python.exe"
+[ -x "$PY" ] || PY="$(command -v python3 || command -v python)"
+[ -n "$PY" ] || { echo "[pre-commit] 找不到 Python，跳过视图刷新"; exit 0; }
+
+# 刷新会重生成 ROADMAP.md（人读块）+ TECH_TREE.html（科技树）
+OUT="$("$PY" tools/roadmap_check.py --refresh 2>&1)"
+RC=$?
+if [ $RC -ne 0 ]; then
+  echo "[pre-commit] 视图刷新失败，阻止提交："
+  echo "$OUT"
+  exit 1
+fi
+echo "$OUT" | tail -1
+
+# 把生成物纳入本次提交（git add 不触发新 commit，无递归风险）
+git add ROADMAP.md TECH_TREE.html 2>/dev/null || true
+exit 0

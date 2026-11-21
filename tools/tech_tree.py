@@ -25,11 +25,22 @@ except ModuleNotFoundError:
         os.execv(str(alt), [str(alt), str(Path(__file__).resolve())] + sys.argv[1:])
     raise
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from roadmap_check import roi_score  # 复用同一ROI公式，避免两处漂移
+
 ROOT = Path(__file__).resolve().parent.parent
 GRAPH = ROOT / 'ROADMAP_GRAPH.md'
 LADDER = ROOT / 'CAPABILITY_LADDER.yaml'
 OUT = ROOT / 'TECH_TREE.html'
 
+# 依赖层的语义标题（基于各层卡片构成的实证分析，2026-11-21）
+LAYER_MEANING = {
+    0: '地基与起点 · 无前置',
+    1: '工程改造 · 低风险主力',
+    2: '结构与校准 · 中风险',
+    3: '高阶组合 · 人工决策',
+    4: '自主化终局',
+}
 CAT_LABEL = {'short': '短期', 'mind': '心智', 'infra': '工程',
              'longterm': '长期', 'governance': '治理', 'autonomy': '自主',
              'evidence': '证据', 'rejected': '不做'}
@@ -87,6 +98,8 @@ def build(g, sem, rejected=None):
             'why': s.get('why', ''),
             'unlocks': s.get('unlocks') or [],
             'risk': i.get('risk', ''), 'kind': 'card',
+            'roi': roi_score(s),
+            'roi_valid': '已完成' not in str(s.get('benefit', '')),
         })
     # 证据卡：anchors 是"卡也是证据"，被其他卡 deps 引用；画出来才能看清依赖来源
     ANCHOR_TITLE = {'ground': '地基数据/规则', 'S1_data': '8147行trace证据',
@@ -151,28 +164,34 @@ h1{margin:0 0 6px;font-size:18px;font-weight:600}
 .wrap{display:flex;height:calc(100vh - 120px)}
 #tree{flex:1;overflow:auto;position:relative;padding:24px}
 #cols{position:relative;z-index:2}
-.col{display:inline-block;vertical-align:top;width:210px;margin-right:26px}
-.col-h{font-size:11px;color:var(--muted);margin-bottom:10px;text-align:center;
+.col{display:inline-block;vertical-align:top;width:158px;margin-right:12px}
+.col-h{font-size:10px;color:var(--muted);margin-bottom:6px;text-align:center;
  border-bottom:1px dashed var(--line);padding-bottom:6px}
-.node{background:var(--panel);border:1px solid var(--line);border-radius:8px;
- padding:9px 10px;margin-bottom:10px;cursor:pointer;position:relative;
+.node{background:var(--panel);border:1px solid var(--line);border-radius:6px;
+ padding:5px 6px;margin-bottom:5px;cursor:pointer;position:relative;
  box-shadow:0 1px 2px rgba(0,0,0,.04);transition:transform .1s}
 .node:hover{transform:translateY(-1px)}
 .node.done{border-left-width:4px}
 .node.todo{opacity:.62;border-style:dashed;border-left-width:4px}
-.node .id{font:11px ui-monospace,monospace;color:var(--muted)}
-.node .t{font-weight:500;margin:2px 0}
-.node .meta{font-size:11px;color:var(--muted)}
-.chip{display:inline-block;padding:0 5px;border-radius:8px;color:#fff;font-size:10px}
+.node .id{font:10px ui-monospace,monospace;color:var(--muted)}
+.node .t{font-weight:500;margin:1px 0;font-size:11px;line-height:1.3}
+.node .meta{font-size:10px;color:var(--muted)}
+.chip{display:inline-block;padding:0 4px;border-radius:8px;color:#fff;font-size:9px}
+.roi{float:right;font:10px ui-monospace,monospace;color:#854F0B;background:#FAEEDA;padding:0 4px;border-radius:6px}
 .ok{color:#1D9E75;font-weight:600}
 svg.links{position:absolute;top:0;left:0;pointer-events:none;z-index:1}
 .node{position:relative;z-index:2}
 .node.dim{opacity:.13!important;filter:grayscale(1)}
-.node.sel{box-shadow:0 0 0 2px #A32D2D,0 2px 8px rgba(0,0,0,.15);opacity:1!important}
-.node.inchain{opacity:1!important}
+.node.sel{box-shadow:0 0 0 2px #2C2C2A,0 2px 8px rgba(0,0,0,.2);opacity:1!important}
+.node.up-node{box-shadow:0 0 0 2px #185FA5;opacity:1!important}
+.node.down-node{box-shadow:0 0 0 2px #A32D2D;opacity:1!important}
 path.link-dim{opacity:.06!important}
 path.link-hot{stroke:#A32D2D!important;stroke-width:2.2!important;opacity:1!important}
+path.link-hot.dir-up{stroke:#185FA5!important}
+path.link-hot.dir-down{stroke:#A32D2D!important}
 path.link-unlock.hot{stroke:#7F77DD!important}
+path.link-unlock.hot.dir-up{stroke:#378ADD!important;stroke-dasharray:"4 3"}
+path.link-unlock.hot.dir-down{stroke:#D85A30!important;stroke-dasharray:"4 3"}
 #side{width:320px;border-left:1px solid var(--line);background:var(--panel);
  padding:18px;overflow:auto}
 #side h2{font-size:15px;margin:0 0 8px}
@@ -194,7 +213,7 @@ button{font:inherit;padding:4px 10px;border:1px solid var(--line);background:#ff
 <aside id="side"><h2>点击节点看详情</h2><div class="sub">依赖链、解锁项、判据状态都在这里。</div></aside></div>
 <script>
 const DATA=__DATA__;
-const CATL=__CATL__,CATC=__CATC__,SL=__SL__;
+const CATL=__CATL__,CATC=__CATC__,SL=__SL__,LAYER=__LAYER__;
 const $=s=>document.querySelector(s);
 function esc(s){return String(s||'').replace(/[<>]/g,'')}
 function setMode(m){window.__mode=m;render()}
@@ -204,7 +223,11 @@ function init(){
  $('#sub').textContent=`${DATA.length} 张卡 · ${done} 已完成 · ${DATA.length-done} 未做 · 从左到右按依赖层级展开`;
  $('#legend').innerHTML=Object.keys(CATL).map(k=>
    `<span><i class="dot" style="background:${CATC[k]}"></i>${CATL[k]}</span>`).join('')+
-   `<span><i class="dot" style="border:1px dashed #888"></i>虚线=未完成</span>`;
+   `<span><i class="dot" style="border:1px dashed #888"></i>虚线框=未完成</span>`+
+ `<span style="color:#185FA5">━ 蓝=上游(它依赖的)</span>`+
+ `<span style="color:#A32D2D">━ 红=下游(依赖它的)</span>`+
+ `<span style="color:#5F5E5A">━ 灰实线=实际依赖(必须先做)</span>`+
+ `<span style="color:#7F77DD">╌ 紫虚线=语义解锁(做了才具备条件)</span>`;
  render();
 }
 function render(){
@@ -215,15 +238,17 @@ function render(){
  const rank=n=>(n.status==='done'?1:0);
  // 列定义：已排除(红) | 证据 | 第0..N层
  const specs=[{key:'rejected',head:'⛔ 明确不做'},{key:'evidence',head:'▤ 证据/地基'}];
- for(let d=0;d<=maxd;d++)specs.push({key:'layer'+d,head:'第 '+d+' 层'});
+ for(let d=0;d<=maxd;d++)specs.push({key:'layer'+d,head:'第'+d+'层·'+(LAYER[d]||'')});
  const cols=specs.map(sp=>{
   let arr;
   if(sp.key==='rejected')arr=ns.filter(n=>n.kind==='rejected');
   else if(sp.key==='evidence')arr=ns.filter(n=>n.kind==='evidence');
   else arr=ns.filter(n=>n.kind==='card'&&n.depth===Number(sp.key.slice(5)));
-  return {key:sp.key,head:sp.head,nodes:arr.sort((a,b)=>rank(a)-rank(b)||a.tier-b.tier||a.id.localeCompare(b.id))};
+  // 未完成在前；组内按性价比(ROI)降序——最划算的浮到最上面
+  return {key:sp.key,head:sp.head,nodes:arr.sort((a,b)=>rank(a)-rank(b)||
+    ((b.roi||0)-(a.roi||0))||a.tier-b.tier||a.id.localeCompare(b.id))};
  });
- $('#cols').style.width=((cols.length)*236)+'px';
+ $('#cols').style.width=((cols.length)*170)+'px';
  $('#cols').innerHTML=cols.map(col=>{
   const todo=col.nodes.filter(n=>n.status!=='done'&&n.kind==='card').length;
   const done=col.nodes.filter(n=>n.status==='done').length;
@@ -232,12 +257,16 @@ function render(){
   col.nodes.map(n=>{
    const done=n.status==='done';
    const hubdim=window.__hub && n.id!=='A1' && !n.deps.includes('A1');
-   const sel=window.__sel===n.id, inchain=window.__chain && window.__chain.has(n.id);
+   const sel=window.__sel===n.id;
+   const isUp=window.__chains && window.__chains.up.has(n.id) && !sel;
+   const isDown=window.__chains && window.__chains.down.has(n.id) && !sel;
+   const inchain=window.__chain && window.__chain.has(n.id);
    const fade=window.__chain && !inchain;
-   const cls=['node',done?'done':'todo',sel?'sel':'',inchain?'inchain':'',fade?'dim':''].filter(Boolean).join(' ');
+   const cls=['node',done?'done':'todo',sel?'sel':'',isUp?'up-node':'',isDown?'down-node':'',fade?'dim':''].filter(Boolean).join(' ');
    const c=CATC[n.category]||'#888';
    return `<div class="${cls}" data-id="${esc(n.id)}" style="border-left-color:${c};opacity:${hubdim?'0.25':''}" onclick="show('${esc(n.id)}')">
     <span class="chip" style="background:${c}">${CATL[n.category]||'其他'}</span>
+    <span class="roi" title="性价比=收益÷成本">${n.kind==='card'?(n.roi_valid?'ROI '+n.roi:'已兑现'):''}</span>
     ${done?'<span class="ok">✓</span>':''}
     <div class="id">${esc(n.id)} · tier ${n.tier}</div>
     <div class="t">${esc(n.title)}</div>
@@ -257,7 +286,15 @@ function drawLinks(ns){
   const x1=a.x+a.w,y1=a.y,x2=b.x,y2=b.y;
   const hot=window.__chain && window.__chain.has(from) && window.__chain.has(to);
   const fade=window.__chain && !hot;
-  const cls=(hot?'link-hot':'')+(soft?' link-unlock':'');
+  // 方向分色：to在上游(含选中)→蓝；from在下游(含选中)且to不在上游→红
+  let dir='';
+  if(hot && window.__chains){
+    const toInUp=window.__chains.up.has(to);
+    const fromInDown=window.__chains.down.has(from);
+    if(toInUp)dir='up';
+    else if(fromInDown)dir='down';
+  }
+  const cls=(hot?'link-hot':'')+(soft?' link-unlock':'')+(dir?' dir-'+dir:'');
   paths+=`<path class="${cls}" d="M${x1},${y1} C${x1+18},${y1} ${x2-18},${y2} ${x2},${y2}" fill="none" stroke="${soft?'#7F77DD':'#b4b2a9'}" stroke-width="1" ${soft?'stroke-dasharray="4 3"':''}/>`;
  };
  ns.forEach(n=>n.deps.forEach(d=>edge(d,n.id,false)));         // 硬依赖：灰实线
@@ -278,16 +315,16 @@ function chainOf(id){
    const byUnlock=node?(node.unlocks||[]):[];  // 逻辑解锁也是依赖链
    return [...new Set([...byDep,...byUnlock])];
  });
- return new Set([...up,...down]);
+ return {up,down,all:new Set([...up,...down])};
 }
 function show(id){
  const n=DATA.find(x=>x.id===id);if(!n)return;
- window.__sel=id;window.__chain=chainOf(id);
+ window.__sel=id;window.__chains=chainOf(id);window.__chain=window.__chains.all;
  render();  // 重绘以应用高亮
  const rev=DATA.filter(x=>x.deps.includes(id)).map(x=>x.id);
  $('#side').innerHTML=`<h2>${esc(n.id)} · ${esc(n.title)}</h2>
  <div class="sub">${CATL[n.category]} · ${SL[n.status]} · tier ${n.tier} · ${esc(n.risk)}</div>
- <div class="field"><b>依赖（前置）</b>${n.deps.map(d=>`<span class="kbd">${esc(d)}</span>`).join(' ')||'无'}</div>
+ <div class="field"><b>实际依赖 · 必须先完成（灰实线）</b>${n.deps.map(d=>`<span class="kbd">${esc(d)}</span>`).join(' ')||'无'}</div>
  <div class="field"><b>解锁 · 逻辑声明（紫虚线）</b>${(n.unlocks||[]).map(d=>`<span class="kbd">${esc(d)}</span>`).join(' ')||'无'}</div>
  <div class="field"><b>解锁 · 硬依赖反推（灰实线）</b>${rev.filter(d=>!(n.unlocks||[]).includes(d)).map(d=>`<span class="kbd">${esc(d)}</span>`).join(' ')||'无'}</div>
  <div class="field"><b>做什么</b>${esc(n.what)}</div>
@@ -319,7 +356,8 @@ def main():
     out = (HTML.replace('__DATA__', payload)
                .replace('__CATL__', json.dumps(CAT_LABEL, ensure_ascii=False))
                .replace('__CATC__', json.dumps(CAT_COLOR))
-               .replace('__SL__', json.dumps(STATUS_LABEL, ensure_ascii=False)))
+               .replace('__SL__', json.dumps(STATUS_LABEL, ensure_ascii=False))
+               .replace('__LAYER__', json.dumps(LAYER_MEANING, ensure_ascii=False)))
     # 可失败性自检：生成后立刻用 node --check 验 JS 语法，防止空白页面（2026-11-21 踩过坑）
     m = re.search(r'<script>(.*?)</script>', out, re.S)
     if not m:
