@@ -1,7 +1,8 @@
 meta:
   schema_version: 1
-  generated: '2026-11-20'
-  authority: CAPABILITY_LADDER.yaml
+  generated: '2026-11-21'
+  authority: ROADMAP_GRAPH.md  # 状态唯一真相源；本文件仅提供语义字段(what/why/caveats/reflection)
+  semantic_mirror: CAPABILITY_LADDER.yaml
   human_view: ROADMAP.md
   reader: tools/roadmap_check.py
   judge_principle: ADR-0012 确定性优先；零 LLM；过滤测试 sid

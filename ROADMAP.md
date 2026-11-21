@@ -13,40 +13,44 @@
 
 ## 1. 当前位置（30 秒读懂）
 
-<!-- HUMAN_PROGRESS_BEGIN v1：由 roadmap_check.py --apply 自动生成，勿手改 -->
+<!-- HUMAN_PROGRESS_BEGIN v1：由 roadmap_check.py 自动生成，勿手改 -->
 > ### 🟢 自主化进度（自动同步）
 >
 > | 卡片 | 状态 | 完成证据 |
 > |---|---|---|
-> | **A0 数据可信（sid 黑名单）** | ✅ done | 证据见 `evidence_log` + `docs/reflection-A0.md` |
-> | **A1 会记路（机器判据 + dry-run 核验）** | ✅ done | 证据见 `evidence_log` + `docs/reflection-A1.md` |
-> | **A3_5 安全地基（真实 diff + e2e + 回滚）** | ✅ done | 证据见 `evidence_log` + `docs/reflection-A3_5.md` |
-> | **A1_5 判据元验证（防假绿）** | ✅ done | 证据见 `evidence_log` + `docs/reflection-A1_5.md` |
-> | **A1_6 守卫 L1 补将来时承诺检测** | ✅ done | 证据见 `evidence_log` + `docs/reflection-A1_6.md` |
-> | **S1 Self-Harness P0-P2** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S1.md` |
-> | **S2 可控遗忘常态化** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S2.md` |
-> | **S3 频次收尾（trace 带 turn/controlTotal）** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S3.md` |
-> | **S4 自适应 A/B** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S4.md` |
-> | **S5 角色失效修复** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S5.md` |
-> | **S6 注入检测** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S6.md` |
-> | **S7 CPU 小模型基准** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S7.md` |
-> | **S8 审计自校准落盘** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S8.md` |
-> | **S9 有状态反馈** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S9.md` |
-> | **M4 注入预算 token 化** | ✅ done | 证据见 `evidence_log` + `docs/reflection-M4.md` |
-> | **M6 安全规则不可覆盖** | ✅ done | 证据见 `evidence_log` + `docs/reflection-M6.md` |
-> | **GWT_FEP_done GWT 共享状态总线 + FEP 预期闭环** | ✅ done | 证据见 `evidence_log` + `docs/reflection-GWT_FEP_done.md` |
-> | **archive_dedup 压缩存档去重** | ✅ done | 证据见 `evidence_log` + `docs/reflection-archive_dedup.md` |
-> | **regression_106 回归审计 106 PASS / 0 FAIL** | ✅ done | 证据见 `evidence_log` + `docs/reflection-regression_106.md` |
-> | **gpu_guard GPU 引擎守护** | ✅ done | 证据见 `evidence_log` + `docs/reflection-gpu_guard.md` |
-> | **watcher_freq3 learn_watcher 频次三层改造** | ✅ done | 证据见 `evidence_log` + `docs/reflection-watcher_freq3.md` |
-> | **rebaseline 路线图重定基线** | ✅ done | 证据见 `evidence_log` + `docs/reflection-rebaseline.md` |
-> | **outcome_all 结果反馈捕获 / 确定性门控 / 三角色 / P0-P2 心智拼图** | ✅ done | 证据见 `evidence_log` + `docs/reflection-outcome_all.md` |
-> | **M1 情景检索进主循环** | ✅ done | 证据见 `evidence_log` + `docs/reflection-M1.md` |
-> | **M8 轨迹 FSM 监控器** | ✅ done | 证据见 `evidence_log` + `docs/reflection-M8.md` |
-> | **S14 编辑协议升级（降低复现负担）** | ✅ done | 证据见 `evidence_log` + `docs/reflection-S14.md` |
+> | **A0 数据可信（sid 黑名单）** | ✅ done | 见 `evidence_log`（{'at': '2026-11-20T05:14:02.333493+00:00） |
+> | **A1 会记路（机器判据 + dry-run 核验）** | ✅ done | 见 `evidence_log`（{'at': '2026-11-20T10:27:57.921689+00:00） |
+> | **A3_5 安全地基（真实 diff + e2e + 回滚）** | ✅ done | 见 `evidence_log`（{'at': '2026-11-20T05:54:28.652577+00:00） |
+> | **A1_5 判据元验证（防假绿）** | ✅ done | 见 `evidence_log`（{'at': '2026-11-20T12:26:01.475219+00:00） |
+> | **A1_6 守卫 L1 补将来时承诺检测** | ✅ done | 见 `evidence_log`（{'at': '2026-11-20T13:49:00.488751+00:00） |
+> | **A1_7 评审机制可观测性** | ✅ done | 见 trace / 本卡 verify |
+> | **S15 选择性验证深度（ Selective Verification）** | ✅ done | 见 trace / 本卡 verify |
+> | **S16 工具描述瘦身与示例** | ✅ done | 见 trace / 本卡 verify |
+> | **S1 Self-Harness P0-P2** | ✅ done | 见 trace / 本卡 verify |
+> | **S2 可控遗忘常态化** | ✅ done | 见 trace / 本卡 verify |
+> | **S3 频次收尾（trace 带 turn/controlTotal）** | ✅ done | 见 trace / 本卡 verify |
+> | **S4 自适应 A/B** | ✅ done | 见 trace / 本卡 verify |
+> | **S5 角色失效修复** | ✅ done | 见 trace / 本卡 verify |
+> | **S6 注入检测** | ✅ done | 见 trace / 本卡 verify |
+> | **S7 CPU 小模型基准** | ✅ done | 见 trace / 本卡 verify |
+> | **S8 审计自校准落盘** | ✅ done | 见 trace / 本卡 verify |
+> | **S9 有状态反馈** | ✅ done | 见 trace / 本卡 verify |
+> | **M4 注入预算 token 化** | ✅ done | 见 trace / 本卡 verify |
+> | **M6 安全规则不可覆盖** | ✅ done | 见 trace / 本卡 verify |
+> | **GWT_FEP_done GWT 共享状态总线 + FEP 预期闭环** | ✅ done | 见 trace / 本卡 verify |
+> | **archive_dedup 压缩存档去重** | ✅ done | 见 trace / 本卡 verify |
+> | **regression_106 回归审计 106 PASS / 0 FAIL** | ✅ done | 见 trace / 本卡 verify |
+> | **gpu_guard GPU 引擎守护** | ✅ done | 见 trace / 本卡 verify |
+> | **watcher_freq3 learn_watcher 频次三层改造** | ✅ done | 见 trace / 本卡 verify |
+> | **rebaseline 路线图重定基线** | ✅ done | 见 trace / 本卡 verify |
+> | **outcome_all 结果反馈捕获 / 确定性门控 / 三角色 / P0-P2 心智拼图** | ✅ done | 见 trace / 本卡 verify |
+> | **M1 情景检索进主循环** | ✅ done | 见 `evidence_log`（{'at': '2026-11-20T06:59:04.502943+00:00） |
+> | **M8 轨迹 FSM 监控器** | ✅ done | 见 `evidence_log`（{'at': '2026-11-20T09:17:57.571459+00:00） |
+> | **S11 写后校验覆盖全部写工具** | ✅ done | 见 trace / 本卡 verify |
+> | **S14 编辑协议升级（降低复现负担）** | ✅ done | 见 `evidence_log`（{'at': '2026-11-20T14:31:21.313624+00:00） |
 > | **下一项** | 🟢 S12 | `S12` 已 ready，可 `--claim` |
 >
-> 机器真相 = [ROADMAP_GRAPH.md](ROADMAP_GRAPH.md)；本表由 `--apply` 自动写，人读与机器不漂移。
+> 机器真相 = [ROADMAP_GRAPH.md](ROADMAP_GRAPH.md)；本表由执行器自动写，人读与机器不漂移。
 <!-- HUMAN_PROGRESS_END -->
 
 **项目是什么**：给 dsh（DeepSeek Harness）的一个 cordis 插件，通过**模型外部**的确定性脚手架
@@ -58,8 +62,8 @@ GWT 总线、FEP 闭环、CritBank（真实计数+可控遗忘）、审计自校
 trace 已达 **8147 行**，弱点聚类产出 **6 簇**（深度维护修复 verify_on_stop 漏检后从 4→6）+ 13 条受保护行为。
 
 **现在的位置**：从「把数据变成能力」转入「**让器官间流动**」——中期执行期。
-**M1（v2.26.5）/ M8（v2.26.6）/ A1（v2.26.7）均已完成**——情景检索、FSM 局部预警、归档机器判据都在线。
-**当前 `--next`=NO_READY_ITEM：自治区间耗尽**，剩余卡为 backlog/manual-blocked，需人工拍板或补判据。
+**M1 / M8 / A1 均已完成**——情景检索、FSM 局部预警、归档机器判据都在线；2026-11-21 又完成 S15（选择性验证）与 S16（工具示例）。
+**当前 `--next`=S12（补丁应用闭环，ready）**；S17 函数外置 doing——自治区间未耗尽，另有 backlog/manual-blocked 卡需人工拍板。
 v2.24 同时做了**深度维护**：修 1 个 P0（安全注入被次数闸门吞掉）+ 7 个 P1（含投毒防御缺口）。
 
 **为什么是这个顺序**（[ADR-0017](decisions/0017-gwt-first-then-fep.md)）：
@@ -326,10 +330,10 @@ v2.24 同时做了**深度维护**：修 1 个 P0（安全注入被次数闸门�
           └─ M5 工具面(⛔拍板) / M7 格式修复(需86M) —— 独立支线 ────────────────┘
 长期独立：L2 eval / L8 多标签心智 / L5 Critic(降级) / L3 脑分区 / L4 引擎 / L7 FAKEOK(探索)
 ```
-**关键**：M8 已完成（heldout_auc=0.8927，局部信号），L6 误差预测器的前置已就绪；A1 完成后 23 张卡里自治区间已耗尽（`--next`=NO_READY_ITEM），剩余卡需人工拍板。
+**关键**：M8 已完成（heldout_auc=0.8927，局部信号），L6 误差预测器的前置已就绪；2026-11-21 已扩到 53 张卡；当前 `--next`=S12（补丁应用闭环，ready），另有 S17 函数外置在 doing——自治区间未耗尽。
 
 
-> **✅ 已完成 35 项**（S1-S9 + M1/M4/M6/M8/A0/A1/A3_5 + 地基）已收进 **§7 归档 / 权威块**，详见 §1 自动进度表。
+> **✅ 已完成 30 项**（详见 §1 自动进度表，机器真相 = ROADMAP_GRAPH.md；含 2026-11-21 新增 S15/S16）。
 > **🔴 本轮关闭的尾巴**：S4 P4/P5 补跑（token 未降已定论）、S7 校准曲线（0.6B 已证伪）、
 > "0.6B 做实时外设"（实测 4-6s，比文献慢 10×）。
 

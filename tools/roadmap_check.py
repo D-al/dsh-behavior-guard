@@ -2,7 +2,7 @@
 """
 roadmap_check.py — agent 自读能力阶梯的执行器（零 LLM）
 
-读 CAPABILITY_LADDER.yaml（权威源），做三件事：
+状态权威源=ROADMAP_GRAPH.md（load_ladder 从中读写状态）；语义镜像=CAPABILITY_LADDER.yaml（what/why/caveats）；人读视图=ROADMAP.md。做三件事：
   --dry-run   默认：对每个条目跑 verify 判据，输出 ID | 状态 | 判据 | PASS/FAIL | 证据；不写任何文件
   --next      输出当前 agent 该爬的下一项（ready + autonomous + risk 最低 + deps 全 done）
   --apply     把 verify 全 PASS 的 doing 项写回 done（只写权威 YAML + ROADMAP.md 人类视图），
@@ -395,6 +395,37 @@ def render_human_cards(data, mirror):
     return '\n'.join(out), total
 
 
+def render_human_progress(data):
+    """渲染 HUMAN_PROGRESS 表（done 卡 + 下一项）。save_authoritative 与 --refresh 共用，防漂移。
+
+    2026-11-21 修复：此前 --refresh 只刷 HUMAN_CARDS 不刷本区，导致 done 的 S15/S16
+    永远进不了人读进度表——用户从 GitHub 看"路线图没更新"的直接根因。
+    完成证据列不再写死不存在的 docs/reflection-{id}.md（假链接），改为指向真实 evidence_log。
+    """
+    sm = status_map_of(data)
+    all_cards = list(data['rungs']) + list(data['items'])
+    done = [i for i in all_cards if sm.get(i['id']) == 'done']
+    def evidence_of(i):
+        ev = i.get('evidence_log') or []
+        if ev:
+            first = ev[0] if isinstance(ev[0], str) else str(ev[0])
+            return f'见 `evidence_log`（{first[:40]}）'
+        return '见 trace / 本卡 verify'
+    rows = '\n'.join(
+        f'> | **{i["id"]} {i.get("title", "")}** | ✅ done | {evidence_of(i)} |'
+        for i in done
+    ) or '> | （尚无已完成卡片） | — | — |'
+    nxt = find_next(data)
+    next_line = (f'> | **下一项** | ⏸ 空 | `--next` 无 autonomous ready 项，剩余需人工开闸 |'
+                 if not nxt else
+                 f'> | **下一项** | 🟢 {nxt["id"]} | `{nxt["id"]}` 已 ready，可 `--claim` |')
+    return (f'{HUMAN_BEGIN}：由 roadmap_check.py 自动生成，勿手改 -->\n'
+            f'> ### 🟢 自主化进度（自动同步）\n>\n'
+            f'> | 卡片 | 状态 | 完成证据 |\n> |---|---|---|\n{rows}\n{next_line}\n>\n'
+            f'> 机器真相 = [ROADMAP_GRAPH.md](ROADMAP_GRAPH.md)；本表由执行器自动写，人读与机器不漂移。\n'
+            f'{HUMAN_END}')
+
+
 def save_authoritative(data):
     """写回机器权威块（ROADMAP_GRAPH.md）+ 人类进度表（ROADMAP.md）+ 语义镜像；apply/claim 共用。
 
@@ -409,23 +440,7 @@ def save_authoritative(data):
     # 同步人类可读进度表（设计稿承诺：机器块与人类视图不再漂移）
     md = ROADMAP.read_text(encoding='utf-8')
     new_md = md
-    sm = status_map_of(data)
-    # 人工视图必须同时列自主化阶(A)与心智器官(M/L)——只看 rungs 会漏掉 M1 这类已完成卡
-    all_cards = list(data['rungs']) + list(data['items'])
-    done = [i for i in all_cards if sm.get(i['id']) == 'done']
-    nxt = find_next(data)
-    rows = '\n'.join(
-        f'> | **{i["id"]} {i.get("title", "")}** | ✅ done | 证据见 `evidence_log` + `docs/reflection-{i["id"]}.md` |'
-        for i in done
-    ) or '> | （尚无已完成卡片） | — | — |'
-    next_line = (f'> | **下一项** | ⏸ 空 | `--next` 无 autonomous ready 项，剩余需人工开闸 |'
-                 if not nxt else
-                 f'> | **下一项** | 🟢 {nxt["id"]} | `{nxt["id"]}` 已 ready，可 `--claim` |')
-    human = (f'{HUMAN_BEGIN}：由 roadmap_check.py --apply 自动生成，勿手改 -->\n'
-             f'> ### 🟢 自主化进度（自动同步）\n>\n'
-             f'> | 卡片 | 状态 | 完成证据 |\n> |---|---|---|\n{rows}\n{next_line}\n>\n'
-             f'> 机器真相 = [ROADMAP_GRAPH.md](ROADMAP_GRAPH.md)；本表由 `--apply` 自动写，人读与机器不漂移。\n'
-             f'{HUMAN_END}')
+    human = render_human_progress(data)   # 2026-11-21: 与 --refresh 共用同一渲染器，防漂移
     if HUMAN_BEGIN in new_md and HUMAN_END in new_md:
         pat = re.escape(HUMAN_BEGIN) + r'[^\n]*-->' + r'.*?' + re.escape(HUMAN_END)
         new_md = re.sub(pat, lambda _m: human, new_md, flags=re.S)
@@ -593,12 +608,14 @@ def main():
         md = ROADMAP.read_text(encoding='utf-8')
         mirror = yaml.safe_load(LADDER.read_text(encoding='utf-8')) if LADDER.exists() else {}
         cards, n = render_human_cards(data, mirror)
-        for begin, end, body in ((CARDS_BEGIN, CARDS_END, cards),):
+        progress = render_human_progress(data)
+        for begin, end, body in ((CARDS_BEGIN, CARDS_END, cards),
+                                 (HUMAN_BEGIN, HUMAN_END, progress)):
             if begin in md and end in md:
                 pat = re.escape(begin) + r'[^\n]*-->' + r'.*?' + re.escape(end)
                 md = re.sub(pat, lambda _m, b=body: b, md, flags=re.S)
         ROADMAP.write_text(md, encoding='utf-8')
-        print(f'REFRESHED: 卡片详情按性价比排序（{n} 张卡）；卡片状态未改动')
+        print(f'REFRESHED: 卡片详情（{n} 张）+ 进度表；卡片状态未改动')
         return 0
     cmd_dryrun(data)
     return 0

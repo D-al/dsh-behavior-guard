@@ -2,9 +2,9 @@
 
 > **合成心智（Synthetic Mind）**：用一个 35B 本地模型 + 一套确定性脚手架，合成比模型本身可靠得多的心智——**模型权重一个字节没动，变的是它外面的脑区**。
 
-本仓库是 **Single Source of Truth**：插件代码 + 生产配置 + 11 个技能卡 + 47 个分析脚本（含 4 个证据生产工具）+ 决策档案 + 认知谱系 + 一键安装。
+本仓库是 **Single Source of Truth**：插件代码 + 生产配置 + 11 个技能卡 + 分析/守卫脚本群（tools/，数量以目录为准）+ 决策档案 + 认知谱系 + 一键安装。
 > 资产盘点与调度见 [资产地图](lineage/ASSET_MAP.md)；新增资产须登记 [资产索引](config/ASSET_INDEX.json)，否则等于没接入。
-当前 **v2.26.2**（2026-11-19）。仓库名沿用历史名 `dsh-behavior-guard`，npm 包名/插件 id 为 `dsh-agent-harness`。
+当前 **v2.26.6**（2026-11-21：S17 四卡外置 + S15 门控模块 + 反向检验深度维护）。仓库名沿用历史名 `dsh-behavior-guard`，npm 包名/插件 id 为 `dsh-agent-harness`。
 
 ---
 
