@@ -6,6 +6,39 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+# Path resolution for Windows environments where node/python are not in default PATH
+if ! command -v node >/dev/null 2>&1; then
+    for p in \
+        "/d/Brain/dsh-data/dsh-runtimes/dsh-primary-runtime/dependencies/node/bin" \
+        "C:/Program Files/nodejs" \
+        "C:/Users/Ad/AppData/Roaming/npm"; do
+        if [ -f "$p/node.exe" ]; then
+            export PATH="$p:$PATH"
+            break
+        fi
+    done
+fi
+
+PYTHON="${PYTHON:-}"
+if ! command -v python3 >/dev/null 2>&1 || ! python3 --version >/dev/null 2>&1; then
+    if [ -f "/d/Python/python.exe" ]; then
+        PYTHON="/d/Python/python.exe"
+    elif command -v python3 >/dev/null 2>&1; then
+        PYTHON="python3"
+    elif command -v python >/dev/null 2>&1; then
+        PYTHON="python"
+    else
+        PYTHON=""
+    fi
+elif command -v python3 >/dev/null 2>&1; then
+    PYTHON="python3"
+elif command -v python >/dev/null 2>&1; then
+    PYTHON="python"
+else
+    PYTHON=""
+fi
+
 PASS=0
 FAIL=0
 ERRORS=""
