@@ -461,7 +461,18 @@ function checkSyntax(filePath) {
     // .mjs/.js 用 node --check（2026-11-20 补：压缩后 edit 的 old_string 被截断成半句，
     // 工具部分匹配成功，中文字符串残片漏进 index.mjs 造成语法垃圾——node --check 能直接抓住）
     if (lower.endsWith('.mjs') || lower.endsWith('.js')) {
-      execFileSync('node', ['--check', p], { timeout: 8000, windowsHide: true, encoding: 'utf8', stdio: ['ignore', 'ignore', 'pipe'] })
+      // 2026-11-21：dsh 运行环境 PATH 里没有裸 node，execFileSync('node') 报 ENOENT，
+      // 守卫却误报成"你写的文件有语法错误"→ agent 白忙活反复检查（实测 seq184）。
+      // 修复：用 dsh runtime 的 node 绝对路径；且工具不可用(ENOENT)时静默跳过——
+      // "检查工具缺失" ≠ "产物有语法错误"，绝不混为一谈。
+      const NODE_BIN = 'D:/Brain/dsh-data/dsh-runtimes/dsh-primary-runtime/dependencies/node/bin/node.exe'
+      const nodeBin = existsSync(NODE_BIN) ? NODE_BIN : 'node'
+      try {
+        execFileSync(nodeBin, ['--check', p], { timeout: 8000, windowsHide: true, encoding: 'utf8', stdio: ['ignore', 'ignore', 'pipe'] })
+      } catch (ee) {
+        if (String(ee?.code || '').includes('ENOENT')) return null  // 工具不可用→跳过，不误报
+        throw ee
+      }
       return null
     }
     if (lower.endsWith('.py')) {
