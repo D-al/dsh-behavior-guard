@@ -1048,6 +1048,106 @@ items:
     - 1 hits in config/AGENTS.md
     - D:\Brain\publish\dsh-behavior-guard\tools\test_edit_protocol.py
     - rc=0 PASS=6
+- id: STRAT1
+  title: 战略陈述（模型只读顶层约束）
+  tier: 0
+  deps: []
+  risk: low
+  autonomous: false
+  status: ready
+  verify:
+  - kind: file_exists
+    path: STRATEGY.md
+  - kind: file_grep
+    path: tools/consistency_guard.py
+    regex: STRATEGY
+    min: 1
+- id: S18
+  title: 自改进正则化（RRSI 纪律）
+  tier: 1
+  deps:
+  - A1
+  risk: low
+  autonomous: true
+  status: ready
+  verify:
+  - kind: file_exists
+    path: tools/holdout_split.py
+  - kind: file_grep
+    path: tools/roadmap_check.py
+    regex: noise_floor|NOISE_FLOOR|holdout
+    min: 1
+- id: S19
+  title: CritBank 校准门禁（CEB 路线）
+  tier: 1
+  deps:
+  - A1
+  risk: low
+  autonomous: true
+  status: ready
+  verify:
+  - kind: file_exists
+    path: tools/critbank_calibration.py
+  - kind: test_pass
+    cmd: D:/Python/python.exe -B tools/test_critbank_calibration.py
+    min: 1
+- id: S20
+  title: Critique 编译为结构化 delta（ACE 路线）
+  tier: 2
+  deps:
+  - S19
+  risk: med
+  autonomous: true
+  status: backlog
+  verify:
+  - kind: file_exists
+    path: tools/delta_curator.py
+  - kind: file_grep
+    path: tools/delta_curator.py
+    regex: helpful|harmful
+    min: 1
+- id: S21
+  title: 验证层去自审（质量压倒多样性）
+  tier: 1
+  deps:
+  - A1
+  risk: med
+  autonomous: true
+  status: ready
+  verify:
+  - kind: file_exists
+    path: tools/verifier_layer.py
+  - kind: file_grep
+    path: tools/verifier_layer.py
+    regex: swap|pairwise|rubric
+    min: 1
+- id: S22
+  title: 工具面收敛（28→18-20）
+  tier: 1
+  deps: []
+  risk: low
+  autonomous: false
+  status: ready
+  verify:
+  - kind: file_exists
+    path: tools/tool_surface_audit.py
+  - kind: file_grep
+    path: config/AGENTS.md
+    regex: input_examples
+    min: 1
+- id: S23
+  title: 前缀 KV 稳定性守护
+  tier: 1
+  deps: []
+  risk: low
+  autonomous: true
+  status: ready
+  verify:
+  - kind: file_exists
+    path: tools/prefix_stability_probe.py
+  - kind: test_pass
+    cmd: D:/Python/python.exe -B tools/test_prefix_stability.py
+    min: 1
 rungs:
 - id: A0
   deps: []
@@ -1429,6 +1529,7 @@ rungs:
   - 必须内联；tools/版只作规范+测试载体
   - 每步跑trace基线对照，不能只看单测
   abort_if: trace分布与基线不一致或单测恒真
+
 
 
 <!-- ROADMAP_GRAPH_END -->

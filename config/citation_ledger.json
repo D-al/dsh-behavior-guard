@@ -1101,6 +1101,96 @@
       "verified_at": "2026-11-21",
       "decision_uses": [],
       "note": "主代理WebFetch核实:Qwen3.5-4B verifier选择性验证,SWE-bench 75.47→77.20(+1.73pp)@1.09x成本,只验证<4%步骤;全step验证2.03x成本反不提升。用于新卡选择性验证"
+    },
+    {
+      "id": "arxiv:2609.24972",
+      "type": "paper",
+      "claimed": "RRSI无正则自改进OOD跌破基线;有正则演化集+14.1pp/OOD+4.7pp且少30%token",
+      "real_title": "RRSI: Regularized Recursive Self-Improvement of Agent Harnesses",
+      "status": "verified",
+      "note": "2026-11-21广泛调研4路子任务+主代理一手WebSearch交叉核实;RRSI无正则自改进OOD跌破基线;有正则演化集+14.1pp/OOD+4.7pp且少30%token",
+      "decision_uses": [],
+      "verified_at": "2026-11-21"
+    },
+    {
+      "id": "arxiv:2607.12397",
+      "type": "paper",
+      "claimed": "复合键(task,state,action)9/9 ECE全胜,最多-54%",
+      "real_title": "Critic Experience Bank (CEB)",
+      "status": "verified",
+      "note": "2026-11-21广泛调研4路子任务+主代理一手WebSearch交叉核实;复合键(task,state,action)9/9 ECE全胜,最多-54%",
+      "decision_uses": [],
+      "verified_at": "2026-11-21"
+    },
+    {
+      "id": "arxiv:2410.12784",
+      "type": "paper",
+      "claimed": "GPT-4o客观判断50.9%近抛硬币;验证能力≈解题能力",
+      "real_title": "JudgeBench: A Benchmark for Evaluating LLM-based Judges",
+      "status": "verified",
+      "note": "2026-11-21广泛调研4路子任务+主代理一手WebSearch交叉核实;GPT-4o客观判断50.9%近抛硬币;验证能力≈解题能力",
+      "decision_uses": [],
+      "verified_at": "2026-11-21"
+    },
+    {
+      "id": "arxiv:2502.00674",
+      "type": "paper",
+      "claimed": "Self-MoA最强采样比混合+6.6pp;质量压倒多样性",
+      "real_title": "Rethinking Mixture-of-Agents: Is Mixing Different LLMs Beneficial?",
+      "status": "verified",
+      "note": "2026-11-21广泛调研4路子任务+主代理一手WebSearch交叉核实;Self-MoA最强采样比混合+6.6pp;质量压倒多样性",
+      "decision_uses": [],
+      "verified_at": "2026-11-21"
+    },
+    {
+      "id": "arxiv:2510.04618",
+      "type": "paper",
+      "claimed": "三角色增量delta延迟-82.3% rollout-75.1%;避context collapse",
+      "real_title": "Agentic Context Engineering (ACE)",
+      "status": "verified",
+      "note": "2026-11-21广泛调研4路子任务+主代理一手WebSearch交叉核实;三角色增量delta延迟-82.3% rollout-75.1%;避context collapse",
+      "decision_uses": [],
+      "verified_at": "2026-11-21"
+    },
+    {
+      "id": "arxiv:2509.25140",
+      "type": "paper",
+      "claimed": "失败要蒸馏成规则+3.2pp;原始失败轨迹有害44.4→42.2",
+      "real_title": "ReasoningBank",
+      "status": "verified",
+      "note": "2026-11-21广泛调研4路子任务+主代理一手WebSearch交叉核实;失败要蒸馏成规则+3.2pp;原始失败轨迹有害44.4→42.2",
+      "decision_uses": [],
+      "verified_at": "2026-11-21"
+    },
+    {
+      "id": "arxiv:2509.07754",
+      "type": "paper",
+      "claimed": "自改漂移:拒绝率99.4→54.4%,ASR0.6→20.6%;工作流ASR54.4→83.1%",
+      "real_title": "Your Agent May Misevolve",
+      "status": "verified",
+      "note": "2026-11-21广泛调研4路子任务+主代理一手WebSearch交叉核实;自改漂移:拒绝率99.4→54.4%,ASR0.6→20.6%;工作流ASR54.4→83.1%",
+      "decision_uses": [],
+      "verified_at": "2026-11-21"
+    },
+    {
+      "id": "arxiv:2410.04444",
+      "type": "paper",
+      "claimed": "递归自引用agent自主把底层GPT-3.5升级到GPT-4o",
+      "real_title": "Gödel Agent",
+      "status": "verified",
+      "note": "2026-11-21广泛调研4路子任务+主代理一手WebSearch交叉核实;递归自引用agent自主把底层GPT-3.5升级到GPT-4o",
+      "decision_uses": [],
+      "verified_at": "2026-11-21"
+    },
+    {
+      "id": "arxiv:2309.02427",
+      "type": "paper",
+      "claimed": "LLM=概率产生式系统;prompt/script=显式程序性记忆",
+      "real_title": "Cognitive Architectures for Language Agents (CoALA)",
+      "status": "verified",
+      "note": "2026-11-21广泛调研4路子任务+主代理一手WebSearch交叉核实;LLM=概率产生式系统;prompt/script=显式程序性记忆",
+      "decision_uses": [],
+      "verified_at": "2026-11-21"
     }
   ]
 }
