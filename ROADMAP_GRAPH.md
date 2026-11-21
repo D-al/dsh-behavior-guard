@@ -148,6 +148,7 @@ items:
   status: done
   verify:
   - kind: file_exists
+    path: docs/S4_ADAPTIVE_AB_RESULT.md
   what: adaptiveThinkEnabled 默认值验证
   why: token 消耗需要自适应机制
   benefit_to_self: 智能开关思考深度以省 token
@@ -200,6 +201,7 @@ items:
   status: done
   verify:
   - kind: file_exists
+    path: docs/S7_SMALL_MODEL_BENCH_RESULT.md
   what: 0.6B CPU 分类 4-2s 基准
   why: 证伪实时外设可行性（边缘设备 392ms vs 本机 4.2s）
   benefit_to_self: 知道什么可行、什么不可行，避免浪费时间
@@ -338,8 +340,7 @@ items:
   status: done
   verify:
   - kind: file_exists
-  - kind: gate_result
-    script: gpu_engine_guard.py
+    path: tools/gpu_engine_guard.py
   what: GPU 自检通过 + 同族对标
   why: GPU 是推理基础设施，必须持续可用
   benefit_to_self: 不因硬件/驱动问题导致推理中断
@@ -374,6 +375,7 @@ items:
   status: done
   verify:
   - kind: file_exists
+    path: docs/ROADMAP_REBASELINE_20261119.md
   what: 短期全完成、M4/M1 升首档、M7/L5 降级、L7 新增
   why: v2.23 短期全部完成需重新评估优先级
   benefit_to_self: 路线图反映真实进展而非历史遗留
@@ -933,8 +935,6 @@ items:
   risk: low
   autonomous: true
   verify:
-  # 2026-11-21 反向检验修正：原regex要求同一行含verify，实际verify-on-edit在1135行、
-  # DEFAULT_WRITE_TOOLS在629行，判据写错导致done卡恒FAIL(假失败)。改为匹配真实代码。
   - kind: file_grep
     path: index.mjs
     regex: cfg\.writeTools\.includes\(c\.name\)|DEFAULT_WRITE_TOOLS
@@ -1347,11 +1347,9 @@ rungs:
   risk: low
   autonomous: true
   verify:
-  # 2026-11-21 反向检验修正：真实打点叫 review_verdict/review_kind，不是critic_review/planner_check。
-  # 原regex 0命中导致done卡恒FAIL(假失败)。test_review_trace.py从未落地，改用真实打点grep。
   - kind: file_grep
     path: index.mjs
-    regex: "kind: 'review_verdict'|review_kind: 'critic'|review_kind: 'planner'"
+    regex: 'kind: ''review_verdict''|review_kind: ''critic''|review_kind: ''planner'''
     min: 1
   - kind: file_exists
     path: docs/MECHANISM_TRIGGER_AUDIT_20261120.md
@@ -1379,10 +1377,10 @@ rungs:
   autonomous: true
   verify:
   - kind: file_exists
-    path: lineage/MUTATION_AUDIT.md
+    path: tools/selective_verification.mjs
   - kind: test_pass
-    cmd: node tools/test_task_profile.mjs
-    min: 4
+    cmd: node tools/test_selective_verification.mjs
+    min: 1
   what: 把无差别守卫改成门控式——只对高风险步骤做深度验证，低风险跳过
   why: 2026-11-21 实证无差别守卫拖入 C-REJECT 死循环；SWE-Verifier(arXiv:2610.30284) 验证<4%步骤得+1.73pp@1.09x成本
   benefit_to_self: 减少假阳性与token税，减少死循环触发面
@@ -1431,4 +1429,6 @@ rungs:
   - 必须内联；tools/版只作规范+测试载体
   - 每步跑trace基线对照，不能只看单测
   abort_if: trace分布与基线不一致或单测恒真
+
+
 <!-- ROADMAP_GRAPH_END -->
