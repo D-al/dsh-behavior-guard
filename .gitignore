@@ -5,5 +5,3 @@ __pycache__/
 # 分类器服务/插件运行时日志
 **/classifier-autostart.log
 **/classifier-service.log
-bench/_v4_*.json
-bench/_horizon_offline_audit.json
