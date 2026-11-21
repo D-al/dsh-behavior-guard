@@ -705,17 +705,19 @@ items:
   status: manual-blocked
   verify:
   - kind: manual
-    reason: 86M Prompt-Guard + 阈值重标定；FPR 98% 教训
-  title: S6 模型层升级
-  what: S6 从规则层升级到 86M Prompt-Guard 模型层
-  why: 规则层够用；模型层是误报率兜底，但 FPR 98% 的教训在前
-  benefit_to_self: 注入检测从关键词匹配升级到语义级，减少漏报
+    reason: 分类器已部署验证(93.3%/2.3%/102ms)且随dsh启停；但默认关、只写trace，是否启用为主防线需用户拍板
+  title: S6 模型层升级（分类器已部署待启用）
+  what: S6 规则层 + ONNX分类器Tier-2(Horizon-Labs ModernBERT INT8, 绑E核, 随dsh启停)
+  why: 规则层抓2/4攻击模式;分类器实测28/30语义级;已部署只写trace不steer，待用户决定是否启用
+  benefit_to_self: 注入检测从关键词匹配升级到语义级，减少漏报；开关默认关零行为干扰
   caveats:
-  - 必须先阈值重标定，FPR 98% 的坑不能再踩
-  - 规则层已在线，实测误报率>2% 才做模型层
+  - 分类器已部署(dsh-classifier-autostart插件)并干净重启验证;E核12-15;102ms
+  - 实测@0.9=93.3%召回/2.3%FPR;真机776条FPR3.09%,前置过滤错误/乱码后有效0.64%
+  - 长文本(>512token)跳过分类器靠结构隔离;当前只写trace不steer不拦截
+  - status保持manual-blocked:是否启用为主防线需用户拍板+观察误报
   - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection: []
-  abort_if: 无（manual-blocked）
+  abort_if: 86M gated不可得且基准表现差(默认1%),已放弃;改用Horizon分类器已部署
   unlocks: []
   cost: 中
   category: short

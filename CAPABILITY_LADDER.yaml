@@ -412,7 +412,7 @@ items:
   - 'P-AB-SPEEDUP: A/B端到端提速>=10%（仍需实测）'
   benefit: 中
   cost: 低
-  advice: ⛔ 降级：0.6B 生成式已证伪(4-6s)；86M 判别式未验证，先走 M9
+  advice: ⛔ 降级：0.6B 生成式已证伪(4-6s)；分类器延迟已达标但 A/B 端到端收益未测
   rank: 7
   rank_derived: false
   unlocks: *id006
@@ -438,21 +438,23 @@ items:
   status: manual-blocked
   verify:
   - kind: manual
-    reason: 86M Prompt-Guard + 阈值重标定；FPR 98% 教训
+    reason: 分类器已部署验证(93.3%/2.3%/102ms)，但默认关闭；是否启用为主防线需用户决策+观察误报
   unlock: &id007 []
-  human_note: 规则层够用，待实测误报率 >2%
-  what: S6 从规则层升级到 86M Prompt-Guard 模型层
-  why: 规则层够用；模型层是误报率兜底，但 FPR 98% 的教训在前
+  human_note: 分类器已上线待启用(默认关)；开启需用户拍板 injectionClassifierEnabled=true
+  what: S6 从纯规则层叠加 ONNX 分类器 Tier-2（Horizon-Labs ModernBERT INT8，E核）
+  why: 规则层抓 2/4 攻击模式；分类器实测 28/30、语义级；已部署随 dsh 启停，只写 trace 不 steer
   benefit_to_self: 注入检测从关键词匹配升级到语义级，减少漏报
   caveats:
-  - 必须先阈值重标定，FPR 98% 的坑不能再踩
-  - 规则层已在线，实测误报率>2% 才做模型层
+  - 分类器已部署(dsh-classifier-autostart插件+服务)，随dsh启停，绑E核12-15，实测102ms
+  - 实测@0.9=93.3%召回/2.3%FPR/80%Precision;真机离线776条FPR3.09%，前置过滤错误/乱码后有效0.64%
+  - 长文本(>512token)跳过分类器，靠结构隔离(滑窗28-49秒且开头注入漏检)
+  - 当前只写trace+info日志，不steer不拦截；是否启用为主防线需用户拍板
   - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection: []
   abort_if: 86M gated不可得且基准表现差(默认阈值1%),已放弃该方向;改用Horizon
   benefit: 中高
   cost: 中
-  advice: ⛔ 保持 blocked：FPR 98% 不可用，且 8G 显存硬约束
+  advice: ⏸ 已部署待启用：开关 injectionClassifierEnabled=false；开启只写trace不改行为
   rank: 8
   rank_derived: false
   unlocks: *id007
@@ -469,6 +471,11 @@ items:
     status: satisfied
     evidence: bench/bench_horizon_onnx.py → bench/_v4_horizon.json
     source: docs/CLASSIFIER_BENCH_FINAL_20261121.md
+  - id: P-CLASSIFIER-DEPLOYED
+    desc: 分类器已部署上线并干净重启验证：插件自动spawn服务/绑E核/功能三场景通过;harness钩子默认关
+    status: satisfied
+    evidence: dsh-classifier-autostart插件 + bench/classifier_service.py + /health
+    source: plugins/dsh-classifier-autostart/README.md + docs/CLASSIFIER_BENCH_FINAL_20261121.md
 - id: L2
   title: 标准化 eval
   tier: 4
@@ -627,8 +634,8 @@ items:
     reason: 须换 86M 且召回 A/B ≥80%；0.6B 已证伪
   unlock: &id012 []
   human_note: 无实证收益前不做
-  what: 86M 小模型 Critic 做轻量预警
-  why: 0.6B 扫一次 5s 不实用；但小 judge 一致率仅 45-60%，需谨慎
+  what: 小模型 Critic 做轻量预警（0.6B已证伪；分类器可作信号源但价值待证）
+  why: 0.6B 扫一次 5s 不实用；分类器已有注入信号，但"Critic 预警"召回 A/B 未测
   benefit_to_self: 能在主模型提交前快速扫一眼风险
   caveats:
   - 降级：0.6B 已证伪，须换 86M 且召回 A/B≥80%
