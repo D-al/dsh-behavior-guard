@@ -109,6 +109,7 @@ def build(g, sem, rejected=None):
             'roi': roi_score(s),
             'roi_valid': '已完成' not in str(s.get('benefit', '')),
             'gates': preids,
+            'relation_note': s.get('relation_note', ''),
         })
     # 证据卡：anchors 是"卡也是证据"，被其他卡 deps 引用；画出来才能看清依赖来源
     ANCHOR_TITLE = {'ground': '地基数据/规则', 'S1_data': '8147行trace证据',
@@ -369,6 +370,7 @@ function show(id){
  <div class="field"><b>解锁 · 硬依赖反推（灰实线）</b>${rev.filter(d=>!(n.unlocks||[]).includes(d)).map(d=>`<span class="kbd">${esc(d)}</span>`).join(' ')||'无'}</div>
  <div class="field"><b>做什么</b>${esc(n.what)}</div>
  <div class="field"><b>为什么</b>${esc(n.why)}</div>
+ ${n.relation_note?`<div class="field"><b>关系说明</b>${esc(n.relation_note)}</div>`:''}
  <div class="field"><button onclick="clearSel()">清除高亮</button></div>`;
 }
 function clearSel(){window.__sel=null;window.__chain=null;render();

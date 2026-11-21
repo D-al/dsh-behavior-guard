@@ -377,6 +377,7 @@ items:
     touches_metagovernance: false
     serves_success_dim: null
   category: mind
+  relation_note: 工具面家族终局：S16补示例→S22描述收敛→M5砍工具数(需用户拍板,永不可自主)。
 - id: M7
   title: 格式修复器（降级）
   tier: 3
@@ -1536,7 +1537,8 @@ items:
   benefit: 中高
   cost: 中
   advice: 先做工具使用频次审计，砍零使用的；description 按触发条件重写。
-  unlocks: []
+  unlocks:
+  - M5
   verify:
   - kind: file_exists
     path: tools/tool_surface_audit.py
@@ -1551,6 +1553,7 @@ items:
     serves_success_dim: null
   verify_type: structural
   category: infra
+  relation_note: 工具面家族：与S16(M5轻量替代)和M5(人工闸门版)同一问题分层；本卡=描述/频次治理(不砍数量)。
 - id: S23
   title: 前缀 KV 稳定性守护
   tier: 1
@@ -2089,6 +2092,9 @@ autonomy_rungs:
     serves_success_dim: null
   verify_type: document
   category: infra
+  unlocks:
+  - M5
+  relation_note: 工具面家族：S16(补示例,零风险替代)→S22(描述收敛+频次审计)→M5(砍工具数,人工闸门)。S22判据直接查S16产物input_examples。
 - id: S17
   title: 函数外置模式推广（自修改地基）
   tier: 2
