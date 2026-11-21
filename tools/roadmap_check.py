@@ -196,7 +196,7 @@ def tier_unlocked(item, sm, data):
     """SKILLGRAPH 渐进解锁：本 tier 平均成功率 >= 60% 才解锁下一 tier。
     tier 0/1 恒解锁；更高 tier 要求低一 tier 的 done 比例 >= 0.6。
     """
-    tier = item.get('tier', 0)
+    tier = item.get('tier', 99)  # 2026-11-21: 缺失不当0(会免费解锁高tier且排序钻空子),当99排后
     if tier <= 1:
         return True
     prev = [i for i in data['items'] if i.get('tier') == tier - 1]
@@ -232,8 +232,15 @@ def find_next(data):
     # 旧算法 (risk, tier, id) 按字母序派活，导致性价比最高的 S14 永远排在 A1_7 之后——
     # ROADMAP 展示按 ROI 排、实际推卡按 id 排，两套机制脱节。现在同 risk+tier 内按 ROI 选。
     # risk/tier 优先级不变（低风险、低 tier 仍是硬约束），只打破同层平局。
-    ready.sort(key=lambda x: (RISK_ORDER.get(x.get('risk'), 9), x.get('tier', 0),
-                              -roi_score(x), x['id']))
+    # 2026-11-21 修复：ROI平局键此前传 GRAPH item(无benefit/cost字段)，roi_score恒返回默认0.667=废键。
+    # 必须从语义镜像(LADDER)取benefit/cost，否则"性价比排序"名存实亡。
+    mirror = yaml.safe_load(LADDER.read_text(encoding='utf-8')) if LADDER.exists() else {}
+    sem = {i['id']: i for i in mirror.get('items', []) + mirror.get('autonomy_rungs', [])}
+    def rank_key(x):
+        sv = sem.get(x['id'], {})
+        roi = roi_score(sv) if sv else roi_score(x)
+        return (RISK_ORDER.get(x.get('risk'), 9), x.get('tier', 99), -roi, x['id'])
+    ready.sort(key=rank_key)
     return ready[0] if ready else None
 
 
@@ -361,8 +368,13 @@ def sort_cards_by_roi(allc, sm, sem):
 
 
 def _card_detail_lines(it, sem):
-    """渲染单张卡的标准详情行（供"当前这张卡"用）。"""
-    s = sem.get(it['id'], {})
+    """渲染单张卡的标准详情行。sem 可传整张映射(id→item)或单卡 dict，两者都兼容。"""
+    # 2026-11-21 修复：调用处有的传 sem 映射、有的传单卡 dict；
+    # 原实现只认映射，传单卡时 s 变空 → unlocks/what 等语义字段全丢。
+    if 'id' in sem and isinstance(sem.get('id'), str):
+        s = sem  # 传进来的是单卡
+    else:
+        s = sem.get(it['id'], {})  # 传进来的是映射
     line = []
     line.append(f"- **做什么**：{fmt_field(s.get('what') or it.get('what'))}")
     line.append(f"- **为什么**：{fmt_field(s.get('why') or it.get('why'))}")

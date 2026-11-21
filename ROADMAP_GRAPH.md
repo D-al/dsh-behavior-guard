@@ -927,6 +927,7 @@ items:
   - 别再回到聚合util%判据
   abort_if: 无法可靠回读单进程3D占用，或升级手段影响系统稳定性
   human_note: 2026-11-20 21:12 用户实证推翻前提：两窗口全开推理正常(n_decoded 1211→1356/5s，带宽22-29%功耗36-41W)。原"3D抢占致spin-wait"是单帧采样撞相位间隙的误判。S10原目标(降帧效果回读)前提不成立，阻塞待重定义。
+  tier: 1
 - id: S11
   title: 写后校验覆盖全部写工具
   status: done
@@ -953,6 +954,7 @@ items:
   abort_if: 无法在不改dsh原生工具的前提下拿到写后内容
   claimed_at: '2026-11-20T16:57:05.100377+00:00'
   claimer: unknown-agent
+  tier: 1
 - id: S12
   title: 补丁应用闭环（禁写脚本不落地）
   status: ready
@@ -979,6 +981,7 @@ items:
   - 别误伤合法的临时分析脚本
   - apply证据要用环境事实（目标mtime+内容），不认模型声明
   abort_if: 无法可靠关联补丁脚本与目标文件
+  tier: 1
 - id: S13
   title: verifyRan收紧（read≠验证）
   status: ready
@@ -1004,6 +1007,7 @@ items:
   - 收紧后可能重现25/26回归误判，要用更精确的文件名匹配替代宽松规则
   - 保留对真实语法检查命令的识别
   abort_if: 收紧导致正常验证流程被大面积误拦
+  tier: 1
 - id: S14
   title: 编辑协议升级（降低复现负担）
   status: done
@@ -1048,6 +1052,7 @@ items:
     - 1 hits in config/AGENTS.md
     - D:\Brain\publish\dsh-behavior-guard\tools\test_edit_protocol.py
     - rc=0 PASS=6
+  tier: 1
 - id: STRAT1
   title: 战略陈述（模型只读顶层约束）
   tier: 0
@@ -1194,6 +1199,7 @@ rungs:
   - 有没有真实 sid 被误过滤？
   abort_if: 过滤后真实样本<100 行，不足以支撑后续判断
   cost: 低
+  tier: 0
 - id: A1
   deps:
   - A0
@@ -1230,6 +1236,7 @@ rungs:
     - D:\Brain\publish\dsh-behavior-guard\tools\roadmap_check.py
     - rc=0 PASS=13
   cost: 中
+  tier: 0
 - id: A2
   deps:
   - A1
@@ -1253,6 +1260,7 @@ rungs:
   - diff 审阅里人最常改哪类勾选？
   abort_if: 出现一次假完成勾选 → 退回人工勾选
   cost: 中
+  tier: 1
 - id: A3
   deps:
   - A2
@@ -1276,6 +1284,7 @@ rungs:
   - 有没有越界执行过队列外任务？
   abort_if: 越界执行 1 次或连续 2 次任务失败
   cost: 中
+  tier: 1
 - id: A3_5
   deps: []
   risk: low
@@ -1311,6 +1320,7 @@ rungs:
   - 回滚触发过几次，都是什么原因？
   abort_if: e2e 假阴性（把好改动判坏）反复出现
   cost: 中
+  tier: 0
 - id: A4
   deps:
   - A3_5
@@ -1339,6 +1349,7 @@ rungs:
   instrumentation_needed:
   - trace kind meta_decision（旁路决策器写）
   cost: 中
+  tier: 2
 - id: A5
   deps:
   - A1
@@ -1366,6 +1377,7 @@ rungs:
   - 有没有"越爬越偏"的漂移迹象？
   abort_if: 7 天内出现 1 次越界或需人工救场 → 暂停闭环
   cost: 高
+  tier: 2
 - id: A1_5
   title: 判据元验证（防假绿）
   status: done
@@ -1402,6 +1414,7 @@ rungs:
     - D:\Brain\publish\dsh-behavior-guard\tools\check_verify.py
     - rc=0 PASS=7
     - 7 hits in tools/check_verify.py
+  tier: 0
 - id: A1_6
   title: 守卫 L1 补将来时承诺检测
   status: done
@@ -1439,6 +1452,7 @@ rungs:
     - 2 hits in index.mjs
     - rc=0 PASS=8
     - D:\Brain\publish\dsh-behavior-guard\docs\FUTURE_CLAIM_GUARD_20261120.md
+  tier: 0
 - id: A1_7
   title: 评审机制可观测性
   status: done
@@ -1467,6 +1481,7 @@ rungs:
   abort_if: 无法在不改 callLLM 签名的前提下拿到 rubric 版本与维度判定
   claimed_at: '2026-11-20T16:45:21.583892+00:00'
   claimer: unknown-agent
+  tier: 0
 - id: S15
   title: 选择性验证深度（Selective Verification）
   status: done
@@ -1529,6 +1544,8 @@ rungs:
   - 必须内联；tools/版只作规范+测试载体
   - 每步跑trace基线对照，不能只看单测
   abort_if: trace分布与基线不一致或单测恒真
+
+
 
 
 

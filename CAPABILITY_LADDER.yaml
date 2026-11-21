@@ -995,6 +995,7 @@ items:
   rank_hint: normal
   rank_derived: false
   status: ready
+  unlocks: []
 - id: S10
   title: 推理活性判据纠偏（取消单帧采样）
   what: 废除"单帧硬件快照判推理活性"，改用 token 计数连续采样(n_decoded/n_prompt_tokens 5-10秒增长)作为唯一判据
@@ -1011,6 +1012,7 @@ items:
   rank_hint: blocked
   rank_derived: false
   status: manual-blocked
+  tier: 1
 - id: S11
   title: 写后校验覆盖全部写工具
   what: 把 verify-on-edit 从只覆盖 write/edit 扩展到 DEFAULT_WRITE_TOOLS 全部8种（apply_patch/multi_edit/create_file/str_replace/write_file/notebook_edit），每种按扩展名跑对应语法校验
@@ -1028,6 +1030,7 @@ items:
   status: done
   claimer: unknown-agent
   claimed_at: '2026-11-20T16:57:05.100377+00:00'
+  tier: 1
 - id: S12
   title: 补丁应用闭环（禁写脚本不落地）
   what: 检测"写了修复脚本但没真正应用"的模式：补丁脚本(_apply_*.py/_fix_*.py)写入后必须有对应的apply证据（目标文件mtime变化+语法通过），否则守卫提示"脚本已写但未应用"
@@ -1043,6 +1046,8 @@ items:
   advice: ✅ P0：读写地基三件套之一，与今晚 mutation 审计同源——"写了脚本没应用"正是假绿
   rank_derived: false
   status: ready
+  tier: 1
+  unlocks: []
 - id: S13
   title: verifyRan收紧（read≠验证）
   what: 把 index.mjs:913 的"read/cat 即 verifyRan"收紧为真实验证证据（语法检查/测试命令/verify_agent），解决A1_6反复read却被认为验证过的假绿
@@ -1058,6 +1063,8 @@ items:
   advice: ✅ P0：read≠验证正是 ADR-0014 误用与今晚假绿的根源
   rank_derived: false
   status: ready
+  tier: 1
+  unlocks: []
 - id: S14
   title: 编辑协议升级（降低复现负担）
   what: 把 AGENTS.md:105 的裸 read→edit 升级为"短文件(<400行)整块输出、长文件紧邻重读+最短唯一锚点、压缩后强制重读"；失败时回灌精确差异(edit-doctor模式)。不押注结构化diff格式——Diff-XYZ证明小模型换格式收益很小
@@ -1087,6 +1094,7 @@ items:
     - 1 hits in config/AGENTS.md
     - D:\Brain\publish\dsh-behavior-guard\tools\test_edit_protocol.py
     - rc=0 PASS=6
+  tier: 1
 - id: STRAT1
   title: 战略陈述（模型只读顶层约束）
   tier: 0
@@ -1105,7 +1113,11 @@ items:
   benefit: 高
   cost: 低
   advice: 人类先定稿再落盘；模型只能读不能改，哈希进守卫。
-  unlocks: []
+  unlocks:
+  - S18
+  - S19
+  - S20
+  - S21
   verify:
   - kind: file_exists
     path: STRATEGY.md
@@ -1133,7 +1145,10 @@ items:
   benefit: 高
   cost: 中
   advice: 先做 hold-out 切分+噪声地板，这两项零成本最高收益。
-  unlocks: []
+  unlocks:
+  - S19
+  - S20
+  - S21
   verify:
   - kind: file_exists
     path: tools/holdout_split.py
@@ -1162,7 +1177,8 @@ items:
   benefit: 高
   cost: 中
   advice: 先加两个字段+正负对照检索，改动小收益大。
-  unlocks: []
+  unlocks:
+  - S20
   verify:
   - kind: file_exists
     path: tools/critbank_calibration.py
@@ -1330,6 +1346,7 @@ autonomy_rungs:
   advice: 已完成，见 evidence
   rank: 99
   rank_derived: true
+  tier: 0
 - id: A1
   title: 会记路（机器判据 + dry-run 核验）
   deps:
@@ -1370,6 +1387,7 @@ autonomy_rungs:
   advice: 已完成（A0地基→自治判据）
   rank: 3
   rank_derived: false
+  tier: 0
 - id: A2
   title: 会指路（自动勾选，只写权威源）
   deps:
@@ -1399,6 +1417,7 @@ autonomy_rungs:
   rank: 99
   rank_derived: true
   rank_hint: normal
+  tier: 1
 - id: A3
   title: 会迈步（预批低风险队列取任务）
   deps:
@@ -1428,6 +1447,7 @@ autonomy_rungs:
   rank: 99
   rank_derived: true
   rank_hint: normal
+  tier: 1
 - id: A3_5
   title: 安全地基（真实 diff + e2e + 回滚）
   deps: []
@@ -1467,6 +1487,7 @@ autonomy_rungs:
   advice: 已完成，见 evidence
   rank: 99
   rank_derived: true
+  tier: 0
 - id: A4
   title: 会转弯（旁路 meta_decision）
   deps:
@@ -1501,6 +1522,7 @@ autonomy_rungs:
   rank: 99
   rank_derived: true
   rank_hint: normal
+  tier: 2
 - id: A5
   title: 自己走（常驻闭环）
   deps:
@@ -1534,6 +1556,7 @@ autonomy_rungs:
   rank: 99
   rank_derived: true
   rank_hint: normal
+  tier: 2
 - id: A1_5
   title: 判据元验证（防假绿）
   what: 写 check_verify.py 检测判据自身的四类病：自引用递归、格式不匹配、恒真判据、测试sid污染
@@ -1559,6 +1582,7 @@ autonomy_rungs:
     - D:\Brain\publish\dsh-behavior-guard\tools\check_verify.py
     - rc=0 PASS=7
     - 7 hits in tools/check_verify.py
+  tier: 0
 - id: A1_6
   title: 守卫 L1 补将来时承诺检测
   what: 把 guardDecide 的 L1 从只校验过去时声明（已写入X）扩展到将来时承诺（现在写X/接下来创建X），要求承诺的产物在本轮真实产生
@@ -1586,6 +1610,7 @@ autonomy_rungs:
     - 2 hits in index.mjs
     - rc=0 PASS=8
     - D:\Brain\publish\dsh-behavior-guard\docs\FUTURE_CLAIM_GUARD_20261120.md
+  tier: 0
 - id: A1_7
   title: 评审机制可观测性
   what: 给 Critic/Planner 调用加专属 trace 打点（rubric_version/dimensions_checked/verdict），让每个评审机制有可审计的触发证据
@@ -1604,6 +1629,7 @@ autonomy_rungs:
   status: done
   claimer: unknown-agent
   claimed_at: '2026-11-20T16:45:21.583892+00:00'
+  tier: 0
 - id: S15
   title: 选择性验证深度（ Selective Verification）
   tier: 2
