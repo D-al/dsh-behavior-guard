@@ -111,6 +111,8 @@ def build(g, sem, rejected=None):
             'roi_valid': '已完成' not in str(s.get('benefit', '')),
             'gates': preids,
             'relation_note': s.get('relation_note', ''),
+            'data_gates': s.get('data_gates') or [],
+            'decision_note': s.get('decision_note', ''),
         })
     # 证据卡：anchors 是"卡也是证据"，被其他卡 deps 引用；画出来才能看清依赖来源
     ANCHOR_TITLE = {'ground': '地基数据/规则', 'S1_data': '8147行trace证据',
@@ -317,6 +319,7 @@ function render(){
    return `<div class="${cls}" data-id="${esc(n.id)}" style="border-left-color:${c};opacity:${hubdim?'0.25':''}" onclick="show('${esc(n.id)}')">
     <span class="chip" style="background:${c}">${CATL[n.category]||'其他'}</span>
     ${(n.gates||[]).length?`<span class="gatebadge" title="前置未满足: ${(n.gates||[]).join(', ')}">⏳${(n.gates||[]).length}</span>`:''}
+    ${(n.data_gates||[]).length?`<span class="gatebadge" style="background:#E1F5EE;color:#0F6E56" title="数据前置">📊${n.data_gates.filter(g=>g.status==='satisfied').length}/${n.data_gates.length}</span>`:''}
     <span class="roi" title="性价比=收益÷成本">${n.kind==='card'?(n.roi_valid?'ROI '+n.roi:'已兑现'):''}</span>
     ${done?'<span class="ok">✓</span>':''}
     <div class="id">${esc(n.id)} · tier ${n.tier}</div>
@@ -382,6 +385,8 @@ function show(id){
  <div class="field"><b>做什么</b>${esc(n.what)}</div>
  <div class="field"><b>为什么</b>${esc(n.why)}</div>
  ${n.relation_note?`<div class="field"><b>关系说明</b>${esc(n.relation_note)}</div>`:''}
+ ${(n.data_gates||[]).length?`<div class="field"><b>数据前置</b>${n.data_gates.map(g=>`<span class="kbd" style="background:${g.status==='satisfied'?'#E1F5EE':'#FCEBEB'}">${esc(g.id)}:${esc(g.status)}</span>`).join(' ')}<br><span style="font-size:11px;color:var(--muted)">${esc(n.data_gates.map(g=>g.desc).join('；'))}</span></div>`:''}
+ ${n.decision_note?`<div class="field"><b>决策状态</b>${esc(n.decision_note)}</div>`:''}
  <div class="field"><button onclick="clearSel()">清除高亮</button></div>`;
 }
 function clearSel(){window.__sel=null;window.__chain=null;render();

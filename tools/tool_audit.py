@@ -1,70 +1,95 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""工具面审计：统计一次会话里「暴露了多少工具 / 各自被调用多少次 / schema 占多少 token」。
-用法: python bench/tool_audit.py [bench/_cur8.jsonl]
+"""工具面审计：统计会话 dump 里「暴露多少工具 / 各自调用多少次 / schema 占多少 token」。
+
+2026-11-21 修复：原默认路径 bench/_cur8.jsonl 已失效（历史遗留），且原逻辑
+要求 request/header 含 tools schema，否则报"无法审计"——但真实 dump 只有
+tool/call 事件。现在兼容两种格式，无 schema 时仍产出调用频次报告。
+
+用法:
+  python tools/tool_audit.py                          # 默认：跨 archive/session-dumps 全部 dump
+  python tools/tool_audit.py <file.jsonl>             # 单个 dump
+  python tools/tool_audit.py --json                   # 机器可读（供判据/闸门使用）
 """
 import collections
+import glob
 import json
+import os
 import sys
 
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# 会话 dump 是运行数据（在 workspace），不进仓库；可用 TOOL_AUDIT_DUMPS 覆盖
+DUMP_DIR = os.environ.get('TOOL_AUDIT_DUMPS',
+                          os.path.join('D:/Brain/workspace/bench', 'archive', 'session-dumps'))
+DEFAULT_GLOB = os.path.join(DUMP_DIR, '_cur*.jsonl')
 
-def load(path):
-    return [json.loads(l) for l in open(path, encoding="utf-8") if l.strip()]
+
+def load_rows(path):
+    with open(path, encoding='utf-8') as f:
+        return [json.loads(l) for l in f if l.strip()]
+
+
+def audit(paths):
+    total = collections.Counter()
+    per_sess = {}
+    schema_tools = None
+    for p in paths:
+        rows = load_rows(p)
+        c = collections.Counter()
+        for r in rows:
+            if r.get('type') == 'tool/call':
+                c[r.get('data', {}).get('name') or '<unnamed>'] += 1
+            # 兼容 request/header 里带 tools schema 的格式
+            if r.get('type') == 'request/header' and schema_tools is None:
+                schema_tools = (r.get('data') or {}).get('tools')
+        per_sess[os.path.basename(p)] = c
+        total.update(c)
+    return total, per_sess, schema_tools
+
+
+def report(paths):
+    total, per_sess, schema = audit(paths)
+    n = sum(total.values())
+    if not n:
+        print('没有 tool/call 事件，无法审计')
+        return 1
+    print(f'会话 dump: {len(paths)} 个 | 总调用 {n} | 不同工具 {len(total)}')
+    print(f'{"工具":30} {"调用":>6} {"占比":>6} {"会话数":>6}')
+    print('-' * 56)
+    for k, v in total.most_common():
+        print(f'{k:30} {v:6} {v*100//n:5}% {sum(1 for c in per_sess.values() if c.get(k)):6}')
+    print('-' * 56)
+    for top in (3, 5, 8):
+        r = sum(v for _, v in total.most_common(top))
+        print(f'前 {top} 种工具占调用 {r*100//n}%')
+    if schema:
+        zero = [t.get('name') for t in schema if not total.get(t.get('name'))]
+        print(f'schema 定义 {len(schema)} 个工具，零调用 {len(zero)} 个: {zero}')
+    else:
+        print('注：dump 无 tools schema，仅有调用频次（足够判断零使用/低频工具）')
+    return 0
 
 
 def main():
-    path = sys.argv[1] if len(sys.argv) > 1 else "bench/_cur8.jsonl"
-    rows = load(path)
-
-    hdr = None
-    for r in rows:
-        if r.get("type") == "request/header":
-            hdr = r["data"].get("header")
-            break
-    if not hdr or not hdr.get("tools"):
-        print("该会话没有记录 tools 定义，无法审计")
-        return
-
-    tools = hdr["tools"]
-    calls = collections.Counter()
-    for r in rows:
-        if r.get("type") == "tool/call":
-            calls[r["data"].get("name")] += 1
-
-    def size(t):
-        d = len(t.get("description") or "")
-        p = len(json.dumps(t.get("parameters") or {}, ensure_ascii=False))
-        return d, p, d + p
-
-    out = []
-    for t in tools:
-        name = t.get("name") or "<unnamed>"
-        d, p, n = size(t)
-        out.append((calls.get(name, 0), name, d, p, n))
-    out.sort(reverse=True)
-
-    total = sum(x[4] for x in out)
-    zero = [x for x in out if x[0] == 0]
-    used = [x for x in out if x[0] > 0]
-    total_calls = sum(calls.values())
-
-    print("会话:", path)
-    print("暴露工具 %d 个；schema 合计 %d 字符 ≈ %d~%d token"
-          % (len(out), total, total // 3, total // 2))
-    print("被调用过 %d 个；零调用 %d 个，占 %d 字符 ≈ %d token"
-          % (len(used), len(zero), sum(x[4] for x in zero), sum(x[4] for x in zero) // 3))
-    if total_calls:
-        top5 = sum(x[0] for x in out[:5])
-        print("前 5 个工具占调用 %.1f%%（共 %d 次）" % (100 * top5 / total_calls, total_calls))
-    print()
-    print("%-5s %-30s %7s %8s %8s" % ("调用", "工具名", "描述字", "参数字", "合计字"))
-    print("-" * 64)
-    for a in out:
-        print("%-5d %-30s %7d %8d %8d" % a)
-    print()
-    print("零调用清单（可考虑按需加载 / 停用）：")
-    print("  " + "、".join(x[1] for x in zero))
+    args = sys.argv[1:]
+    as_json = '--json' in args
+    args = [a for a in args if not a.startswith('--')]
+    paths = args or sorted(glob.glob(DEFAULT_GLOB))
+    if not paths:
+        print('未找到会话 dump: ' + DEFAULT_GLOB)
+        return 1
+    if as_json:
+        total, per_sess, schema = audit(paths)
+        print(json.dumps({
+            'sessions': len(paths),
+            'total_calls': sum(total.values()),
+            'distinct_tools': len(total),
+            'by_tool': dict(total.most_common()),
+            'schema_tools': len(schema) if schema else None,
+        }, ensure_ascii=False, indent=2))
+        return 0
+    return report(paths)
 
 
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    sys.exit(main())

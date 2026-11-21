@@ -52,6 +52,9 @@ if command -v "$PYTHON" >/dev/null 2>&1; then
     run_test "verify-audit" "$PYTHON \"$ROOT/tools/audit_verify.py\" --strict"
     run_test "tech-tree" "$PYTHON \"$ROOT/tools/tech_tree.py\" --check"
     run_test "implicit-deps" "$PYTHON \"$ROOT/tools/audit_implicit_deps.py\" --strict"
+    run_test "tool-frequency" "$PYTHON \"$ROOT/tools/tool_audit.py\" --json"
+    run_test "gate-evidence" "$PYTHON \"$ROOT/tools/audit_gate_evidence.py\" --strict"
+    run_test "gate-evidence" "$PYTHON \"$ROOT/tools/audit_gate_evidence.py\" --strict"
 else
     echo "[skip] python not found"
 fi

@@ -282,8 +282,8 @@ items:
   - 分类器错了有没有被三角色拦住？
   abort_if: 86M CPU 延迟>500ms 或中文准确率不达 92%
   preconditions:
-  - 'P-ZH-VALIDATION: 中文表现验证'
-  - 'P-86M-EMBEDDING: 8G 显存可行性'
+  - 'P-ZH-VALIDATION: 中文准确率>=92%（M9.abort_if）'
+  - 'P-86M-EMBEDDING: 86M分类器<=8G显存可运行（M9.caveat硬约束）'
   instrumentation_needed:
   - tools/test_intent_classifier.mjs（新建）
   benefit: 中
@@ -378,6 +378,14 @@ items:
     serves_success_dim: null
   category: mind
   relation_note: 工具面家族终局：S16补示例→S22描述收敛→M5砍工具数(需用户拍板,永不可自主)。
+  data_gates:
+  - id: P-TOOL-FREQ-AUDIT
+    desc: 工具频次审计：8会话2849调用/11工具/前5占90%/17个零调用
+    status: satisfied
+    evidence: tools/tool_audit.py --json
+    source: docs/MEMORY_TO_MIND_MODEL_20261120.md + archive/session-dumps/_cur*.jsonl
+  decision_note: 数据已齐：实际只用11/28工具、前5占90%——拍板只需决定"砍哪些低频工具"，不再是拍脑袋。剩余是纯产品判断（用户拍板），agent
+    不得自主。
 - id: M7
   title: 格式修复器（降级）
   tier: 3
@@ -401,7 +409,7 @@ items:
   abort_if: 无（前置未满足，manual-blocked）
   preconditions:
   - 'P-86M-LATENCY: 86M CPU 延迟<500ms'
-  - 'P-AB-SPEEDUP: A/B 端到端提速'
+  - 'P-AB-SPEEDUP: A/B端到端提速>=10%（参考S16 DoD口径）'
   benefit: 中
   cost: 低
   advice: ⛔ 降级：0.6B 生成式已证伪(4-6s)；86M 判别式未验证，先走 M9
@@ -471,7 +479,7 @@ items:
   reflection: []
   abort_if: 无（长期人工排期）
   preconditions:
-  - 'P-SWEBENCH: 迁移 SWE-bench Verified 子集'
+  - 'P-SWEBENCH: 迁移SWE-bench Verified子集（阈值待定：长期人工排期，跑通子集即算达标）'
   benefit: 高（外部效度）
   cost: 高
   advice: 长期优先
@@ -581,7 +589,7 @@ items:
   reflection: []
   abort_if: 无（探索项）
   preconditions:
-  - 'P-ZH-VALIDATION: GLiClass 中文表现'
+  - 'P-ZH-VALIDATION: GLiClass中文表现（阈值待定：需先定中文测试集与准确率的达标线）'
   benefit: 中
   cost: 高
   advice: 一个前向输出意图+风险+难度
@@ -616,7 +624,7 @@ items:
   reflection: []
   abort_if: 无（降级观望）
   preconditions:
-  - 'P-86M: 换 86M 分类器'
+  - 'P-86M: 换86M分类器且召回A/B>=80%（L5.caveat）'
   - 'P-RECALL-AB: 召回 A/B>=80%'
   benefit: 低
   cost: 高
