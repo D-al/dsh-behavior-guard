@@ -1490,6 +1490,12 @@ autonomy_rungs:
     evidence: commit ec0a7e4; 门禁28/28; 单测25/25; 集成4/4; 无恒真断言; 临时产物已清理
     note: dsh 自己修复了验收脚本的分支计数误报后才提交; 但漏了 push/同步生产(我补做)
   remaining: buildTrailText / formatExecutorResult / collectCorrectorInput / stateOf / callLLM族 等12个
+  failed_attempt:
+  - at: '2026-11-21T03:56:00+08:00'
+    by: dsh-agent (接力推卡)
+    result: 未完成 — 外置+单测写到node_modules但未commit;单测5 FAIL+JSON.parse崩溃(EEXIST临时目录/large.txt),无集成测试
+    handling: 主代理未提交(质量不合格);测试残留__tmp_test__已移到cleanup区;待重做
+    lesson: agent会在测试失败时仍停会话;必须验收单测真通过才提交,不能只看文件存在
   abort_if: trace kind 分布与基线不一致，或单测恒真（|| true / >=0）
   verify:
   - kind: file_exists
