@@ -13,6 +13,7 @@ import re
 import sys
 import html
 import subprocess
+import tempfile
 from collections import defaultdict
 from pathlib import Path
 
@@ -416,14 +417,17 @@ def main():
     m = re.search(r'<script>(.*?)</script>', out, re.S)
     if not m:
         print('FAIL 生成的 HTML 无 script 块'); return 1
-    tmp = ROOT / 'tools' / '_tech_tree_check.js'
+    # 自检脚本放系统临时目录，绝不污染仓库（2026-11-21 曾误提交一个 142 行临时文件）
+    fd, tmpname = tempfile.mkstemp(suffix='.js', prefix='tech_tree_check_')
+    tmp = Path(tmpname)
     try:
         tmp.write_text(m.group(1), encoding='utf-8')
         r = subprocess.run(['node', '--check', str(tmp)], capture_output=True, text=True, timeout=15)
         if r.returncode != 0:
             print('FAIL 生成的 JS 语法错误: ' + r.stderr.strip()[:200]); return 1
     finally:
-        if tmp.exists(): tmp.unlink()
+        try: tmp.unlink()
+        except OSError: pass
     OUT.write_text(out, encoding='utf-8')
     print(f'WROTE {OUT.name} ({len(out)} bytes) [JS语法已验]')
     return 0
