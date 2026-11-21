@@ -33,27 +33,36 @@ def audit(paths):
     total = collections.Counter()
     per_sess = {}
     schema_tools = None
+    seen_calls = set()   # 2026-11-21: dump 是同一会话的累积快照，必须按 callId 去重
+    dup_count = 0
     for p in paths:
         rows = load_rows(p)
         c = collections.Counter()
         for r in rows:
             if r.get('type') == 'tool/call':
-                c[r.get('data', {}).get('name') or '<unnamed>'] += 1
+                d = r.get('data') or {}
+                cid = d.get('callId')
+                if cid:
+                    if cid in seen_calls:
+                        dup_count += 1
+                        continue
+                    seen_calls.add(cid)
+                c[d.get('name') or '<unnamed>'] += 1
             # 兼容 request/header 里带 tools schema 的格式
             if r.get('type') == 'request/header' and schema_tools is None:
                 schema_tools = (r.get('data') or {}).get('tools')
         per_sess[os.path.basename(p)] = c
         total.update(c)
-    return total, per_sess, schema_tools
+    return total, per_sess, schema_tools, dup_count
 
 
 def report(paths):
-    total, per_sess, schema = audit(paths)
+    total, per_sess, schema, dup_count = audit(paths)
     n = sum(total.values())
     if not n:
         print('没有 tool/call 事件，无法审计')
         return 1
-    print(f'会话 dump: {len(paths)} 个 | 总调用 {n} | 不同工具 {len(total)}')
+    print(f'会话 dump: {len(paths)} 个（按 callId 去重后）| 唯一调用 {n} | 重复快照 {dup_count} | 不同工具 {len(total)}')
     print(f'{"工具":30} {"调用":>6} {"占比":>6} {"会话数":>6}')
     print('-' * 56)
     for k, v in total.most_common():
@@ -79,9 +88,11 @@ def main():
         print('未找到会话 dump: ' + DEFAULT_GLOB)
         return 1
     if as_json:
-        total, per_sess, schema = audit(paths)
+        total, per_sess, schema, dup_count = audit(paths)
         print(json.dumps({
-            'sessions': len(paths),
+            'files': len(paths),
+            'unique_calls': sum(total.values()),
+            'duplicate_snapshot_calls': dup_count,
             'total_calls': sum(total.values()),
             'distinct_tools': len(total),
             'by_tool': dict(total.most_common()),

@@ -380,7 +380,7 @@ items:
   relation_note: 工具面家族终局：S16补示例→S22描述收敛→M5砍工具数(需用户拍板,永不可自主)。
   data_gates:
   - id: P-TOOL-FREQ-AUDIT
-    desc: 工具频次审计：8会话2849调用/11工具/前5占90%/17个零调用
+    desc: 工具频次审计：1会话(8累积快照去重)/375次唯一调用/11工具/前5占90%;样本单一不足以拍板砍工具
     status: satisfied
     evidence: tools/tool_audit.py --json
     source: docs/MEMORY_TO_MIND_MODEL_20261120.md + archive/session-dumps/_cur*.jsonl
