@@ -564,7 +564,7 @@ function workspaceSnapshot(s) {
     hasVerifyItem: todos.some((t) => /\[VERIFY\]/.test(String(t?.content || ''))),
     // 证据层
     evidence: Object.freeze([...verified]),
-    verified: !!(st.verifyRan || st.verifiedThisTurn),
+    verified: !!(st.verifyRan || st.verifiedThisTurn || (st.verifyEvidence || 0) > 0),
     wrote: !!(st.wroteThisTurn || (st.writeCalls || 0) > 0),
     product: String(st.lastProduct || ''),
     // 排除层
@@ -857,6 +857,8 @@ export function apply(ctx, config) {
         mindInjectCount: 0, lastMindStep: 0,
         frame: { role: 'executor', goal: '', evidence: [], provenance: 'user', trust: 1.0 },
         wroteThisTurn: false, verifiedThisTurn: false, lastFrameParent: null,
+        // S13: verifyEvidence 计数器（真实验证证据累积）
+        verifyEvidence: 0,
         bdi: { goal: '', belief: '', preference: '', updatedAt: 0 } }
       states.set(id, s)
     }
@@ -878,6 +880,7 @@ export function apply(ctx, config) {
         // 心智拼图 frame 本轮重置（v2.9 合入）
         if (cfg.frameEnabled) { s.frame.evidence = []; s.frame.provenance = 'user'; s.frame.trust = 1.0 }
         s.wroteThisTurn = false; s.verifiedThisTurn = false; s.verifyOnStopWarned = false
+        s.verifyEvidence = 0  // S13 reset
         s.lastTodoSig = null
         s.todoRedundant = 0
         // turn-guard：本轮重置（合并）
@@ -1834,7 +1837,7 @@ function formatExecutorResult(pkg, exec) {
       // 收尾验证门（无 present 声明时触发）。最多 cfg.maxVerifyOnStopSteers 次，避免死循环。
       // 2026-11-18 实测：steer 消息确实进了 inbox（seq30 spliced + seq34 user/message），
       // 但抽象措辞"运行一次验证工具"被模型忽略 → 改成命令式 + 具体动作 + 二次升级。
-      if (cfg.verifyOnStopEnabled && state.writeCalls > 0 && !state.verifyRan &&
+      if (cfg.verifyOnStopEnabled && state.writeCalls > 0 && !state.verifyRan && !(state.verifyEvidence || 0) > 0 &&
           (state.verifyOnStopCount || 0) < cfg.maxVerifyOnStopSteers) {
         state.verifyOnStopCount = (state.verifyOnStopCount || 0) + 1
         const n = state.verifyOnStopCount
