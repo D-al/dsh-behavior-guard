@@ -1577,13 +1577,15 @@ items:
   risk: low
   autonomous: true
   status: ready
-  what: 清理已禁用入口+核心工具description触发条件化+描述碰撞自检+保留低频关键能力;不追求砍到18-20个的数字目标
-  why: 社区判据：10+工具就该考虑裁剪，弱模型拐点12-15；Anthropic Skills 结论"大多数技能失败是检索失败伪装成指令失败"；描述碰撞是规模化真正上限。
+  what: harness能落地的工程:对已禁用入口(job_*/web_fetch)做调用拦截提示+描述触发条件审计+描述碰撞自检+保留低频关键能力;不做dsh
+    runtime工具面裁剪(做不到)
+  why: 全量37会话1959调用证明低频≠可砍;可行性校正:dsh无工具面裁剪hook,harness的writeTools只是内部计数——移除入口做不到,改为拦截提示
   benefit_to_self: 减少参数错误导致的重复失败(D1/D2)，不占主模型注意力。
   caveats:
-  - 只清理AGENTS.md已明确禁用的入口
+  - 不按频次砍关键工具
+  - dsh runtime工具面动不了,只做harness层拦截
   - 改完回归43/43
-  - 治理原则M5仍需用户拍板
+  - M5已拍板
   abort_if: 无
   benefit: 中高
   cost: 中

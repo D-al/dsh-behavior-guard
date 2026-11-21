@@ -1291,15 +1291,19 @@ items:
     path: config/AGENTS.md
     regex: input_examples
     min: 1
-  what: 按M5三层原则做可工程验证的改造:①从工具面移除已禁用入口(job_output/job_kill/web_fetch,AGENTS.md已禁但暴露11次违规调用) ②核心7工具description改写成触发条件(what+when to use) ③tool_surface_audit.py加描述碰撞自检+频次报告(已部分完成) ④保留低频关键能力(read_image/ask_user_question)不砍
-  why: 全量证据37会话1959调用/17工具:前7占95.7%,低频≠可砍;真正问题是已禁用入口污染+描述碰撞。Anthropic Skills"技能失败多是检索失败伪装成指令失败"——描述触发条件是杠杆。不再追求"砍到18-20个"这个数字目标。
+  - kind: file_grep
+    path: index.mjs
+    regex: disabledTools|已禁用.*工具|blockedTool
+    min: 1
+  what: 按M5三层原则做harness能落地的工程改造:①对已禁用入口(job_output/job_kill/web_fetch)在harness层拦截提示(调用时告知"已禁用,改用X")——注意dsh runtime工具面harness改不了,不做无效尝试 ②核心7工具description触发条件已在config/AGENTS.md,补审计脚本验证覆盖 ③tool_surface_audit.py加描述碰撞自检+频次报告(已部分完成) ④保留低频关键能力不砍
+  why: 全量证据37会话1959调用/17工具:前7占95.7%,低频≠可砍。可行性校正:dsh无工具面裁剪hook,harness的writeTools只是内部计数集合——"移除入口"做不到,改为"调用时拦截提示"。Anthropic Skills"技能失败多是检索失败伪装成指令失败"——描述触发条件是杠杆。
   unlocks: []
   benefit_to_self: 减少参数错误导致的重复失败(D1/D2)，不占主模型注意力。
   cost: 中
   caveats:
-  - 只清理AGENTS.md已明确禁用的入口,不按频次砍关键工具
+  - 不按频次砍关键工具;dsh runtime工具面动不了,只做harness层拦截提示
   - 改完要回归测试确认没断链(43/43门禁)
-  - 治理原则本身(M5)仍需用户拍板;本卡只做无需价值判断的工程部分
+  - M5三层原则已由用户拍板(2026-11-22);本卡只做工程部分
   abort_if: 移除入口导致正常流程断链
   verify_type: structural
   category: infra
