@@ -117,11 +117,19 @@ def build(g, sem, rejected=None):
                     'S6_rule': '注入检测规则'}
     for a in sorted(anchors):
         meta = (g.get('anchors') or {}).get(a, {})
+        used_by = [n['id'] for n in nodes if a in n['deps']]
+        # 没被任何卡依赖的 anchor 是"证据副本"（如 S1_p0p2 = S1 的证据），
+        # 不单列假证据节点；把验证信息并入对应卡的 why（ID 前缀匹配 S1_p0p2→S1）。
+        if not used_by:
+            owner = next((n for n in nodes if a.startswith(n['id'] + '_')), None)
+            if owner:
+                owner['why'] += ' ｜证据锚点 ' + a + '：' + str(meta.get('verify') or meta.get('note') or '')
+            continue
         nodes.append({'id': a, 'title': ANCHOR_TITLE.get(a, a), 'status': 'evidence',
                       'tier': 0, 'category': 'evidence', 'deps': [],
                       'what': meta.get('note', '') or meta.get('artifact', ''),
                       'why': meta.get('verify', '') or '证据节点：其他卡依赖它',
-                      'unlocks': [n['id'] for n in nodes if a in n['deps']],
+                      'unlocks': used_by,
                       'risk': 'evidence', 'kind': 'evidence'})
     # 前置闸门卡：卡在"条件未验证"上，橙色；跨卡共享 P-ID 只画一个
     for pid, meta in sorted(gates.items()):

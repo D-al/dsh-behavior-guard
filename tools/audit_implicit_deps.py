@@ -89,6 +89,14 @@ def main():
         lack = derived[it['id']] - exp
         if lack:
             missing_unlock.append((it['id'], sorted(lack)))
+    # 证据副本：未被任何卡依赖的 anchor 不应单列成节点（应并入对应卡）
+    if gm:
+        gg = yaml.safe_load(gm.group(1))
+        orphan_anchors = [an for an in (gg.get('anchors') or {})
+                          if not any(an in (it.get('deps') or []) for it in gg['items'] + gg['rungs'])]
+        print(f'\n=== 证据锚点 ===')
+        print(f'未被依赖的 anchor: {orphan_anchors or '无'}（生成器会并入对应卡，不单列）')
+
     print(f'\n=== 语义层 unlocks 回填 ===')
     if missing_unlock:
         print(f'❌ {len(missing_unlock)} 张卡有 deps 但未回填 unlocks:')
