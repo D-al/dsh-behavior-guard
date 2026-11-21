@@ -48,6 +48,7 @@
 | [DEEP_MAINTENANCE_20261121.md](DEEP_MAINTENANCE_20261121.md) | 维护/验收 | 反向检验深度维护：时间线错位总根因 + 四卡真完成 + S15 假生效 + 8 项修复 |
 | [STRATEGIC_SESSION_ANALYSIS_20261121.md](STRATEGIC_SESSION_ANALYSIS_20261121.md) | 战略/源头 | 77轮战略会话完整通读：五阶段演进 + 我们路线缺战略陈述/元治理锁 + 6条启发 |
 | [ROUTE_POSITION_AND_EVOLUTION_20261121.md](ROUTE_POSITION_AND_EVOLUTION_20261121.md) | 战略/调研 | 广泛调研定位：我们在harness递归自改进路线B；RRSI正则/Self-MoA质量>多样性/最高杠杆排序 |
+| [SINGLE_SESSION_ANTI_POLLUTION_20261121.md](SINGLE_SESSION_ANTI_POLLUTION_20261121.md) | 架构/实证 | 同会话抗污染：两卡连推实验(第二张更顺)+污染真形态=未折叠噪声+分阶段边界标记方案 |
 | [WALKING_PLAN_20261120.md](WALKING_PLAN_20261120.md) | 方案 | **学会自己走路 6 阶执行阶梯**（用现有器官逐步自主化）|
 | [GROWTH_CARD_DESIGN_20261120.md](GROWTH_CARD_DESIGN_20261120.md) | 设计 | 能力阶梯成长卡片：what/why/解锁/好处/代价/坑/反思 |
 | [CONSISTENCY_VERDICT_20261120.md](CONSISTENCY_VERDICT_20261120.md) | 事故自审 | GitHub/权威/生产一致性 verdict + 守卫机制 + agent 教训 |
