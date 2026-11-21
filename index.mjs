@@ -998,9 +998,23 @@ export function apply(ctx, config) {
           // P1-1：去掉裸 `-c\s` 与 `python -m`（装包/数据处理会误判为已验证）；
           // 只认明确的验证子命令（python -m pytest/unittest）或验证脚本/关键词。
           if (cmdTools.includes(callName) && /(verify_agent|pytest|npm test|python -m\s+(pytest|unittest)|test_|回归|语法检查|编译)/i.test(fullArgs)) s.verifyRan = true
-          // 写后读回确认：write 之后的 read/cat 即算验证证据（测试场景与真实调用多不带精确文件名参数，
-          // 强制匹配 lastProduct 会误判 → verify-on-stop 该放行时却拦截，25/26 回归失败即此因）
-          if ((callName === 'read' || callName === 'cat') && s.writeCalls > 0) s.verifyRan = true
+          // S13-收紧：废弃 write+read 宽松规则（A1_6 假绿源头）。
+          // 仅当 read 参数包含真实验证证据标记时才置位 verifyEvidence：
+          //   - 含 [VERIFY] 关键词（todo 验收项标准写法）
+          //   - 文件名以 test_/verify_ 开头或含 _test\.py/.mjs$/check_ 后缀
+          //   - 内容扫描到 assert/pass/fail/syntax check/语法检查/编译成功 等判定词
+          let verifyEvidence = false
+          try {
+            const argObj = JSON.parse(fullArgs || '{}')
+            const target = String(argObj?.file_path ?? '')
+            const hasVerifyMarker = /\[VERIFY\]/.test(target)
+            const isTestFile = /(^|[/\\])(test_|verify_|_test\.py|_test\.mjs|_spec\.py)/i.test(target)
+            if (hasVerifyMarker || isTestFile) verifyEvidence = true
+          } catch (_) { /* 解析失败则不置位 */ }
+          // read 本身不再自动触发 verifyRan；需配合上述证据标记
+          if ((callName === 'read' || callName === 'cat') && verifyEvidence) {
+            s.verifyEvidence = (s.verifyEvidence || 0) + 1
+          }
           // D5 生产性调用标记（写/编辑/todo 更新 = 有进展）
           if (callName === 'write' || callName === 'edit' || callName === 'todo_write') s.lastStepProductive = true
           // continuity P1：todo 调用计数
