@@ -1332,7 +1332,7 @@ items:
   cost: 中
   advice: ✅ P0：read≠验证正是 ADR-0014 误用与今晚假绿的根源
   rank_derived: false
-  status: ready
+  status: done
   tier: 1
   unlocks: []
   strategy_flags:
@@ -1340,6 +1340,14 @@ items:
     touches_metagovernance: false
     serves_success_dim: null
   category: infra
+  data_gates:
+  - id: P-S13-VERIFY-EVIDENCE
+    desc: verifyRan收紧:删除read+writeCalls宽松规则;新增verifyEvidence精确匹配([VERIFY]/test_/verify_
+      等);全门禁43/43;test_verify_ran 4/4;权威源/运行版sha一致(0743bb99 LF)
+    status: satisfied
+    evidence: roadmap_check.py --verify S13 (3/3 OK) + tools/run_all.sh (43/43) +
+      sha256
+    source: S13_VERIFICATION.md + commits fe32a83/cba4600/614d29c
 - id: S14
   title: 编辑协议升级（降低复现负担）
   what: 把 AGENTS.md:105 的裸 read→edit 升级为"短文件(<400行)整块输出、长文件紧邻重读+最短唯一锚点、压缩后强制重读"；失败时回灌精确差异(edit-doctor模式)。不押注结构化diff格式——Diff-XYZ证明小模型换格式收益很小

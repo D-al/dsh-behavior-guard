@@ -1061,7 +1061,7 @@ items:
   category: infra
 - id: S13
   title: verifyRan收紧（read≠验证）
-  status: ready
+  status: done
   deps:
   - A1
   risk: low
