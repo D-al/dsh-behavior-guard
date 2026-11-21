@@ -91,3 +91,4 @@
 3. **README 保持薄**——超过 200 行就该把细节下沉到 docs/
 4. **目标带验证方法**——ROADMAP 里每条都要能判定"做完了没"
 | [QWEN36_35B_WEAKNESSES_20261122.md](QWEN36_35B_WEAKNESSES_20261122.md) | 调研 | 35B-A3B弱点:单次工具调用不弱(UD-Q4_K_XL保98.8%)/弱在长链路;分类器不能补工具能力;排查优先级 |
+| [CRITIC_GATE_FEASIBILITY_20261122.md](CRITIC_GATE_FEASIBILITY_20261122.md) | 验证 | Critic卸载到分类器不可行:历史35次Critic全PARSE_FAIL且无产物文本;假数据坑(ms:0);扩展样本召回0/8 |
