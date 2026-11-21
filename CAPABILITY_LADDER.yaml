@@ -347,12 +347,12 @@ items:
   deps: []
   risk: high
   autonomous: false
-  status: manual-blocked
+  status: done
   verify:
   - kind: manual
     reason: 用户拍板'哪些进内核'——价值判断，agent 不得自主
   unlock: &id005 []
-  human_note: ⛔ 永久人工闸门
+  human_note: 用户2026-11-22 07:30拍板采纳三层治理原则(核心常驻/低频关键按需/已禁用入口移除)
   what: 三层治理:核心7工具常驻(95.7%)/低频关键按需加载/已禁用入口(job_*/web_fetch)移除。放弃按频次砍到N个
   why: 全量37会话1959调用证明低频≠可砍;真正问题是已禁用入口污染选择空间(11次违规)+描述碰撞,不是工具数量
   benefit_to_self: 每次决策要在更少的工具里选，减少选择噪声
@@ -383,6 +383,10 @@ items:
     status: satisfied
     evidence: tools/tool_audit.py --json
     source: docs/MEMORY_TO_MIND_MODEL_20261120.md + archive/session-dumps/_cur*.jsonl
+  - id: P-USER-APPROVED-3LAYER
+    desc: 用户拍板三层治理原则;证据docs/TOOL_SURFACE_EVIDENCE_20261122.md(37会话1959调用)
+    status: satisfied
+    source: 用户对话2026-11-22 07:30
   decision_note: 数据已齐：实际只用11/28工具、前5占90%——拍板只需决定"砍哪些低频工具"，不再是拍脑袋。剩余是纯产品判断（用户拍板），agent
     不得自主。
 - id: M7
@@ -1568,7 +1572,8 @@ items:
 - id: S22
   title: 工具面治理工程（清理+描述碰撞）
   tier: 1
-  deps: []
+  deps:
+  - M5
   risk: low
   autonomous: true
   status: ready

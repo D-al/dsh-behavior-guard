@@ -651,10 +651,10 @@ items:
   deps: []
   risk: high
   autonomous: false
-  status: manual-blocked
+  status: done
   verify:
   - kind: manual
-    reason: 用户拍板'三层治理原则'是否采纳(核心常驻/低频关键按需加载/已禁用入口移除)——产品判断
+    reason: 用户已拍板(2026-11-22 07:30)采纳三层治理原则:核心常驻/低频关键按需加载/已禁用入口移除
   title: 工具面结构改造（三层治理原则）
   what: 放弃"按频次砍到N个"——全量37会话1959调用证明低频≠可砍(job_*/web_fetch已禁用仍暴露11次;read_image/ask_user低频但关键)。改为三层:①核心工具常驻(pwsh/read/todo/glob/edit/write/grep/present,占95.7%) ②低频关键能力按需加载(skill卡/描述触发) ③已禁用入口(job_*/web_fetch)从工具面移除
   why: Anthropic"10+ tools就该考虑"(72→90%)、弱模型拐点12-15、Prosodica 10工具78%→100工具<40%——但全量证据表明真正问题不是"工具多"而是"已禁用入口污染选择空间+描述碰撞"。低频可砍是错误推断:场景少见但不可缺的工具砍了会断链
@@ -1279,7 +1279,8 @@ items:
 - id: S22
   title: 工具面治理工程（清理+描述碰撞）
   tier: 1
-  deps: []
+  deps:
+  - M5
   risk: low
   autonomous: true
   status: ready
