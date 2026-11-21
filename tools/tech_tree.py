@@ -172,6 +172,7 @@ svg.links{position:absolute;top:0;left:0;pointer-events:none;z-index:1}
 .node.inchain{opacity:1!important}
 path.link-dim{opacity:.06!important}
 path.link-hot{stroke:#A32D2D!important;stroke-width:2.2!important;opacity:1!important}
+path.link-unlock.hot{stroke:#7F77DD!important}
 #side{width:320px;border-left:1px solid var(--line);background:var(--panel);
  padding:18px;overflow:auto}
 #side h2{font-size:15px;margin:0 0 8px}
@@ -251,13 +252,17 @@ function drawLinks(ns){
   pos[el.dataset.id]={x:r.left-p.left+tree.scrollLeft,y:r.top-p.top+tree.scrollTop+10,w:r.width};
  });
  let paths='';
- ns.forEach(n=>n.deps.forEach(d=>{
-  const a=pos[d],b=pos[n.id];if(!a||!b)return;
+ const edge=(from,to,soft)=>{
+  const a=pos[from],b=pos[to];if(!a||!b)return;
   const x1=a.x+a.w,y1=a.y,x2=b.x,y2=b.y;
-  const hot=window.__chain && window.__chain.has(d) && window.__chain.has(n.id);
+  const hot=window.__chain && window.__chain.has(from) && window.__chain.has(to);
   const fade=window.__chain && !hot;
-  const cls=hot?'link-hot':(fade?'link-dim':'');
-  paths+=`<path class="${cls}" d="M${x1},${y1} C${x1+18},${y1} ${x2-18},${y2} ${x2},${y2}" fill="none" stroke="#b4b2a9" stroke-width="1"/>`;
+  const cls=(hot?'link-hot':'')+(soft?' link-unlock':'');
+  paths+=`<path class="${cls}" d="M${x1},${y1} C${x1+18},${y1} ${x2-18},${y2} ${x2},${y2}" fill="none" stroke="${soft?'#7F77DD':'#b4b2a9'}" stroke-width="1" ${soft?'stroke-dasharray="4 3"':''}/>`;
+ };
+ ns.forEach(n=>n.deps.forEach(d=>edge(d,n.id,false)));         // 硬依赖：灰实线
+ ns.forEach(n=>(n.unlocks||[]).forEach(t=>{                    // 逻辑解锁：紫虚线（仅deps没有的）
+   if(!n.deps.includes(t)&&!DATA.find(y=>y.id===t)?.deps.includes(n.id))edge(n.id,t,true);
  }));
  svg.setAttribute('width',tree.scrollWidth);svg.setAttribute('height',tree.scrollHeight);
  svg.innerHTML=paths;
@@ -267,7 +272,12 @@ function chainOf(id){
  const up=new Set([id]),down=new Set([id]);
  const go=(x,seen,get)=>{get(x).forEach(d=>{if(!seen.has(d)){seen.add(d);go(d,seen,get)}})};
  go(id,up,x=>{const n=DATA.find(y=>y.id===x);return n?n.deps:[]});
- go(id,down,x=>DATA.filter(y=>y.deps.includes(x)).map(y=>y.id));
+ go(id,down,x=>{
+   const node=DATA.find(y=>y.id===x);
+   const byDep=DATA.filter(y=>y.deps.includes(x)).map(y=>y.id);
+   const byUnlock=node?(node.unlocks||[]):[];  // 逻辑解锁也是依赖链
+   return [...new Set([...byDep,...byUnlock])];
+ });
  return new Set([...up,...down]);
 }
 function show(id){
@@ -278,7 +288,8 @@ function show(id){
  $('#side').innerHTML=`<h2>${esc(n.id)} · ${esc(n.title)}</h2>
  <div class="sub">${CATL[n.category]} · ${SL[n.status]} · tier ${n.tier} · ${esc(n.risk)}</div>
  <div class="field"><b>依赖（前置）</b>${n.deps.map(d=>`<span class="kbd">${esc(d)}</span>`).join(' ')||'无'}</div>
- <div class="field"><b>解锁（下游）</b>${(n.unlocks.length?n.unlocks:rev).map(d=>`<span class="kbd">${esc(d)}</span>`).join(' ')||'无'}</div>
+ <div class="field"><b>解锁 · 逻辑声明（紫虚线）</b>${(n.unlocks||[]).map(d=>`<span class="kbd">${esc(d)}</span>`).join(' ')||'无'}</div>
+ <div class="field"><b>解锁 · 硬依赖反推（灰实线）</b>${rev.filter(d=>!(n.unlocks||[]).includes(d)).map(d=>`<span class="kbd">${esc(d)}</span>`).join(' ')||'无'}</div>
  <div class="field"><b>做什么</b>${esc(n.what)}</div>
  <div class="field"><b>为什么</b>${esc(n.why)}</div>
  <div class="field"><button onclick="clearSel()">清除高亮</button></div>`;
