@@ -342,7 +342,7 @@ items:
     serves_success_dim: null
   category: mind
 - id: M5
-  title: 工具面结构改造
+  title: 工具面结构改造（三层治理原则）
   tier: 3
   deps: []
   risk: high
@@ -353,14 +353,13 @@ items:
     reason: 用户拍板'哪些进内核'——价值判断，agent 不得自主
   unlock: &id005 []
   human_note: ⛔ 永久人工闸门
-  what: 把 28 个工具收敛到最小内核，低频能力进 skill 卡
-  why: 工具面过宽会退化:Anthropic官方"10+ tools就该考虑"(Tool Use Examples 72→90%)、弱模型拐点12-15(社区实测)、Prosodica
-    10工具78%→100工具<40%。旧"上限约40"已被推翻——它是模型/描述相关拐点非硬上限。哪些进内核仍是产品判断
+  what: 三层治理:核心7工具常驻(95.7%)/低频关键按需加载/已禁用入口(job_*/web_fetch)移除。放弃按频次砍到N个
+  why: 全量37会话1959调用证明低频≠可砍;真正问题是已禁用入口污染选择空间(11次违规)+描述碰撞,不是工具数量
   benefit_to_self: 每次决策要在更少的工具里选，减少选择噪声
   caveats:
-  - ⛔ 用户拍板项，agent 不得自主决定
-  - 不动则保持现状，别为了改而改
-  - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
+  - ⛔ 用户拍板治理原则
+  - 不看单纯频次-低频但关键必须保留
+  - 证据:docs/TOOL_SURFACE_EVIDENCE_20261122.md
   reflection: []
   abort_if: 无（人工决策项，不自主执行）
   preconditions:
@@ -399,7 +398,7 @@ items:
   unlock: &id006 []
   human_note: 降级项，前置未满足
   what: 格式修复器：只做格式重写、不判断对错，35B 首轮兜底
-  why: 模型输出格式错误浪费后续步骤，但前置 86M 分类器还没验证
+  why: 0.6B生成式已证伪(4-6s);verify-on-edit零LLM已覆盖格式错误;原前置"86M分类器"方向已放弃
   benefit_to_self: 格式问题不用走到 35B 全量推理就能修，省 11s/次
   caveats:
   - 降级项：0.6B 已证伪（4-6s 比文献慢 10×）
@@ -429,7 +428,7 @@ items:
     evidence: bench/_v4_full_compare.json + bench/_v4_horizon.json
     source: docs/CLASSIFIER_BENCH_FINAL_20261121.md
 - id: S6_model
-  title: S6 模型层升级
+  title: S6 模型层升级（分类器已启用）
   tier: 3
   deps:
   - S6_rule
@@ -476,6 +475,10 @@ items:
     status: satisfied
     evidence: dsh-classifier-autostart插件 + bench/classifier_service.py + /health
     source: plugins/dsh-classifier-autostart/README.md + docs/CLASSIFIER_BENCH_FINAL_20261121.md
+  - id: P-S6-ENABLED
+    desc: 分类器已启用injectionClassifierEnabled=true;大样本@0.9=93.3%/0.3%/99.6%;门禁43/43
+    status: satisfied
+    source: commit 169df56 + docs/CLASSIFIER_BENCH_FINAL_20261121.md
 - id: L2
   title: 标准化 eval
   tier: 4
@@ -635,7 +638,7 @@ items:
   unlock: &id012 []
   human_note: 无实证收益前不做
   what: 小模型 Critic 做轻量预警（0.6B已证伪；分类器可作信号源但价值待证）
-  why: 0.6B 扫一次 5s 不实用；分类器已有注入信号，但"Critic 预警"召回 A/B 未测
+  why: 0.6B证伪;Critic门控可行性验证=无产物文本/无标签+分类器对产物质量零区分度(占位符@0.9检出0/8)
   benefit_to_self: 能在主模型提交前快速扫一眼风险
   caveats:
   - 降级：0.6B 已证伪，须换 86M 且召回 A/B≥80%
@@ -1563,18 +1566,19 @@ items:
   verify_type: structural
   category: governance
 - id: S22
-  title: 工具面收敛（28→18-20）
+  title: 工具面治理工程（清理+描述碰撞）
   tier: 1
   deps: []
   risk: low
-  autonomous: false
+  autonomous: true
   status: ready
-  what: 把 28 个工具收敛到 18-20 个：合并重叠工具、低频工具改按需加载、description 写成触发条件（what+when to use）并监控描述碰撞。
+  what: 清理已禁用入口+核心工具description触发条件化+描述碰撞自检+保留低频关键能力;不追求砍到18-20个的数字目标
   why: 社区判据：10+工具就该考虑裁剪，弱模型拐点12-15；Anthropic Skills 结论"大多数技能失败是检索失败伪装成指令失败"；描述碰撞是规模化真正上限。
   benefit_to_self: 减少参数错误导致的重复失败(D1/D2)，不占主模型注意力。
   caveats:
-  - 需用户拍板砍哪些工具
-  - 砍完要回归测试确认没断链
+  - 只清理AGENTS.md已明确禁用的入口
+  - 改完回归43/43
+  - 治理原则M5仍需用户拍板
   abort_if: 无
   benefit: 中高
   cost: 中

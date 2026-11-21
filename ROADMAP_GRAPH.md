@@ -654,15 +654,15 @@ items:
   status: manual-blocked
   verify:
   - kind: manual
-    reason: 用户拍板'哪些进内核'——价值判断，agent 不得自主
-  title: 工具面结构改造
-  what: 把 28 个工具收敛到最小内核，低频能力进 skill 卡
-  why: 工具面过宽会退化:Anthropic官方"10+ tools就该考虑"(Tool Use Examples 72→90%)、弱模型拐点12-15(社区实测)、Prosodica
-    10工具78%→100工具<40%。旧"上限约40"已被推翻——它是模型/描述相关拐点非硬上限。哪些进内核仍是产品判断
-  benefit_to_self: 每次决策要在更少的工具里选，减少选择噪声
+    reason: 用户拍板'三层治理原则'是否采纳(核心常驻/低频关键按需加载/已禁用入口移除)——产品判断
+  title: 工具面结构改造（三层治理原则）
+  what: 放弃"按频次砍到N个"——全量37会话1959调用证明低频≠可砍(job_*/web_fetch已禁用仍暴露11次;read_image/ask_user低频但关键)。改为三层:①核心工具常驻(pwsh/read/todo/glob/edit/write/grep/present,占95.7%) ②低频关键能力按需加载(skill卡/描述触发) ③已禁用入口(job_*/web_fetch)从工具面移除
+  why: Anthropic"10+ tools就该考虑"(72→90%)、弱模型拐点12-15、Prosodica 10工具78%→100工具<40%——但全量证据表明真正问题不是"工具多"而是"已禁用入口污染选择空间+描述碰撞"。低频可砍是错误推断:场景少见但不可缺的工具砍了会断链
+  benefit_to_self: 移除已禁用入口减少违规调用(11次/1959);核心工具描述写成触发条件减少选择噪声;低频关键能力不丢
   caveats:
-  - ⛔ 用户拍板项，agent 不得自主决定
-  - 不动则保持现状，别为了改而改
+  - ⛔ 用户拍板项，agent 不得自主决定治理原则
+  - 不看单纯频次——低频但关键(read_image/ask_user_question)必须保留
+  - 全量证据:docs/TOOL_SURFACE_EVIDENCE_20261122.md
   - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection: []
   abort_if: 无（人工决策项，不自主执行）
@@ -706,7 +706,7 @@ items:
   verify:
   - kind: manual
     reason: 分类器已部署验证(93.3%/2.3%/102ms)且随dsh启停；但默认关、只写trace，是否启用为主防线需用户拍板
-  title: S6 模型层升级（分类器已部署待启用）
+  title: S6 模型层升级（分类器已启用）
   what: S6 规则层 + ONNX分类器Tier-2(Horizon-Labs ModernBERT INT8, 绑E核, 随dsh启停)
   why: 规则层抓2/4攻击模式;分类器实测28/30语义级;已部署只写trace不steer，待用户决定是否启用
   benefit_to_self: 注入检测从关键词匹配升级到语义级，减少漏报；开关默认关零行为干扰
@@ -1277,11 +1277,11 @@ items:
   verify_type: structural
   category: governance
 - id: S22
-  title: 工具面收敛（28→18-20）
+  title: 工具面治理工程（清理+描述碰撞）
   tier: 1
   deps: []
   risk: low
-  autonomous: false
+  autonomous: true
   status: ready
   verify:
   - kind: file_exists
@@ -1290,15 +1290,16 @@ items:
     path: config/AGENTS.md
     regex: input_examples
     min: 1
-  what: 把 28 个工具收敛到 18-20 个：合并重叠工具、低频工具改按需加载、description 写成触发条件（what+when to use）并监控描述碰撞。
-  why: 社区判据：10+工具就该考虑裁剪，弱模型拐点12-15；Anthropic Skills 结论"大多数技能失败是检索失败伪装成指令失败"；描述碰撞是规模化真正上限。
+  what: 按M5三层原则做可工程验证的改造:①从工具面移除已禁用入口(job_output/job_kill/web_fetch,AGENTS.md已禁但暴露11次违规调用) ②核心7工具description改写成触发条件(what+when to use) ③tool_surface_audit.py加描述碰撞自检+频次报告(已部分完成) ④保留低频关键能力(read_image/ask_user_question)不砍
+  why: 全量证据37会话1959调用/17工具:前7占95.7%,低频≠可砍;真正问题是已禁用入口污染+描述碰撞。Anthropic Skills"技能失败多是检索失败伪装成指令失败"——描述触发条件是杠杆。不再追求"砍到18-20个"这个数字目标。
   unlocks: []
   benefit_to_self: 减少参数错误导致的重复失败(D1/D2)，不占主模型注意力。
   cost: 中
   caveats:
-  - 需用户拍板砍哪些工具
-  - 砍完要回归测试确认没断链
-  abort_if: 无
+  - 只清理AGENTS.md已明确禁用的入口,不按频次砍关键工具
+  - 改完要回归测试确认没断链(43/43门禁)
+  - 治理原则本身(M5)仍需用户拍板;本卡只做无需价值判断的工程部分
+  abort_if: 移除入口导致正常流程断链
   verify_type: structural
   category: infra
 - id: S23
