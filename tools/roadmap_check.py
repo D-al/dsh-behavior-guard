@@ -307,6 +307,12 @@ def fmt_list(v):
 BENEFIT_NUM = {'极高': 5, '高': 4, '中高': 3, '中': 2, '中低': 1.5, '低': 1}
 COST_NUM = {'低': 1, '中低': 2, '中': 3, '中高': 4, '高': 5, '极高': 6}
 HINT_ORDER = {'normal': 0, 'blocked': 1, 'explore': 2, 'last': 3}
+# 语义分类标签（ID 保持稳定，分类可演进；2026-11-21）
+CATEGORY_LABEL = {'short': '短期', 'mind': '心智', 'infra': '工程',
+                  'longterm': '长期', 'governance': '治理', 'autonomy': '自主'}
+
+def cat_label(item):
+    return CATEGORY_LABEL.get((item or {}).get('category'), '未分类')
 
 
 def _level_num(s, table):
@@ -483,7 +489,7 @@ def render_future_cards(data, mirror):
             tier = c.get('tier', '-')
             st = sm.get(c['id'])
             title = c.get('title', s.get('title', ''))
-            out.append(f'<details><summary>`{c["id"]}` {title} · {st} · 依赖 {deps} → 解锁 {unlocks} · tier {tier}</summary>')
+            out.append(f'<details><summary>[{cat_label(s or c)}] `{c["id"]}` {title} · {st} · 依赖 {deps} → 解锁 {unlocks} · tier {tier}</summary>')
             out.append('')
             out.extend(_card_detail_lines(c, s if s else {c['id']: c}))
             n, tot = _verify_status(data, c)
@@ -512,7 +518,7 @@ def render_done_cards(data, mirror):
            '']
     for i in done:
         title = i.get('title', sem.get(i['id'], {}).get('title', ''))
-        out.append(f'<details><summary>✅ `{i["id"]}` {title}</summary>')
+        out.append(f'<details><summary>✅ [{cat_label(sem.get(i["id"], i))}] `{i["id"]}` {title}</summary>')
         out.append('')
         out.extend(_card_detail_lines(i, sem))
         n, tot = _verify_status(data, i)

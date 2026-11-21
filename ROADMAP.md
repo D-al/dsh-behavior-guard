@@ -20,7 +20,7 @@
 >
 > | 候选 | risk | tier | 判据 | 说明 |
 > |---|---|---|---|---|
-> | `M10`  | low | 2 | 4/4 | tier=2，排在后面 |
+> | `M10`  | low | 2 | 5/6 | tier=2，排在后面 |
 > | `S13` **← 选中** | low | 1 | 0/3 | tier=2，排在后面 |
 > | `S18`  | low | 1 | 0/2 | tier=2，排在后面 |
 > | `S19`  | low | 1 | 0/2 | tier=2，排在后面 |
@@ -37,7 +37,7 @@
 
 #### 现在能做 / 进行中（7）
 
-<details><summary>`M10` 会话生命周期治理（刹车） · ready · 依赖 A1 → 解锁 — · tier 2</summary>
+<details><summary>[心智] `M10` 会话生命周期治理（刹车） · ready · 依赖 A1 → 解锁 — · tier 2</summary>
 
 - **做什么**：进程外可靠刹车(kill_switch.py:事件指纹检测非进展→L1告警/L2cancel/L3硬杀) + 任务级上下文(taskProfile根治4假阳性) + loop_breaker告警 + 开新会话前硬件三层检查
 - **为什么**：2026-11-20 僵尸会话复活改坏 index.mjs；我误判"dsh 无终止 API"（只查 REST 404，实际走 cordis sessionController.cancel）；双会话并行险些 again
@@ -45,11 +45,11 @@
 - **对 agent 的好处**：有硬刹车（不靠模型自愿 STOP）+ 不再双会话并行 + 并行时有组织地分盯
 - **坑/边界**：不能误杀正常推理中的会话（必须有明确的无进展判据）；停止必须是幂等的、可复查的
 - **何时停**：停止机制误杀正常会话，或 dsh 侧根本没有可用的会话控制通道
-- **机器判据**：4/4 通过
+- **机器判据**：5/6 通过
 
 </details>
 
-<details><summary>`S13` verifyRan收紧（read≠验证） · ready · 依赖 A1 → 解锁 — · tier 1</summary>
+<details><summary>[工程] `S13` verifyRan收紧（read≠验证） · ready · 依赖 A1 → 解锁 — · tier 1</summary>
 
 - **做什么**：把 index.mjs:913 的"read/cat 即 verifyRan"收紧为真实验证证据（语法检查/测试命令/verify_agent），解决A1_6反复read却被认为验证过的假绿
 - **为什么**：:913规则当年为修25/26回归误判加的宽松判断，现在成了"读循环被当成验证"的源头——A1_6连续6次read同段无write却一路绿灯
@@ -61,7 +61,7 @@
 
 </details>
 
-<details><summary>`S18` 自改进正则化（RRSI 纪律） · ready · 依赖 A1 → 解锁 S19、S20、S21 · tier 1</summary>
+<details><summary>[治理] `S18` 自改进正则化（RRSI 纪律） · ready · 依赖 A1 → 解锁 S19、S20、S21 · tier 1</summary>
 
 - **做什么**：给 agentlab/projectlab 切 30% hold-out 任务永不用于选卡；一次只改一个可归因机制；先测基线方差设噪声地板（±10%内不算提升）；新增机制须证 token/时间收益；定期剪枝无收益守卫。
 - **为什么**：RRSI(arXiv2609.24972)：无正则自改进 OOD 跌破初始基线；增益归因研究 54% 过拟合+14% test-time scaling；我们明知±10%却没当判据。
@@ -73,7 +73,7 @@
 
 </details>
 
-<details><summary>`S19` CritBank 校准门禁（CEB 路线） · ready · 依赖 A1 → 解锁 S20 · tier 1</summary>
+<details><summary>[治理] `S19` CritBank 校准门禁（CEB 路线） · ready · 依赖 A1 → 解锁 S20 · tier 1</summary>
 
 - **做什么**：CritBank 条目加 hindsight 伪标签 ŷ（V=5 投票）与当初一致性标志 χ；按 B+/B- 正负对照检索；冻结 critic 执行前给 confidence，低置信转人工/重规划。
 - **为什么**：CEB(arXiv2607.12397)复合键(task,state,action)与我们逐字同构；3bench×3backbone 9/9 组合 ECE/Brier/AUC 全胜、ECE 最多-54%；记忆放 critic 侧非 actor 侧。
@@ -85,7 +85,7 @@
 
 </details>
 
-<details><summary>`S21` 验证层去自审（质量压倒多样性） · ready · 依赖 A1 → 解锁 — · tier 1</summary>
+<details><summary>[治理] `S21` 验证层去自审（质量压倒多样性） · ready · 依赖 A1 → 解锁 — · tier 1</summary>
 
 - **做什么**：Critic/Planner 不再 35B 自审：proposer 用最强模型多次采样(Self-MoA式)；能断言的判断下沉到 Python 规则/测试/哈希；必须 LLM judge 时成对交换顺序+独立 rubric+人工抽检。弱模型只做门控/校验/快速路径，不做最终语义裁决。
 - **为什么**：Self-MoA(2502.00674)最强采样比混合+6.6分；JudgeBench(2410.12784)GPT-4o客观判断50.9%=抛硬币；会话Q13/Q19协调者悖论。
@@ -97,7 +97,7 @@
 
 </details>
 
-<details><summary>`S22` 工具面收敛（28→18-20） · ready · 依赖 — → 解锁 — · tier 1</summary>
+<details><summary>[工程] `S22` 工具面收敛（28→18-20） · ready · 依赖 — → 解锁 — · tier 1</summary>
 
 - **做什么**：把 28 个工具收敛到 18-20 个：合并重叠工具、低频工具改按需加载、description 写成触发条件（what+when to use）并监控描述碰撞。
 - **为什么**：社区判据：10+工具就该考虑裁剪，弱模型拐点12-15；Anthropic Skills 结论"大多数技能失败是检索失败伪装成指令失败"；描述碰撞是规模化真正上限。
@@ -109,7 +109,7 @@
 
 </details>
 
-<details><summary>`STRAT1` 战略陈述（模型只读顶层约束） · ready · 依赖 — → 解锁 S18、S19、S20、S21 · tier 0</summary>
+<details><summary>[治理] `STRAT1` 战略陈述（模型只读顶层约束） · ready · 依赖 — → 解锁 S18、S19、S20、S21 · tier 0</summary>
 
 - **做什么**：新建 STRATEGY.md：一句话终极目标 + 可观测成功标准 + 明确非目标 + 战略假设；由人类设定，模型只读；consistency_guard 校验其哈希未被改动。
 - **为什么**：77轮战略会话[109]诊断"路线图围绕技术打转因无战略顶层约束"；RRSI/Harness² 证明自改进者会 objective hacking，判据外置才有治理。
@@ -123,7 +123,7 @@
 
 #### 后续排队（backlog，按 tier 分层）（13）
 
-<details><summary>`A2` 会指路（自动勾选，只写权威源） · backlog · 依赖 A1 → 解锁 — · tier 1</summary>
+<details><summary>[自主] `A2` 会指路（自动勾选，只写权威源） · backlog · 依赖 A1 → 解锁 — · tier 1</summary>
 
 - **做什么**：roadmap_check.py 自动勾选确定性条目，只写权威源
 - **为什么**：把人从"每次勾选"解放到"审 git diff"，闸门上移但不取消
@@ -136,7 +136,7 @@
 
 </details>
 
-<details><summary>`A3` 会迈步（预批低风险队列取任务） · backlog · 依赖 A2 → 解锁 — · tier 1</summary>
+<details><summary>[自主] `A3` 会迈步（预批低风险队列取任务） · backlog · 依赖 A2 → 解锁 — · tier 1</summary>
 
 - **做什么**：watcher 从人工预批的低风险队列取任务，执行→gate→写回
 - **为什么**：没人按"开始走"按钮，自进化 P3 一直没启动
@@ -149,7 +149,7 @@
 
 </details>
 
-<details><summary>`A4` 会转弯（旁路 meta_decision） · backlog · 依赖 A3_5 → 解锁 — · tier 2</summary>
+<details><summary>[自主] `A4` 会转弯（旁路 meta_decision） · backlog · 依赖 A3_5 → 解锁 — · tier 2</summary>
 
 - **做什么**：把 D1 重复探测等信号从 prompt 软提示升级为旁路 meta_decision 决策器
 - **为什么**：控制回合只是 prompt 反思，代码无 abandon/skip 路径
@@ -162,7 +162,7 @@
 
 </details>
 
-<details><summary>`A5` 自己走（常驻闭环） · backlog · 依赖 A1、A2、A3、A3_5、A4 → 解锁 — · tier 2</summary>
+<details><summary>[自主] `A5` 自己走（常驻闭环） · backlog · 依赖 A1、A2、A3、A3_5、A4 → 解锁 — · tier 2</summary>
 
 - **做什么**：全链常驻闭环：读图→选任务→执行→验收→写回→反思→下一轮
 - **为什么**：把前面所有器官连成 24/7 自走系统
@@ -175,7 +175,7 @@
 
 </details>
 
-<details><summary>`M2` 会话树实时化 · backlog · 依赖 GWT_FEP → 解锁 — · tier 2</summary>
+<details><summary>[心智] `M2` 会话树实时化 · backlog · 依赖 GWT_FEP → 解锁 — · tier 2</summary>
 
 - **做什么**：让 session_tree.py 从事后分析变实时写 parent 指针，支持从任一节点 fork
 - **为什么**：现在只能事后重建会话树，无法在长任务中实时知道"我现在是哪条支线"
@@ -188,7 +188,7 @@
 
 </details>
 
-<details><summary>`M3` 用户意图 BDI 三槽 · backlog · 依赖 GWT_FEP → 解锁 M9、L1 · tier 2</summary>
+<details><summary>[心智] `M3` 用户意图 BDI 三槽 · backlog · 依赖 GWT_FEP → 解锁 M9、L1 · tier 2</summary>
 
 - **做什么**：把 s.bdi 单槽升级成 belief/desire/intention 三槽，承载用户意图跨压缩不丢
 - **为什么**：单槽装不下"用户要什么/信什么/打算怎么做"，压缩后约束丢失，意图漂移检测无状态可依
@@ -201,7 +201,7 @@
 
 </details>
 
-<details><summary>`M9` 意图分类器 · backlog · 依赖 M3 → 解锁 L1 · tier 2</summary>
+<details><summary>[心智] `M9` 意图分类器 · backlog · 依赖 M3 → 解锁 L1 · tier 2</summary>
 
 - **做什么**：用意图分类器填 BDI 意图槽，高置信直接用、低置信交三角色
 - **为什么**：规则判意图太脆，但本机 8G 挂 embedding 编码器不可行
@@ -214,7 +214,7 @@
 
 </details>
 
-<details><summary>`S20` Critique 编译为结构化 delta（ACE 路线） · backlog · 依赖 S19 → 解锁 — · tier 2</summary>
+<details><summary>[治理] `S20` Critique 编译为结构化 delta（ACE 路线） · backlog · 依赖 S19 → 解锁 — · tier 2</summary>
 
 - **做什么**：引入 Generator/Reflector/Curator 三角色分离：Curator 把 critique 转成带 helpful/harmful 计数器的结构化 delta，做确定性 dedup/merge/prune，增量更新而非全文重写。
 - **为什么**：ACE(ICLR2026 arXiv2510.04618)相对 GEPA 延迟-82.3%/rollout-75.1%/token-80.8%，agent+10.6%；增量 delta 避免 context collapse。
@@ -226,7 +226,7 @@
 
 </details>
 
-<details><summary>`L1` FEP 深化 → 世界模型 · backlog · 依赖 M1、M3、M9 → 解锁 — · tier 4</summary>
+<details><summary>[长期] `L1` FEP 深化 → 世界模型 · backlog · 依赖 M1、M3、M9 → 解锁 — · tier 4</summary>
 
 - **做什么**：FEP 从"产物是否存在"升级为"产物内容满足 what"的世界模型断言
 - **为什么**：存在性判据太浅，产物写错内容也能过
@@ -238,7 +238,7 @@
 
 </details>
 
-<details><summary>`L2` 标准化 eval · backlog · 依赖 — → 解锁 L1 · tier 4</summary>
+<details><summary>[长期] `L2` 标准化 eval · backlog · 依赖 — → 解锁 L1 · tier 4</summary>
 
 - **做什么**：把自建 P3/P4/P5 评测迁移到 SWE-bench Verified 子集
 - **为什么**：自建 bench 无法与社区同基准可比，外部效度存疑
@@ -250,7 +250,7 @@
 
 </details>
 
-<details><summary>`L6` 专属误差预测器 · backlog · 依赖 M8 → 解锁 — · tier 4</summary>
+<details><summary>[长期] `L6` 专属误差预测器 · backlog · 依赖 M8 → 解锁 — · tier 4</summary>
 
 - **做什么**：用 trace + 35B 标注训 0.5B 二分类误差预测器
 - **为什么**：由 M8 的 FSM 局部信号解锁，不再空中楼阁
@@ -262,7 +262,7 @@
 
 </details>
 
-<details><summary>`L7` FAKEOK 抑制（探索） · backlog · 依赖 — → 解锁 — · tier 4</summary>
+<details><summary>[长期] `L7` FAKEOK 抑制（探索） · backlog · 依赖 — → 解锁 — · tier 4</summary>
 
 - **做什么**：验证"防提前假装完成"的轻量机制
 - **为什么**：S4 发现提示让 FAKEOK→PASS（token 未降）
@@ -274,7 +274,7 @@
 
 </details>
 
-<details><summary>`L8` 多标签心智编码器 · backlog · 依赖 GWT_FEP → 解锁 — · tier 4</summary>
+<details><summary>[长期] `L8` 多标签心智编码器 · backlog · 依赖 GWT_FEP → 解锁 — · tier 4</summary>
 
 - **做什么**：一个前向同时输出意图+风险+难度，写进 GWT 共享状态
 - **为什么**：现在三个判断分散，128 标签仅掉 7-20% 吞吐可行
@@ -288,7 +288,7 @@
 
 #### 需人工拍板（manual-blocked）（7）
 
-<details><summary>`L3` 脑功能分区空白区 · manual-blocked · 依赖 — → 解锁 — · tier 4</summary>
+<details><summary>[长期] `L3` 脑功能分区空白区 · manual-blocked · 依赖 — → 解锁 — · tier 4</summary>
 
 - **做什么**：补眶额价值/脑干稳态的脑功能空白
 - **为什么**：BRAIN_PARITY 盘点的空白区
@@ -300,7 +300,7 @@
 
 </details>
 
-<details><summary>`L4` 独立轨道（上游 PR） · manual-blocked · 依赖 — → 解锁 — · tier 4</summary>
+<details><summary>[长期] `L4` 独立轨道（上游 PR） · manual-blocked · 依赖 — → 解锁 — · tier 4</summary>
 
 - **做什么**：上游 autoparser PR 合并后撤本地补丁，升级引擎
 - **为什么**：跟上游减少维护负担
@@ -312,7 +312,7 @@
 
 </details>
 
-<details><summary>`L5` 小模型 Critic 预警（降级） · manual-blocked · 依赖 — → 解锁 — · tier 4</summary>
+<details><summary>[长期] `L5` 小模型 Critic 预警（降级） · manual-blocked · 依赖 — → 解锁 — · tier 4</summary>
 
 - **做什么**：86M 小模型 Critic 做轻量预警
 - **为什么**：0.6B 扫一次 5s 不实用；但小 judge 一致率仅 45-60%，需谨慎
@@ -324,7 +324,7 @@
 
 </details>
 
-<details><summary>`M5` 工具面结构改造 · manual-blocked · 依赖 — → 解锁 — · tier 3</summary>
+<details><summary>[心智] `M5` 工具面结构改造 · manual-blocked · 依赖 — → 解锁 — · tier 3</summary>
 
 - **做什么**：把 28 个工具收敛到最小内核，低频能力进 skill 卡
 - **为什么**：工具面过宽会退化:Anthropic官方"10+ tools就该考虑"(Tool Use Examples 72→90%)、弱模型拐点12-15(社区实测)、Prosodica 10工具78%→100工具<40%。旧"上限约40"已被推翻——它是模型/描述相关拐点非硬上限。哪些进内核仍是产品判断
@@ -336,7 +336,7 @@
 
 </details>
 
-<details><summary>`M7` 格式修复器（降级） · manual-blocked · 依赖 — → 解锁 — · tier 3</summary>
+<details><summary>[心智] `M7` 格式修复器（降级） · manual-blocked · 依赖 — → 解锁 — · tier 3</summary>
 
 - **做什么**：格式修复器：只做格式重写、不判断对错，35B 首轮兜底
 - **为什么**：模型输出格式错误浪费后续步骤，但前置 86M 分类器还没验证
@@ -348,7 +348,7 @@
 
 </details>
 
-<details><summary>`S10` 推理活性判据纠偏（取消单帧采样） · manual-blocked · 依赖 A1 → 解锁 — · tier 1</summary>
+<details><summary>[工程] `S10` 推理活性判据纠偏（取消单帧采样） · manual-blocked · 依赖 A1 → 解锁 — · tier 1</summary>
 
 - **做什么**：废除"单帧硬件快照判推理活性"，改用 token 计数连续采样(n_decoded/n_prompt_tokens 5-10秒增长)作为唯一判据
 - **为什么**：我用单帧100%/1%/25W误判为spin-wait并开卡，用户实证两窗口全开推理正常；相位间隙的瞬态被当成稳态
@@ -360,7 +360,7 @@
 
 </details>
 
-<details><summary>`S6_model` S6 模型层升级 · manual-blocked · 依赖 S6_rule → 解锁 — · tier 3</summary>
+<details><summary>[短期] `S6_model` S6 模型层升级 · manual-blocked · 依赖 S6_rule → 解锁 — · tier 3</summary>
 
 - **做什么**：S6 从规则层升级到 86M Prompt-Guard 模型层
 - **为什么**：规则层够用；模型层是误报率兜底，但 FPR 98% 的教训在前
@@ -407,7 +407,7 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 ### 已完成哪些卡（33 张，展开看详情）
 > 唯一清单——每张卡点开可见做什么/为什么/依赖/判据；历史归档见 CHANGELOG。
 
-<details><summary>✅ `A0` 数据可信（sid 黑名单）</summary>
+<details><summary>✅ [自主] `A0` 数据可信（sid 黑名单）</summary>
 
 - **做什么**：抽 test_sids.json 黑名单，让 4 个消费脚本统一过滤测试 sid
 - **为什么**：trace 91%、pendingLearn 95.7% 是 s1 假数据；不清洗，后面所有自动判断都建立在沙子上
@@ -416,11 +416,11 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 - **坑/边界**：黑名单要覆盖 s1/outcome-/budget-*/b7332eb6 等；只过滤不删数据本体（可逆）；[C-08] 判据路径必须和文件实际落点一致：bench/ 前缀会被解析到 BENCH_DIR，不是权威仓库根
 - **做完要反思**：过滤后真实数据占比多少？还有哪种假数据没被黑名单抓到？；有没有真实 sid 被误过滤？
 - **何时停**：过滤后真实样本<100 行，不足以支撑后续判断
-- **机器判据**：4/4 通过
+- **机器判据**：5/5 通过
 
 </details>
 
-<details><summary>✅ `A1` 会记路（机器判据 + dry-run 核验）</summary>
+<details><summary>✅ [自主] `A1` 会记路（机器判据 + dry-run 核验）</summary>
 
 - **做什么**：给路线图补机器判据 + roadmap_check.py dry-run 核验
 - **为什么**：路线图已可机器写回(--apply)，但人工勾选仍占多数，autonomous 地基待补
@@ -433,7 +433,7 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 
 </details>
 
-<details><summary>✅ `A3_5` 安全地基（真实 diff + e2e + 回滚）</summary>
+<details><summary>✅ [自主] `A3_5` 安全地基（真实 diff + e2e + 回滚）</summary>
 
 - **做什么**：gate 升级真实 diff 校验 + deploy_with_rollback + 廉价 e2e
 - **为什么**：现在 surface_check 只做字符串匹配、无 e2e、无回滚——让 agent 改自己的大脑却没人验证
@@ -442,11 +442,11 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 - **坑/边界**：廉价 e2e = node --check + 全量 test_*.mjs + config_check.py；排除 verify_agent.py（35B 600s）；快照落权威源外的 archive/
 - **做完要反思**：diff 校验拦住过哪种绕过？；回滚触发过几次，都是什么原因？
 - **何时停**：e2e 假阴性（把好改动判坏）反复出现
-- **机器判据**：2/2 通过
+- **机器判据**：3/3 通过
 
 </details>
 
-<details><summary>✅ `A1_5` 判据元验证（防假绿）</summary>
+<details><summary>✅ [自主] `A1_5` 判据元验证（防假绿）</summary>
 
 - **做什么**：写 check_verify.py 检测判据自身的四类病：自引用递归、格式不匹配、恒真判据、测试sid污染
 - **为什么**：A1 判据曾递归6分钟不停、^PASS格式不匹配假FAIL、管道吞rc假绿；A1只管卡状态核验，不管判据本身可信
@@ -458,7 +458,7 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 
 </details>
 
-<details><summary>✅ `A1_6` 守卫 L1 补将来时承诺检测</summary>
+<details><summary>✅ [自主] `A1_6` 守卫 L1 补将来时承诺检测</summary>
 
 - **做什么**：把 guardDecide 的 L1 从只校验过去时声明（已写入X）扩展到将来时承诺（现在写X/接下来创建X），要求承诺的产物在本轮真实产生
 - **为什么**：2026-11-20 A1_5 会话输出"现在进入核心：编写 check_verify.py"后结束回合、文件不存在——WRITE_CLAIM 只匹配过去时，将来时承诺穿过 L0-L3 全部防线，是"只输出好"的新变体
@@ -470,7 +470,7 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 
 </details>
 
-<details><summary>✅ `A1_7` 评审机制可观测性</summary>
+<details><summary>✅ [自主] `A1_7` 评审机制可观测性</summary>
 
 - **做什么**：给 Critic/Planner 调用加专属 trace 打点（rubric_version/dimensions_checked/verdict），让每个评审机制有可审计的触发证据
 - **为什么**：2026-11-20 审计发现：新加的 Critic第6维/Planner假设披露确实进了 prompt，但 callLLM 只记 kind=llm，无法证明评审真的用了新维度——违反证据分层铁律
@@ -478,11 +478,11 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 - **对 agent 的好处**：机制上线后能回答"它今天到底触发了吗、拦了什么"——不再靠"代码里写了"自我安慰
 - **坑/边界**：打点必须含 verdict 和具体维度，不能只记"调用过"造成另一种假绿；trace 写失败不能影响主评审流程
 - **何时停**：无法在不改 callLLM 签名的前提下拿到 rubric 版本与维度判定
-- **机器判据**：3/3 通过
+- **机器判据**：4/4 通过
 
 </details>
 
-<details><summary>✅ `S15` 选择性验证深度（ Selective Verification）</summary>
+<details><summary>✅ [工程] `S15` 选择性验证深度（ Selective Verification）</summary>
 
 - **做什么**：把当前"每步无差别守卫 + present 前全量 Critic"改成门控式——低风险步骤跳过，只对高风险步骤做深度验证（多候选+独立评审）
 - **为什么**：2026-11-21 生产实证：无差别守卫把两步任务拖进 C-REJECT 死循环；SWE-Verifier 证明选择性验证以 <4% 验证率取得 +1.73pp 且成本仅 1.09×，全步验证 2.03× 反不提升
@@ -494,7 +494,7 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 
 </details>
 
-<details><summary>✅ `S16` 工具描述瘦身与示例</summary>
+<details><summary>✅ [工程] `S16` 工具描述瘦身与示例</summary>
 
 - **做什么**：给高频工具的 schema 补 1-5 个 input_examples（最小/歧义/错误恢复各一），并测算工具定义总 token；作为 M5 工具面收敛的轻量替代
 - **为什么**：Anthropic 内部测试 Tool Use Examples 把复杂参数准确率 72%→90%；本机工具面 28 个已在风险区，但砍工具需用户拍板，补示例零风险
@@ -506,7 +506,7 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 
 </details>
 
-<details><summary>✅ `S17` 函数外置模式推广（自修改地基）</summary>
+<details><summary>✅ [工程] `S17` 函数外置模式推广（自修改地基）</summary>
 
 - **做什么**：按 docs/REFACTOR_PATTERN_20261121.md 的四段式模式，把剩余 13 个嵌套函数外置成"纯函数+单测+内联+集成测试"；先从 3 个无依赖纯函数开始
 - **为什么**：合成心智需要 agent 能安全自修改；嵌套函数边界不清、无单测，agent 改自己时无法证明等价。taskProfile 已示范模式并验证可行
@@ -518,7 +518,7 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 
 </details>
 
-<details><summary>✅ `S1` Self-Harness P0-P2</summary>
+<details><summary>✅ [短期] `S1` Self-Harness P0-P2</summary>
 
 - **做什么**：Self-Harness P0-P2 纳入路线图 + 35B 真提案落候选
 - **为什么**：让 agent 自主读写能力阶梯，不用人工勾选
@@ -530,7 +530,7 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 
 </details>
 
-<details><summary>✅ `S2` 可控遗忘常态化</summary>
+<details><summary>✅ [短期] `S2` 可控遗忘常态化</summary>
 
 - **做什么**：真实计数 + 月度 decay + 假记忆自检
 - **为什么**：旧经验不沉淀会占空间，新经验不筛选会污染判断
@@ -542,7 +542,7 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 
 </details>
 
-<details><summary>✅ `S3` 频次收尾（trace 带 turn/controlTotal）</summary>
+<details><summary>✅ [短期] `S3` 频次收尾（trace 带 turn/controlTotal）</summary>
 
 - **做什么**：trace 带 turn/controlTotal 字段
 - **为什么**：没有频次信息就无法做衰减和过滤
@@ -553,7 +553,7 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 
 </details>
 
-<details><summary>✅ `S4` 自适应 A/B</summary>
+<details><summary>✅ [短期] `S4` 自适应 A/B</summary>
 
 - **做什么**：adaptiveThinkEnabled 默认值验证
 - **为什么**：token 消耗需要自适应机制
@@ -565,7 +565,7 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 
 </details>
 
-<details><summary>✅ `S5` 角色失效修复</summary>
+<details><summary>✅ [短期] `S5` 角色失效修复</summary>
 
 - **做什么**：静默失败 / Critic 0% / 验收员触发修复
 - **为什么**：角色静默失败导致验证链断裂
@@ -576,7 +576,7 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 
 </details>
 
-<details><summary>✅ `S6` 注入检测</summary>
+<details><summary>✅ [短期] `S6` 注入检测</summary>
 
 - **做什么**：规则层已在线 + trace kind injection_hit>0
 - **为什么**：防止外部注入篡改 agent 行为
@@ -588,7 +588,7 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 
 </details>
 
-<details><summary>✅ `S7` CPU 小模型基准</summary>
+<details><summary>✅ [短期] `S7` CPU 小模型基准</summary>
 
 - **做什么**：0.6B CPU 分类 4-2s 基准
 - **为什么**：证伪实时外设可行性（边缘设备 392ms vs 本机 4.2s）
@@ -600,7 +600,7 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 
 </details>
 
-<details><summary>✅ `S8` 审计自校准落盘</summary>
+<details><summary>✅ [短期] `S8` 审计自校准落盘</summary>
 
 - **做什么**：审计结果可追溯 + 自动反馈到路线图
 - **为什么**：没有持久化审计就不知道 agent 是否按路线图走
@@ -611,7 +611,7 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 
 </details>
 
-<details><summary>✅ `S9` 有状态反馈</summary>
+<details><summary>✅ [短期] `S9` 有状态反馈</summary>
 
 - **做什么**：review loop 有状态不丢上下文
 - **为什么**：无状态 review 每次都是新会话，无法积累改进
@@ -622,7 +622,7 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 
 </details>
 
-<details><summary>✅ `M4` 注入预算 token 化</summary>
+<details><summary>✅ [心智] `M4` 注入预算 token 化</summary>
 
 - **做什么**：token 级预算控制安全注入
 - **为什么**：注入检测不能无限消耗资源
@@ -634,7 +634,7 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 
 </details>
 
-<details><summary>✅ `M6` 安全规则不可覆盖</summary>
+<details><summary>✅ [心智] `M6` 安全规则不可覆盖</summary>
 
 - **做什么**：声明 + 测试：安全规则不可被 skill/prompt/用户指令覆盖
 - **为什么**：防止任何方式绕过安全底线
@@ -646,7 +646,7 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 
 </details>
 
-<details><summary>✅ `GWT_FEP_done` GWT 共享状态总线 + FEP 预期闭环</summary>
+<details><summary>✅ [工程] `GWT_FEP_done` GWT 共享状态总线 + FEP 预期闭环</summary>
 
 - **做什么**：胼胝体（GWT）+ 小脑（FEP）共享状态闭环
 - **为什么**：多器官需要统一通信机制
@@ -657,7 +657,7 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 
 </details>
 
-<details><summary>✅ `archive_dedup` 压缩存档去重</summary>
+<details><summary>✅ [工程] `archive_dedup` 压缩存档去重</summary>
 
 - **做什么**：角色失效诊断 + 过程折叠
 - **为什么**：重复存档浪费空间且干扰判断
@@ -668,7 +668,7 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 
 </details>
 
-<details><summary>✅ `regression_106` 回归审计 106 PASS / 0 FAIL</summary>
+<details><summary>✅ [工程] `regression_106` 回归审计 106 PASS / 0 FAIL</summary>
 
 - **做什么**：深度维护审计（8 P0 + 9 P1 修复）
 - **为什么**：确保所有修复经得起测试验证
@@ -679,29 +679,29 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 
 </details>
 
-<details><summary>✅ `gpu_guard` GPU 引擎守护</summary>
+<details><summary>✅ [工程] `gpu_guard` GPU 引擎守护</summary>
 
 - **做什么**：GPU 自检通过 + 同族对标
 - **为什么**：GPU 是推理基础设施，必须持续可用
 - **依赖 → 解锁**：ground → —
 - **对 agent 的好处**：不因硬件/驱动问题导致推理中断
 - **何时停**：—
-- **机器判据**：1/1 通过
+- **机器判据**：2/2 通过
 
 </details>
 
-<details><summary>✅ `watcher_freq3` learn_watcher 频次三层改造</summary>
+<details><summary>✅ [工程] `watcher_freq3` learn_watcher 频次三层改造</summary>
 
 - **做什么**：频次三层改造：语法 OK；心跳 [deep] 每 10 分钟
 - **为什么**：监控频率需要分层管理不同场景
 - **依赖 → 解锁**：S1_data → —
 - **对 agent 的好处**：按需调整监控粒度，不浪费资源
 - **何时停**：—
-- **机器判据**：0/1 通过
+- **机器判据**：2/3 通过
 
 </details>
 
-<details><summary>✅ `rebaseline` 路线图重定基线</summary>
+<details><summary>✅ [工程] `rebaseline` 路线图重定基线</summary>
 
 - **做什么**：短期全完成、M4/M1 升首档、M7/L5 降级、L7 新增
 - **为什么**：v2.23 短期全部完成需重新评估优先级
@@ -713,7 +713,7 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 
 </details>
 
-<details><summary>✅ `outcome_all` 结果反馈捕获 / 确定性门控 / 三角色 / P0-P2 心智拼图</summary>
+<details><summary>✅ [工程] `outcome_all` 结果反馈捕获 / 确定性门控 / 三角色 / P0-P2 心智拼图</summary>
 
 - **做什么**：v2.0~v2.9 核心机制集
 - **为什么**：地基级机制确保 agent 基本行为正确
@@ -725,7 +725,7 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 
 </details>
 
-<details><summary>✅ `M1` 情景检索进主循环</summary>
+<details><summary>✅ [心智] `M1` 情景检索进主循环</summary>
 
 - **做什么**：把离线 es.exe 检索接进控制回合，长任务里自动注入 top-3 历史经验
 - **为什么**：历史经验现在躺在 trace/日志里靠人肉搬运；长任务反复踩同样的坑，缺"想起来"这一环
@@ -738,7 +738,7 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 
 </details>
 
-<details><summary>✅ `M8` 轨迹 FSM 监控器</summary>
+<details><summary>✅ [心智] `M8` 轨迹 FSM 监控器</summary>
 
 - **做什么**：把 8147 行 trace 压成 FSM，做局部失败预测（重复探测/路径解析/工具报错）
 - **为什么**：长轨迹因果归因交主模型只有 0.56≈随机；但局部可观察信号（FSM）实测 AUROC 0.94，是可靠的前置预警
@@ -751,7 +751,7 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 
 </details>
 
-<details><summary>✅ `S11` 写后校验覆盖全部写工具</summary>
+<details><summary>✅ [工程] `S11` 写后校验覆盖全部写工具</summary>
 
 - **做什么**：把 verify-on-edit 从只覆盖 write/edit 扩展到 DEFAULT_WRITE_TOOLS 全部8种（apply_patch/multi_edit/create_file/str_replace/write_file/notebook_edit），每种按扩展名跑对应语法校验
 - **为什么**：真实trace显示write 0%失败但edit 11.8%失败；verify-on-edit(index.mjs:1042)只认write/edit，其余6种写工具零校验——假绿温床
@@ -759,11 +759,11 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 - **对 agent 的好处**：所有写入路径都有语法护栏，不再有"换了写工具就绕过校验"
 - **坑/边界**：别让校验失败阻断正常写入（拦=纠错消息而非硬失败）；扩展名映射要覆盖.mjs/.js/.py/.json/.yaml
 - **何时停**：无法在不改dsh原生工具的前提下拿到写后内容
-- **机器判据**：2/2 通过
+- **机器判据**：3/3 通过
 
 </details>
 
-<details><summary>✅ `S12` 补丁应用闭环（禁写脚本不落地）</summary>
+<details><summary>✅ [工程] `S12` 补丁应用闭环（禁写脚本不落地）</summary>
 
 - **做什么**：检测"写了修复脚本但没真正应用"的模式：补丁脚本(_apply_*.py/_fix_*.py)写入后必须有对应的apply证据（目标文件mtime变化+语法通过），否则守卫提示"脚本已写但未应用"
 - **为什么**：A1_6一张卡留下5个补丁脚本全没应用，浪费几十分钟——"写了脚本"≠"应用了脚本"是新变体的说要做不做
@@ -775,7 +775,7 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 
 </details>
 
-<details><summary>✅ `S14` 编辑协议升级（降低复现负担）</summary>
+<details><summary>✅ [工程] `S14` 编辑协议升级（降低复现负担）</summary>
 
 - **做什么**：把 AGENTS.md:105 的裸 read→edit 升级为"短文件(<400行)整块输出、长文件紧邻重读+最短唯一锚点、压缩后强制重读"；失败时回灌精确差异(edit-doctor模式)。不押注结构化diff格式——Diff-XYZ证明小模型换格式收益很小
 - **为什么**：学术证据:RoPE 1D归纳偏置致精确复制失败(arXiv:2607.16072);Diff-XYZ(NeurIPS25w,arXiv:2510.12487)明确"smaller open models benefit little from any formatting choice";Aider 26→59%是GPT-4大模型数据不可套用到35B;Claude Code #26996 tab→空格致6连败;edit-doctor旁路诊断第二次即成功。C-010正是压缩后凭记忆重建1300字符old_string截断
@@ -787,7 +787,7 @@ FEP 注入曾挤掉 D5 审计额度，反向促成"学习信号不占运行时�
 
 </details>
 
-<details><summary>✅ `S23` 前缀 KV 稳定性守护</summary>
+<details><summary>✅ [工程] `S23` 前缀 KV 稳定性守护</summary>
 
 - **做什么**：把 harness 改动纳入"是否使 prompt 前缀失效"的评估：工具定义/指令放前缀后部；不因小改使整个 cache 失效；改动前后测 prefill 差异。
 - **为什么**：9000 token 前缀 KV cold 1.77s vs hot 0.03s(60×)；印证我们"CTX_CHECKPOINTS 承重墙(降到1→+23%)"实测；频繁小改可能比少改但改对更慢。

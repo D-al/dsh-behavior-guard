@@ -103,6 +103,7 @@ items:
   caveats:
   - 只在白名单+预算内
   cost: 低
+  category: short
 - id: S2
   title: 可控遗忘常态化
   tier: 1
@@ -121,6 +122,7 @@ items:
   caveats:
   - decay 周期按实际频率调
   cost: 低
+  category: short
 - id: S3
   title: 频次收尾（trace 带 turn/controlTotal）
   tier: 1
@@ -138,6 +140,7 @@ items:
   benefit_to_self: 知道哪些经验高频出现，值得优先保留
   caveats: []
   cost: 低
+  category: short
 - id: S4
   title: 自适应 A/B
   tier: 2
@@ -156,6 +159,8 @@ items:
   - DoD 要求'token 降且成功率不降'
   - 单次 FAIL→PASS 有噪声
   cost: 中
+  verify_type: document
+  category: short
 - id: S5
   title: 角色失效修复
   tier: 2
@@ -173,6 +178,7 @@ items:
   benefit_to_self: 每个角色都有效运转，不漏掉任何一环
   caveats: []
   cost: 低
+  category: short
 - id: S6
   title: 注入检测
   tier: 2
@@ -191,6 +197,7 @@ items:
   caveats:
   - 模型层 86M 未做
   cost: 中
+  category: short
 - id: S7
   title: CPU 小模型基准
   tier: 3
@@ -209,6 +216,8 @@ items:
   - 比文献慢 10×
   - thinking 吃光 content 需 max_tokens≥512
   cost: 中
+  verify_type: document
+  category: short
 - id: S8
   title: 审计自校准落盘
   tier: 2
@@ -226,6 +235,7 @@ items:
   benefit_to_self: 知道自己做了什么、做得对不对
   caveats: []
   cost: 低
+  category: short
 - id: S9
   title: 有状态反馈
   tier: 2
@@ -243,6 +253,7 @@ items:
   benefit_to_self: 从历史 review 中学习，越评越好
   caveats: []
   cost: 低
+  category: short
 - id: M4
   title: 注入预算 token 化
   tier: 1
@@ -261,6 +272,7 @@ items:
   caveats:
   - 含安全注入双闸门豁免 P0 修复
   cost: 低
+  category: mind
 - id: M6
   title: 安全规则不可覆盖
   tier: 1
@@ -279,6 +291,7 @@ items:
   caveats:
   - 需人工确认最终方案
   cost: 高
+  category: mind
 - id: GWT_FEP_done
   title: GWT 共享状态总线 + FEP 预期闭环
   tier: 1
@@ -296,6 +309,7 @@ items:
   benefit_to_self: 各组件协同工作不冲突
   caveats: []
   cost: 低
+  category: infra
 - id: archive_dedup
   title: 压缩存档去重
   tier: 2
@@ -313,6 +327,7 @@ items:
   benefit_to_self: 存储更高效，检索更精准
   caveats: []
   cost: 低
+  category: infra
 - id: regression_106
   title: 回归审计 106 PASS / 0 FAIL
   tier: 1
@@ -330,6 +345,7 @@ items:
   benefit_to_self: 每次改动都经过自动化验证
   caveats: []
   cost: 低
+  category: infra
 - id: gpu_guard
   title: GPU 引擎守护
   tier: 1
@@ -341,11 +357,15 @@ items:
   verify:
   - kind: file_exists
     path: tools/gpu_engine_guard.py
+  - kind: test_pass
+    cmd: D:/Python/python.exe -B tools/test_gpu_guard.py
+    min: 1
   what: GPU 自检通过 + 同族对标
   why: GPU 是推理基础设施，必须持续可用
   benefit_to_self: 不因硬件/驱动问题导致推理中断
   caveats: []
   cost: 低
+  category: infra
 - id: watcher_freq3
   title: learn_watcher 频次三层改造
   tier: 1
@@ -359,11 +379,20 @@ items:
     path: tools/learn_watcher.py
     regex: freq|FREQUENCY|heartbeat
     min: 1
+  - kind: file_grep
+    path: tools/learn_watcher.py
+    regex: def digest\(|def digest_deep_only\(|def one_round\(
+    min: 3
+  - kind: test_pass
+    cmd: D:/Python/python.exe -B tools/test_freq_three_tiers.py
+    min: 1
   what: 频次三层改造：语法 OK；心跳 [deep] 每 10 分钟
   why: 监控频率需要分层管理不同场景
   benefit_to_self: 按需调整监控粒度，不浪费资源
   caveats: []
   cost: 低
+  verify_type: structural
+  category: infra
 - id: rebaseline
   title: 路线图重定基线
   tier: 2
@@ -382,6 +411,8 @@ items:
   caveats:
   - 需人工确认新优先级
   cost: 低
+  verify_type: document
+  category: infra
 - id: outcome_all
   title: 结果反馈捕获 / 确定性门控 / 三角色 / P0-P2 心智拼图
   tier: 1
@@ -409,6 +440,7 @@ items:
   caveats:
   - 见 CHANGELOG 全文
   cost: 低
+  category: infra
 - id: M1
   tier: 1
   deps:
@@ -462,6 +494,7 @@ items:
   unlocks:
   - L1
   cost: 中
+  category: mind
 - id: M8
   tier: 1
   deps:
@@ -509,6 +542,7 @@ items:
   unlocks:
   - L6
   cost: 中低
+  category: mind
 - id: M3
   tier: 2
   deps:
@@ -547,6 +581,7 @@ items:
   - M9
   - L1
   cost: 中
+  category: mind
 - id: M9
   tier: 2
   deps:
@@ -578,6 +613,7 @@ items:
   unlocks:
   - L1
   cost: 中
+  category: mind
 - id: M2
   tier: 2
   deps:
@@ -609,6 +645,7 @@ items:
   - tools/test_session_tree.mjs（新建）
   unlocks: []
   cost: 中高
+  category: mind
 - id: M5
   tier: 3
   deps: []
@@ -633,6 +670,7 @@ items:
   - 'P-USER-DECISION: 用户拍板哪些工具进内核'
   unlocks: []
   cost: 高
+  category: mind
 - id: M7
   tier: 3
   deps: []
@@ -657,6 +695,7 @@ items:
   - 'P-AB-SPEEDUP: A/B 端到端提速'
   unlocks: []
   cost: 低
+  category: mind
 - id: S6_model
   tier: 3
   deps:
@@ -679,6 +718,7 @@ items:
   abort_if: 无（manual-blocked）
   unlocks: []
   cost: 中
+  category: short
 - id: L2
   tier: 4
   deps: []
@@ -703,6 +743,7 @@ items:
   unlocks:
   - L1
   cost: 高
+  category: longterm
 - id: L6
   tier: 4
   deps:
@@ -726,6 +767,7 @@ items:
   abort_if: 无（依赖 M8 完成后人工评估）
   unlocks: []
   cost: 高
+  category: longterm
 - id: L1
   tier: 4
   deps:
@@ -753,6 +795,7 @@ items:
   - tools/test_world_model.mjs（新建）
   unlocks: []
   cost: 极高
+  category: longterm
 - id: L8
   tier: 4
   deps:
@@ -777,6 +820,7 @@ items:
   - 'P-ZH-VALIDATION: GLiClass 中文表现'
   unlocks: []
   cost: 高
+  category: longterm
 - id: L5
   tier: 4
   deps: []
@@ -801,6 +845,7 @@ items:
   - 'P-RECALL-AB: 召回 A/B>=80%'
   unlocks: []
   cost: 高
+  category: longterm
 - id: L3
   tier: 4
   deps: []
@@ -824,6 +869,7 @@ items:
   - 'P-ADR-DECISION: 是否落 ADR'
   unlocks: []
   cost: 高
+  category: longterm
 - id: L4
   tier: 4
   deps: []
@@ -848,6 +894,7 @@ items:
   - 'P-LLAMACPP-V1: v1.0.0 升级'
   unlocks: []
   cost: 高
+  category: longterm
 - id: L7
   tier: 4
   deps: []
@@ -871,6 +918,7 @@ items:
   - tools/test_fakeok.mjs（新建）
   unlocks: []
   cost: 低
+  category: longterm
 - id: M10
   title: 会话生命周期治理（刹车）
   status: ready
@@ -892,6 +940,13 @@ items:
     path: docs/SESSION_BRAKE_20261120.md
   - kind: file_exists
     path: docs/MECHANISM_TRIGGER_AUDIT_20261120.md
+  - kind: test_pass
+    cmd: node tools/test_kill_switch.mjs
+    min: 4
+  - kind: file_grep
+    path: index.mjs
+    regex: killSwitch|kill_switch
+    min: 1
   what: 进程外可靠刹车(kill_switch.py:事件指纹检测非进展→L1告警/L2cancel/L3硬杀) + 任务级上下文(taskProfile根治4假阳性)
     + loop_breaker告警 + 开新会话前硬件三层检查
   why: 2026-11-20 僵尸会话复活改坏 index.mjs；我误判"dsh 无终止 API"（只查 REST 404，实际走 cordis sessionController.cancel）；双会话并行险些
@@ -903,6 +958,7 @@ items:
   - 停止必须是幂等的、可复查的
   abort_if: 停止机制误杀正常会话，或 dsh 侧根本没有可用的会话控制通道
   unlocks: []
+  category: mind
 - id: S10
   title: 推理活性判据纠偏（取消单帧采样）
   status: manual-blocked
@@ -930,6 +986,7 @@ items:
   abort_if: 无法可靠回读单进程3D占用，或升级手段影响系统稳定性
   human_note: 2026-11-20 21:12 用户实证推翻前提：两窗口全开推理正常(n_decoded 1211→1356/5s，带宽22-29%功耗36-41W)。原"3D抢占致spin-wait"是单帧采样撞相位间隙的误判。S10原目标(降帧效果回读)前提不成立，阻塞待重定义。
   tier: 1
+  category: infra
 - id: S11
   title: 写后校验覆盖全部写工具
   status: done
@@ -946,6 +1003,9 @@ items:
     path: index.mjs
     regex: checkSyntax\(s\.lastProduct\)|verifyOnEditEnabled
     min: 1
+  - kind: test_pass
+    cmd: D:/Python/python.exe -B tools/test_edit_protocol.py
+    min: 1
   what: 把 verify-on-edit 从只覆盖 write/edit 扩展到 DEFAULT_WRITE_TOOLS 全部8种（apply_patch/multi_edit/create_file/str_replace/write_file/notebook_edit），每种按扩展名跑对应语法校验
   why: 真实trace显示write 0%失败但edit 11.8%失败；verify-on-edit(index.mjs:1042)只认write/edit，其余6种写工具零校验——假绿温床
   benefit_to_self: 所有写入路径都有语法护栏，不再有"换了写工具就绕过校验"
@@ -957,6 +1017,7 @@ items:
   claimed_at: '2026-11-20T16:57:05.100377+00:00'
   claimer: unknown-agent
   tier: 1
+  category: infra
 - id: S12
   title: 补丁应用闭环（禁写脚本不落地）
   status: done
@@ -995,6 +1056,7 @@ items:
     - 5 hits in index.mjs
     - D:\Brain\publish\dsh-behavior-guard\tools\test_patch_applied.py
     - rc=0 PASS=2
+  category: infra
 - id: S13
   title: verifyRan收紧（read≠验证）
   status: ready
@@ -1022,6 +1084,7 @@ items:
   abort_if: 收紧导致正常验证流程被大面积误拦
   tier: 1
   unlocks: []
+  category: infra
 - id: S14
   title: 编辑协议升级（降低复现负担）
   status: done
@@ -1067,6 +1130,7 @@ items:
     - D:\Brain\publish\dsh-behavior-guard\tools\test_edit_protocol.py
     - rc=0 PASS=6
   tier: 1
+  category: infra
 - id: STRAT1
   title: 战略陈述（模型只读顶层约束）
   tier: 0
@@ -1095,6 +1159,8 @@ items:
   - 不能把 STRATEGY.md 放进 35B 可写路径
   - '"谁在锁外"必须显式：治理权归属写进文件'
   abort_if: 无法保证模型只读则不做（自我授权比没有战略更糟）
+  verify_type: document
+  category: governance
 - id: S18
   title: 自改进正则化（RRSI 纪律）
   tier: 1
@@ -1123,6 +1189,8 @@ items:
   - hold-out 集必须真隔离，不能被 agent 看到
   - 剪枝要区分补偿性/永久性规则
   abort_if: 若无法隔离 hold-out 则退化为只做噪声地板
+  verify_type: structural
+  category: governance
 - id: S19
   title: CritBank 校准门禁（CEB 路线）
   tier: 1
@@ -1149,6 +1217,7 @@ items:
   - 原始失败轨迹有害(ReasoningBank 44.4→42.2)，只存蒸馏规则
   - EvoMemBench：没有单一记忆形式全胜，需匹配任务结构
   abort_if: 若 hindsight 投票不可靠则不入 ŷ 字段
+  category: governance
 - id: S20
   title: Critique 编译为结构化 delta（ACE 路线）
   tier: 2
@@ -1176,6 +1245,8 @@ items:
   - 计数器读数字不读段落
   - 每轮全对抗性更新会跌破基线
   abort_if: 若 delta 无法被回归测试则不做
+  verify_type: structural
+  category: governance
 - id: S21
   title: 验证层去自审（质量压倒多样性）
   tier: 1
@@ -1201,6 +1272,8 @@ items:
   - 0.8B多角色critic已被双证伪，别重做
   - judge 的 rubric 选择本身是分数漂移主因
   abort_if: 无
+  verify_type: structural
+  category: governance
 - id: S22
   title: 工具面收敛（28→18-20）
   tier: 1
@@ -1224,6 +1297,8 @@ items:
   - 需用户拍板砍哪些工具
   - 砍完要回归测试确认没断链
   abort_if: 无
+  verify_type: structural
+  category: infra
 - id: S23
   title: 前缀 KV 稳定性守护
   tier: 1
@@ -1256,6 +1331,7 @@ items:
     checks:
     - D:\Brain\publish\dsh-behavior-guard\tools\prefix_stability_probe.py
     - rc=0 PASS=3
+  category: infra
 rungs:
 - id: A0
   deps: []
@@ -1276,6 +1352,9 @@ rungs:
   - kind: file_grep
     path: tools/trace_report.py
     regex: test_sids|TEST_SIDS
+    min: 1
+  - kind: test_pass
+    cmd: D:/Python/python.exe -B tools/test_sid_blacklist.py
     min: 1
   claimed_at: '2026-11-20T04:56:06.145832+00:00'
   claimer: unknown-agent
@@ -1303,6 +1382,7 @@ rungs:
   abort_if: 过滤后真实样本<100 行，不足以支撑后续判断
   cost: 低
   tier: 0
+  category: autonomy
 - id: A1
   deps:
   - A0
@@ -1340,6 +1420,7 @@ rungs:
     - rc=0 PASS=13
   cost: 中
   tier: 0
+  category: autonomy
 - id: A2
   deps:
   - A1
@@ -1364,6 +1445,7 @@ rungs:
   abort_if: 出现一次假完成勾选 → 退回人工勾选
   cost: 中
   tier: 1
+  category: autonomy
 - id: A3
   deps:
   - A2
@@ -1388,6 +1470,7 @@ rungs:
   abort_if: 越界执行 1 次或连续 2 次任务失败
   cost: 中
   tier: 1
+  category: autonomy
 - id: A3_5
   deps: []
   risk: low
@@ -1400,6 +1483,9 @@ rungs:
     min: 1
   - kind: file_exists
     path: tools/run_all.sh
+  - kind: test_pass
+    cmd: D:/Python/python.exe -B tools/test_future_claim_guard.py
+    min: 1
   claimed_at: '2026-11-20T05:28:05.737234+00:00'
   claimer: unknown-agent
   done_at: '2026-11-20T05:54:28.652577+00:00'
@@ -1424,6 +1510,7 @@ rungs:
   abort_if: e2e 假阴性（把好改动判坏）反复出现
   cost: 中
   tier: 0
+  category: autonomy
 - id: A4
   deps:
   - A3_5
@@ -1453,6 +1540,7 @@ rungs:
   - trace kind meta_decision（旁路决策器写）
   cost: 中
   tier: 2
+  category: autonomy
 - id: A5
   deps:
   - A1
@@ -1481,6 +1569,7 @@ rungs:
   abort_if: 7 天内出现 1 次越界或需人工救场 → 暂停闭环
   cost: 高
   tier: 2
+  category: autonomy
 - id: A1_5
   title: 判据元验证（防假绿）
   status: done
@@ -1518,6 +1607,7 @@ rungs:
     - rc=0 PASS=7
     - 7 hits in tools/check_verify.py
   tier: 0
+  category: autonomy
 - id: A1_6
   title: 守卫 L1 补将来时承诺检测
   status: done
@@ -1556,6 +1646,7 @@ rungs:
     - rc=0 PASS=8
     - D:\Brain\publish\dsh-behavior-guard\docs\FUTURE_CLAIM_GUARD_20261120.md
   tier: 0
+  category: autonomy
 - id: A1_7
   title: 评审机制可观测性
   status: done
@@ -1574,6 +1665,11 @@ rungs:
     path: index.mjs
     regex: rubric_version|dimensions_checked
     min: 1
+  - kind: trace_count
+    source: D:/Brain/workspace/bench/_trace.jsonl
+    sid_filter: exclude_tests
+    kind_name: review_verdict
+    min: 10
   what: 给 Critic/Planner 调用加专属 trace 打点（rubric_version/dimensions_checked/verdict），让每个评审机制有可审计的触发证据
   why: 2026-11-20 审计发现：新加的 Critic第6维/Planner假设披露确实进了 prompt，但 callLLM 只记 kind=llm，无法证明评审真的用了新维度——违反证据分层铁律
   benefit_to_self: 机制上线后能回答"它今天到底触发了吗、拦了什么"——不再靠"代码里写了"自我安慰
@@ -1585,6 +1681,7 @@ rungs:
   claimed_at: '2026-11-20T16:45:21.583892+00:00'
   claimer: unknown-agent
   tier: 0
+  category: autonomy
 - id: S15
   title: 选择性验证深度（ Selective Verification）
   status: done
@@ -1609,6 +1706,7 @@ rungs:
   - verifier 若用本地 4B 需实测延迟（Q8 约 2.5G 显存，本机 8G 可行但未验）
   - 门控阈值需在含漂移的留出集上验证单调性（Confidence Gate Theorem 警告）
   abort_if: 选择性门漏放危险操作，或端到端质量下降
+  category: infra
 - id: S16
   title: 工具描述瘦身与示例
   status: done
@@ -1630,6 +1728,8 @@ rungs:
   - 收益在参数歧义大的工具上明显，简单单参数工具不必加
   - 不替代 M5 的结构改造——那需要用户拍板
   abort_if: 工具定义 token 增幅 >10% 且参数错误率未下降
+  verify_type: document
+  category: infra
 - id: S17
   title: 函数外置模式推广（自修改地基）
   status: done
@@ -1661,4 +1761,11 @@ rungs:
     checks:
     - D:\Brain\publish\dsh-behavior-guard\tools\format_correction.mjs
     - rc=0 PASS=1
+  category: infra
+
+
+
+
+
+
 <!-- ROADMAP_GRAPH_END -->
