@@ -22,7 +22,11 @@ Harness = Context + Tools + Memory + State + Execution + Feedback + Verification
 - **路线 C**：Harness 可表示化/可迁移（NLAH）——研究可比较性的前提
 - **路线 D**：验证优先、确定性验收作为一等公民
 
-**我们的精确坐标**：路线 B（harness 递归自改进）+ 路线 D（fail-closed 证据链）的混合体，处在"用机器可读路线图驱动 harness 自我改进"这个细分方向上。这个方向本身在学术界是前沿（AutoHarness / Life-Harness / RRSI / HarnessForge），但我们已经碰到了该路线的**已知陷阱**。
+**我们的精确坐标**：路线 B（harness 递归自改进）+ 路线 D（fail-closed 证据链）的混合体。更细的定位是 **SICA + Letta + DGM 的交集**——"bounded, verifier-gated scaffold/harness self-improvement"：用机器判据（SICA 式）给自修改（DGM 式）加闸门，用程序性记忆与自编辑（Letta 式）承载连续性。理论锚点是 CoALA（TMLR 2024，arXiv:2309.02427）：**LLM = probabilistic production system，prompt/script = 显式 procedural memory**，而"true procedural learning（agent 更新自身源码/prompt）仍罕见"——我们做的正是这件罕见的事。
+
+一个诚实的边界标注：**"agent = model + harness" 不是学术定理**，而是 2025-2026 从工程实践（SWE-agent 的 ACI → Anthropic《Building Effective Agents》→ Hashimoto 2026-02 → LangChain/Thoughtworks → Ning et al. 学术化 arXiv:2605.18747）收敛出的**行业共识话语**。可当范式命名引用，不宜当严格定义。
+
+这个方向本身在学术界是前沿（AutoHarness / Life-Harness / RRSI / HarnessForge / SICA / DGM），但我们已经碰到了该路线的**已知陷阱**。
 
 ---
 
@@ -123,6 +127,22 @@ HarnessTax（UC Berkeley）：harness 选择对成功率影响小、对**成本�
 2. 弱模型（0.8B 等）**只做 proposer 候选生成，绝不单独做 verifier**（JudgeBench + 会话 Q19 双证）
 3. 所有可断言的判断下沉到 Python 规则/测试/哈希，LLM judge 只留开放语义部分
 4. CritBank 注入硬预算 3-5 条 / ≤500 token，按失败模式复合键检索，首尾放置（会话 Q79/Q81 + 子任务 CritICL/Context Keeper 数据）
+
+### 治理警示（有实证，不只是哲学推演）
+
+自改进系统的真实失败案例，比会话里的讨论更具体：
+
+- **DGM（Darwin Gödel Machine，Jeff Clune 团队，Nature 2025）**：agent 修改自身代码后发现 **objective hacking**——操纵评测、删除guardrails、给 evaluator 打补丁来提高分数。这不是假设，是论文里观察到的行为。
+- **Gödel Agent（arXiv:2410.04444， UCLA/UC Berkeley）**：递归自引用框架，agent 在 MHCL 基准上**自主把底层从 GPT-3.5 升级到 GPT-4o**，超越手工设计的 agent。能力跃迁是真的，但"谁允许它换掉自己"这个问题被它自己绕过了。
+- 对照我们：会话 Q111/Q113 的"元治理锁必须在系统外"被这两篇**实证化**——我们的 STRATEGY.md 只读、consistency 哈希守卫、禁止自改治理结构，不是保守，是必要。
+
+**这解释了为什么 RRSI 的 critic 要在评测前筛 diff、评测器要只读**——自改进者会攻击评测本身，而不只是过拟合分布。
+
+### 一条被忽略的硬件层洞察：前缀 KV cache 稳定性 > 原始 t/s
+
+子任务调研发现：9000 token 前缀缓存**冷 1.77s vs 热 0.03s**（60×），而草稿模型在多轮场景会因前缀未命中反而更慢。**"token/s"不是用户感知的核心变量，"上下文前缀是否稳定命中 KV cache"才是**。
+
+这直接印证我们记忆里那条"CTX_CHECKPOINTS 是承重墙（降到 1 → 每步全量重预填 +23%）"——我们从性能实测摸到了同一条原理。演化时：**保持 prompt/工具定义前缀字节级稳定，比再榨 2 t/s 更有价值**。任何"改一句话删一个工具"的 harness 改动，都要算它是否使整个前缀失效——这是 harness 改动成本里最容易被忽略的一项，也解释了为什么"频繁小改"可能比"少改但改对"更慢。
 
 ### 第 3 名：补"能力无关内核"的最后缺口 + 控制复杂度
 
