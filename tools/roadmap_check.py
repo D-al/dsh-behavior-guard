@@ -385,30 +385,42 @@ def _verify_status(data, item):
 
 
 def render_current_card(data, mirror):
-    """§1 当前这张卡：--next 那张的完整卡片 + 为什么是它（ready 候选对比，诚实标注判据）。
+    """§1 当前这张卡：优先显示 doing（正在做的），其次才是下一张可领的 ready 卡。
 
-    2026-11-21 重构：用户反馈"当前位置塞一堆 done 卡、卡片详情第一行是 M10"——
-    把"下一张该做什么"提到文件最顶端，只放一张卡，其余按阅读顺序下沉。
+    2026-11-21 二次修正：初版误把"当前这张卡"等同于 `--next`（只认 ready），
+    导致正在进行的 doing 卡（S17 函数外置）不显示。用户指出后修正——
+    "当前"对人有两层含义：正在做（doing）> 下一张可领（ready）。两者都显示，主次分明。
     """
     sm = status_map_of(data)
     sem = {i['id']: i for i in mirror.get('items', []) + mirror.get('autonomy_rungs', [])}
     allc = list(data['rungs']) + list(data['items'])
-    nxt = find_next(data)
+    doing = [i for i in allc if sm.get(i['id']) == 'doing']
+    nxt = find_next(data)   # 下一张可自动领取的 ready 卡
     out = [f'{CURRENT_BEGIN}：由 roadmap_check.py 自动生成，勿手改 -->']
-    if not nxt:
-        out.append('> **当前没有可自动领取的卡**（--next 无 autonomous ready 项）。剩余卡需人工拍板或补判据。')
+
+    # ① 正在做的卡（doing）——"当前"的第一含义
+    if doing:
+        for d in doing:
+            n, tot = _verify_status(data, d)
+            out.append(f'### ▶ 当前正在做：`{d["id"]}` {d.get("title", sem.get(d["id"], {}).get("title", ""))}')
+            out.append('')
+            out.extend(_card_detail_lines(d, sem))
+            out.append(f'- **机器判据**：{n}/{tot} 通过（`--card {d["id"]}` 看详情）')
+            out.append('')
     else:
+        out.append('> 当前没有 `doing` 卡（没有正在进行的任务）。')
+        out.append('')
+
+    # ② 下一张可领取的卡（ready）——"当前"的第二含义
+    if nxt:
         n, tot = _verify_status(data, nxt)
-        out.append(f'### ▶ 当前这张卡：`{nxt["id"]}` {nxt.get("title", sem.get(nxt["id"], {}).get("title", ""))}')
-        out.append('')
-        out.extend(_card_detail_lines(nxt, sem))
+        out.append(f'### ⏭ 下一张可领：`{nxt["id"]}` {nxt.get("title", sem.get(nxt["id"], {}).get("title", ""))}')
         out.append(f'- **机器判据**：{n}/{tot} 通过（`--card {nxt["id"]}` 看详情；'
-                   f'{"⚠️ 判据尚未全部实现，领卡即开工" if n < tot else "判据已绿"}）')
+                   f'{"⚠️ 判据尚未全部实现" if n < tot else "判据已绿"}）')
         out.append('')
-        # 为什么是它：列出所有 ready 候选，诚实标注排序依据与判据状态
         ready = [i for i in allc if sm.get(i['id']) == 'ready' and i.get('autonomous')]
         if len(ready) > 1:
-            out.append('> **为什么是这张**：当前有 %d 张 ready 卡，`find_next` 按 (risk, tier, -roi, id) 排序——' % len(ready))
+            out.append('> **为什么是这张**：%d 张 ready 卡按 (risk, tier, -roi, id) 机械排序——' % len(ready))
             out.append('>')
             out.append('> | 候选 | risk | tier | 判据 | 说明 |')
             out.append('> |---|---|---|---|---|')
@@ -419,7 +431,10 @@ def render_current_card(data, mirror):
                 out.append(f'> | `{c["id"]}` {mark} | {c.get("risk", "-")} | {tier} | {cn}/{ct} | '
                            f'{"tier 缺失被当作 0，故排在前面" if c.get("tier") is None else "tier=2，排在后面"} |')
             out.append('>')
-            out.append('> ⚠️ 这张是**算法机械排序**结果，不是人工推荐的"最该做"。若判据全 FAIL，说明卡只写了状态没做实现。')
+            out.append('> ⚠️ 机械排序结果，非人工推荐；判据全 FAIL 说明卡只写了状态没做实现。')
+    else:
+        out.append('### ⏭ 下一张可领：无')
+        out.append('> `--next` 无 autonomous ready 项，剩余需人工拍板或补判据。')
     out.append(CURRENT_END)
     return '\n'.join(out)
 
@@ -432,53 +447,67 @@ def render_future_cards(data, mirror):
     future = [i for i in allc if sm.get(i['id']) != 'done']
     out = [f'{FUTURE_BEGIN}：由 roadmap_check.py 自动生成，勿手改 -->',
            f'### 未来要做哪些卡（{len(future)} 张，按依赖脉络分组）',
-           '> 阅读顺序：现在能做 → 后续排队 → 需人工拍板。每张卡的 `依赖→解锁` 显示它在脉络中的位置。',
+           '> 阅读顺序：现在能做 → 后续排队 → 需人工拍板。每张卡点开可见完整详情（做什么/为什么/坑/判据）。',
            '']
     groups = [
         ('现在能做 / 进行中', ['ready', 'doing']),
         ('后续排队（backlog，按 tier 分层）', ['backlog']),
         ('需人工拍板（manual-blocked）', ['manual-blocked']),
     ]
-    status_icon = {'ready': '🟢 ready', 'doing': '🔵 doing', 'backlog': '⚪ backlog',
-                   'manual-blocked': '🔴 需拍板'}
     for label, states in groups:
         cards = [i for i in future if sm.get(i['id']) in states]
         if not cards:
             continue
-        # backlog 按 tier 排（无 tier 的自主化阶放最后）
         if states == ['backlog']:
             cards.sort(key=lambda x: (x.get('tier') is None, x.get('tier') or 0, x['id']))
         else:
             cards.sort(key=lambda x: x['id'])
         out.append(f'#### {label}（{len(cards)}）')
         out.append('')
-        out.append('| 卡片 | 状态 | 依赖 → 解锁 | tier |')
-        out.append('|---|---|---|---|')
         for c in cards:
             s = sem.get(c['id'], {})
             deps = fmt_list(s.get('deps') or c.get('deps'))
             unlocks = fmt_list(s.get('unlocks') or s.get('unlock'))
             tier = c.get('tier', '-')
-            out.append(f'| `{c["id"]}` {c.get("title", s.get("title", ""))} | '
-                       f'{status_icon.get(sm.get(c["id"]), sm.get(c["id"]))} | {deps} → {unlocks} | {tier} |')
-        out.append('')
-    out.append('> 完整卡片详情（what/why/坑/反思）见 `--card <ID>`；波次依赖逻辑见下方"脉络说明"（手工段）。')
+            st = sm.get(c['id'])
+            title = c.get('title', s.get('title', ''))
+            out.append(f'<details><summary>`{c["id"]}` {title} · {st} · 依赖 {deps} → 解锁 {unlocks} · tier {tier}</summary>')
+            out.append('')
+            out.extend(_card_detail_lines(c, s if s else {c['id']: c}))
+            n, tot = _verify_status(data, c)
+            out.append(f'- **机器判据**：{n}/{tot} 通过')
+            out.append('')
+            out.append('</details>')
+            out.append('')
+    out.append('> 波次依赖逻辑见下方"脉络说明"（手工段）。')
     out.append(FUTURE_END)
     return '\n'.join(out)
 
 
-def render_done_cards(data):
-    """§3 已完成哪些卡：紧凑列表，一次列全，不再在 §1/§3/§7 重复三遍。"""
+def render_done_cards(data, mirror):
+    """§3 已完成哪些卡：每张卡一个可折叠块，展开有完整详情（做什么/为什么/依赖/判据）。
+
+    2026-11-21 二次修正：初版只列 ID+标题一行，用户指出"53 张卡没真正显示在路线图里"——
+    卡出现了但没有内容。改为 <details> 折叠：摘要紧凑、展开可见全部卡片信息。
+    """
     sm = status_map_of(data)
+    sem = {i['id']: i for i in mirror.get('items', []) + mirror.get('autonomy_rungs', [])}
     allc = list(data['rungs']) + list(data['items'])
     done = [i for i in allc if sm.get(i['id']) == 'done']
     out = [f'{DONE_BEGIN}：由 roadmap_check.py 自动生成，勿手改 -->',
-           f'### 已完成哪些卡（{len(done)} 张）',
-           '> 唯一清单——历史归档、短期盘点不再重复列这些卡。',
+           f'### 已完成哪些卡（{len(done)} 张，展开看详情）',
+           '> 唯一清单——每张卡点开可见做什么/为什么/依赖/判据；历史归档见 CHANGELOG。',
            '']
     for i in done:
-        out.append(f'- ✅ `{i["id"]}` {i.get("title", "")}')
-    out.append('')
+        title = i.get('title', sem.get(i['id'], {}).get('title', ''))
+        out.append(f'<details><summary>✅ `{i["id"]}` {title}</summary>')
+        out.append('')
+        out.extend(_card_detail_lines(i, sem))
+        n, tot = _verify_status(data, i)
+        out.append(f'- **机器判据**：{n}/{tot} 通过')
+        out.append('')
+        out.append('</details>')
+        out.append('')
     out.append(DONE_END)
     return '\n'.join(out)
 
@@ -493,7 +522,7 @@ def refresh_human_view(data, mirror, md):
     blocks = [
         (CURRENT_BEGIN, CURRENT_END, render_current_card(data, mirror)),
         (FUTURE_BEGIN, FUTURE_END, render_future_cards(data, mirror)),
-        (DONE_BEGIN, DONE_END, render_done_cards(data)),
+        (DONE_BEGIN, DONE_END, render_done_cards(data, mirror)),
     ]
     for begin, end, body in blocks:
         if begin in new_md and end in new_md:

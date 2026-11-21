@@ -1481,7 +1481,7 @@ autonomy_rungs:
   why: 合成心智需要 agent 能安全自修改；嵌套函数边界不清、无单测，agent 改自己时无法证明等价。taskProfile 已示范模式并验证可行
   benefit_to_self: 每次自修改都有机器可验的等价证据，不靠人肉小心（今晚手滑4次的根治）
   caveats:
-  - 插件运行时从 node_modules 加载，相对 import 会指错——必须内联，tools/ 版只作规范+测试载体
+  - 默认 import 转发（index.mjs 顶部 import + 函数体 return _fn），tools/ 版是唯一真相；禁正则替换/整文件重建/手写Unicode转义（2026-11-21 REFACTOR_PATTERN 实测，原"必须内联"已推翻）
   - 每个函数外置后跑 trace 基线对照（data/baseline/trace_pre_refactor_20261121.jsonl），不能只看单测
   - stateOf 需注入 4 依赖，最后做；callLLM/runAudit/runCritic 最难，压轴
   progress:
