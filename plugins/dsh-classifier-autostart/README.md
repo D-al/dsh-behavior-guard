@@ -65,3 +65,14 @@ curl -X POST http://127.0.0.1:9899/classify -H "Content-Type: application/json" 
 - **升级 tokenizers 到 0.20.3 那段窗口期启的服务不可靠**：回滚后进程内存里还是旧代码，
   重启 dsh 清掉即可。插件用隔离 venv（tokenizers 0.20.3）是正确配置。
 - 重启验证通过：dsh 起 → 插件 `ctx.effect` spawn → 服务 `/health` ok + E 核绑定。
+
+## 干净重启验证（2026-11-21 23:58）
+
+停掉手动服务 → 确认 9899 无监听/无残留进程 → 真正重启 dsh（pid 66276→54644）→ 结果：
+
+- 插件日志新增 `apply called` → `spawn issued pid=25188` → `spawned OK`（本次重启自动触发）
+- 服务日志新增 `ready ... affinity=[12,13,14,15]`
+- 9899 LISTENING = pid 19580（venv launcher 的子进程，创建时间与插件 spawn 同为 23:58:51）
+- 功能三场景：注入 0.9999 flag=true / 良性 0.002 flag=false / 错误文本 skipped
+
+**结论：生命周期绑定 A→B 两端成立**——dsh 起则服务起，无残留、绑 E 核、功能正常。
