@@ -55,3 +55,13 @@ curl -X POST http://127.0.0.1:9899/classify -H "Content-Type: application/json" 
 
 未接入运行时检测调用（harness S6 尚未加 HTTP 客户端）。当前只管理服务生命周期。
 实测依据见 `docs/CLASSIFIER_BENCH_FINAL_20261121.md`。
+
+## 踩坑记录（2026-11-21 重启验证）
+
+- **venv launcher 会产生父子两个 python 进程**：Windows 上 venv 的 `python.exe` 是 launcher，
+  它 spawn 一个主 python 子进程实际执行（绑 E 核、占 0.74G、监听 9899），自己作为父壳等待（1% 内存）。
+  `psutil` 看到两个 `classifier_service.py` 进程是**正常的**，不是残留/重复启动。
+  判断哪个在工作：看 netstat 的 LISTENING pid + affinity=[12,13,14,15] + mem≈0.74G。
+- **升级 tokenizers 到 0.20.3 那段窗口期启的服务不可靠**：回滚后进程内存里还是旧代码，
+  重启 dsh 清掉即可。插件用隔离 venv（tokenizers 0.20.3）是正确配置。
+- 重启验证通过：dsh 起 → 插件 `ctx.effect` spawn → 服务 `/health` ok + E 核绑定。
