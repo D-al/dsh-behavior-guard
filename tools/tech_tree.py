@@ -31,11 +31,32 @@ LADDER = ROOT / 'CAPABILITY_LADDER.yaml'
 OUT = ROOT / 'TECH_TREE.html'
 
 CAT_LABEL = {'short': '短期', 'mind': '心智', 'infra': '工程',
-             'longterm': '长期', 'governance': '治理', 'autonomy': '自主'}
+             'longterm': '长期', 'governance': '治理', 'autonomy': '自主',
+             'evidence': '证据', 'rejected': '不做'}
 CAT_COLOR = {'short': '#378ADD', 'mind': '#7F77DD', 'infra': '#1D9E75',
-             'longterm': '#BA7517', 'governance': '#A32D2D', 'autonomy': '#0F6E56'}
+             'longterm': '#BA7517', 'governance': '#A32D2D', 'autonomy': '#0F6E56',
+             'evidence': '#185FA5', 'rejected': '#A32D2D'}
 STATUS_LABEL = {'done': '已完成', 'ready': '可领取', 'backlog': '待办',
                 'manual-blocked': '人工阻塞'}
+
+
+def load_rejected():
+    """从 ROADMAP.md §4 解析"明确不做"表格 → 红色科技卡节点。"""
+    md = (ROOT / 'ROADMAP.md').read_text(encoding='utf-8')
+    m = re.search(r'## 4\. 明确不做.*?\n(.*?)(?:\n## |\n---)', md, re.S)
+    if not m:
+        return []
+    out = []
+    for line in m.group(1).splitlines():
+        if not line.startswith('|'):
+            continue
+        cells = [c.strip() for c in line.strip('|').split('|')]
+        if len(cells) < 2 or cells[0] in ('不做', '') or set(cells[0]) <= set('-: '):
+            continue
+        title = re.sub(r'\*\*', '', cells[0])
+        reason = re.sub(r'\[([^]]+)\]\([^)]+\)', r'\1', cells[1])  # 链接→文字
+        out.append({'id': 'X' + str(len(out) + 1), 'title': title, 'reason': reason[:200]})
+    return out
 
 
 def load():
@@ -49,7 +70,7 @@ def load():
     return g, sem
 
 
-def build(g, sem):
+def build(g, sem, rejected=None):
     items = g['items'] + g['rungs']
     anchors = set((g.get('anchors') or {}).keys())
     nodes = []
@@ -65,8 +86,27 @@ def build(g, sem):
             'what': s.get('what', ''),
             'why': s.get('why', ''),
             'unlocks': s.get('unlocks') or [],
-            'risk': i.get('risk', ''),
+            'risk': i.get('risk', ''), 'kind': 'card',
         })
+    # 证据卡：anchors 是"卡也是证据"，被其他卡 deps 引用；画出来才能看清依赖来源
+    ANCHOR_TITLE = {'ground': '地基数据/规则', 'S1_data': '8147行trace证据',
+                    'GWT_FEP': 'GWT+FEP验证', 'M4_budget': '注入预算证据',
+                    'S1_p0p2': 'Self-Harness P0-P2', 'CritBank': '失败经验库',
+                    'S6_rule': '注入检测规则'}
+    for a in sorted(anchors):
+        meta = (g.get('anchors') or {}).get(a, {})
+        nodes.append({'id': a, 'title': ANCHOR_TITLE.get(a, a), 'status': 'evidence',
+                      'tier': 0, 'category': 'evidence', 'deps': [],
+                      'what': meta.get('note', '') or meta.get('artifact', ''),
+                      'why': meta.get('verify', '') or '证据节点：其他卡依赖它',
+                      'unlocks': [n['id'] for n in nodes if a in n['deps']],
+                      'risk': 'evidence', 'kind': 'evidence'})
+    # 明确不做：红色科技卡，独立列（最左）
+    for x in (rejected or []):
+        nodes.append({'id': x['id'], 'title': x['title'], 'status': 'rejected',
+                      'tier': 0, 'category': 'rejected', 'deps': [],
+                      'what': x['reason'], 'why': '已证伪/明确不做——不要重造轮子',
+                      'unlocks': [], 'risk': 'rejected', 'kind': 'rejected'})
     return nodes, sorted(anchors)
 
 
@@ -86,7 +126,12 @@ def layout(nodes, anchors):
         if not changed:
             break
     for n in nodes:
-        n['depth'] = depth.get(n['id'], 0)
+        if n.get('kind') == 'rejected':
+            n['depth'] = -1          # 独立最左列"已排除"
+        elif n.get('kind') == 'evidence':
+            n['depth'] = 0           # 证据列（与第0层卡同层但在渲染时分组）
+        else:
+            n['depth'] = depth.get(n['id'], 0)
     return nodes
 
 
@@ -167,13 +212,23 @@ function render(){
  const maxd=Math.max(...ns.map(n=>n.depth));
  // 每层内：未完成靠上、已完成靠下（当前该做的自然浮到视线里）
  const rank=n=>(n.status==='done'?1:0);
- const cols=[];for(let d=0;d<=maxd;d++)cols.push(
-   ns.filter(n=>n.depth===d).sort((a,b)=>rank(a)-rank(b)||a.tier-b.tier||a.id.localeCompare(b.id)));
- $('#cols').style.width=((maxd+1)*236)+'px';
- $('#cols').innerHTML=cols.map((col,d)=>{
-  const todo=col.filter(n=>n.status!=='done').length,done=col.length-todo;
-  return `<div class="col"><div class="col-h">第 ${d} 层 · <span style="color:#A32D2D">${todo} 待办</span> / <span style="color:#1D9E75">${done} 完成</span></div>`+
-  col.map(n=>{
+ // 列定义：已排除(红) | 证据 | 第0..N层
+ const specs=[{key:'rejected',head:'⛔ 明确不做'},{key:'evidence',head:'▤ 证据/地基'}];
+ for(let d=0;d<=maxd;d++)specs.push({key:'layer'+d,head:'第 '+d+' 层'});
+ const cols=specs.map(sp=>{
+  let arr;
+  if(sp.key==='rejected')arr=ns.filter(n=>n.kind==='rejected');
+  else if(sp.key==='evidence')arr=ns.filter(n=>n.kind==='evidence');
+  else arr=ns.filter(n=>n.kind==='card'&&n.depth===Number(sp.key.slice(5)));
+  return {key:sp.key,head:sp.head,nodes:arr.sort((a,b)=>rank(a)-rank(b)||a.tier-b.tier||a.id.localeCompare(b.id))};
+ });
+ $('#cols').style.width=((cols.length)*236)+'px';
+ $('#cols').innerHTML=cols.map(col=>{
+  const todo=col.nodes.filter(n=>n.status!=='done'&&n.kind==='card').length;
+  const done=col.nodes.filter(n=>n.status==='done').length;
+  const prog=(col.key!=='rejected'&&col.key!=='evidence')?` · <span style="color:#A32D2D">${todo} 待办</span> / <span style="color:#1D9E75">${done} 完成</span>`:'';
+  return `<div class="col"><div class="col-h">${col.head}${prog}</div>`+
+  col.nodes.map(n=>{
    const done=n.status==='done';
    const hubdim=window.__hub && n.id!=='A1' && !n.deps.includes('A1');
    const sel=window.__sel===n.id, inchain=window.__chain && window.__chain.has(n.id);
@@ -238,7 +293,8 @@ init();window.addEventListener('resize',()=>drawLinks(DATA));
 def main():
     check = '--check' in sys.argv
     g, sem = load()
-    nodes, anchors = build(g, sem)
+    rejected = load_rejected()
+    nodes, anchors = build(g, sem, rejected)
     nodes = layout(nodes, anchors)
     # 自检：无环、层级合理
     if len({n['id'] for n in nodes}) != len(nodes):
