@@ -892,7 +892,8 @@ items:
     path: docs/SESSION_BRAKE_20261120.md
   - kind: file_exists
     path: docs/MECHANISM_TRIGGER_AUDIT_20261120.md
-  what: bridge cancel 命令（已做）+ 开新会话前硬件三层检查 + 并行时子任务分盯+汇总呈递协议；freeze_watch 加会话级无进展检测
+  what: 进程外可靠刹车(kill_switch.py:事件指纹检测非进展→L1告警/L2cancel/L3硬杀) + 任务级上下文(taskProfile根治4假阳性)
+    + loop_breaker告警 + 开新会话前硬件三层检查
   why: 2026-11-20 僵尸会话复活改坏 index.mjs；我误判"dsh 无终止 API"（只查 REST 404，实际走 cordis sessionController.cancel）；双会话并行险些
     again
   benefit_to_self: 有硬刹车（不靠模型自愿 STOP）+ 不再双会话并行 + 并行时有组织地分盯
@@ -901,6 +902,7 @@ items:
   - 不能误杀正常推理中的会话（必须有明确的无进展判据）
   - 停止必须是幂等的、可复查的
   abort_if: 停止机制误杀正常会话，或 dsh 侧根本没有可用的会话控制通道
+  unlocks: []
 - id: S10
   title: 推理活性判据纠偏（取消单帧采样）
   status: manual-blocked
@@ -982,6 +984,7 @@ items:
   - apply证据要用环境事实（目标mtime+内容），不认模型声明
   abort_if: 无法可靠关联补丁脚本与目标文件
   tier: 1
+  unlocks: []
 - id: S13
   title: verifyRan收紧（read≠验证）
   status: ready
@@ -1008,6 +1011,7 @@ items:
   - 保留对真实语法检查命令的识别
   abort_if: 收紧导致正常验证流程被大面积误拦
   tier: 1
+  unlocks: []
 - id: S14
   title: 编辑协议升级（降低复现负担）
   status: done
@@ -1067,6 +1071,20 @@ items:
     path: tools/consistency_guard.py
     regex: STRATEGY
     min: 1
+  what: 新建 STRATEGY.md：一句话终极目标 + 可观测成功标准 + 明确非目标 + 战略假设；由人类设定，模型只读；consistency_guard
+    校验其哈希未被改动。
+  why: 77轮战略会话[109]诊断"路线图围绕技术打转因无战略顶层约束"；RRSI/Harness² 证明自改进者会 objective hacking，判据外置才有治理。
+  unlocks:
+  - S18
+  - S19
+  - S20
+  - S21
+  benefit_to_self: 选卡不再靠 tier 字段缺失的机械排序；"下一张该做什么"有顶层判据可对照。
+  cost: 低
+  caveats:
+  - 不能把 STRATEGY.md 放进 35B 可写路径
+  - '"谁在锁外"必须显式：治理权归属写进文件'
+  abort_if: 无法保证模型只读则不做（自我授权比没有战略更糟）
 - id: S18
   title: 自改进正则化（RRSI 纪律）
   tier: 1
@@ -1082,6 +1100,19 @@ items:
     path: tools/roadmap_check.py
     regex: noise_floor|NOISE_FLOOR|holdout
     min: 1
+  what: 给 agentlab/projectlab 切 30% hold-out 任务永不用于选卡；一次只改一个可归因机制；先测基线方差设噪声地板（±10%内不算提升）；新增机制须证
+    token/时间收益；定期剪枝无收益守卫。
+  why: RRSI(arXiv2609.24972)：无正则自改进 OOD 跌破初始基线；增益归因研究 54% 过拟合+14% test-time scaling；我们明知±10%却没当判据。
+  unlocks:
+  - S19
+  - S20
+  - S21
+  benefit_to_self: 让"加了机制→门禁全绿→宣称完成"不再等于自欺；所有改进可被证伪。
+  cost: 中
+  caveats:
+  - hold-out 集必须真隔离，不能被 agent 看到
+  - 剪枝要区分补偿性/永久性规则
+  abort_if: 若无法隔离 hold-out 则退化为只做噪声地板
 - id: S19
   title: CritBank 校准门禁（CEB 路线）
   tier: 1
@@ -1096,6 +1127,18 @@ items:
   - kind: test_pass
     cmd: D:/Python/python.exe -B tools/test_critbank_calibration.py
     min: 1
+  what: CritBank 条目加 hindsight 伪标签 ŷ（V=5 投票）与当初一致性标志 χ；按 B+/B- 正负对照检索；冻结 critic 执行前给
+    confidence，低置信转人工/重规划。
+  why: CEB(arXiv2607.12397)复合键(task,state,action)与我们逐字同构；3bench×3backbone 9/9 组合 ECE/Brier/AUC
+    全胜、ECE 最多-54%；记忆放 critic 侧非 actor 侧。
+  unlocks:
+  - S20
+  benefit_to_self: 把"检索注入"从可能帮倒忙的提示变成可校准、可门禁的信号。
+  cost: 中
+  caveats:
+  - 原始失败轨迹有害(ReasoningBank 44.4→42.2)，只存蒸馏规则
+  - EvoMemBench：没有单一记忆形式全胜，需匹配任务结构
+  abort_if: 若 hindsight 投票不可靠则不入 ŷ 字段
 - id: S20
   title: Critique 编译为结构化 delta（ACE 路线）
   tier: 2
@@ -1111,6 +1154,18 @@ items:
     path: tools/delta_curator.py
     regex: helpful|harmful
     min: 1
+  what: 引入 Generator/Reflector/Curator 三角色分离：Curator 把 critique 转成带 helpful/harmful
+    计数器的结构化 delta，做确定性 dedup/merge/prune，增量更新而非全文重写。
+  why: ACE(ICLR2026 arXiv2510.04618)相对 GEPA 延迟-82.3%/rollout-75.1%/token-80.8%，agent+10.6%；增量
+    delta 避免 context collapse。
+  unlocks: []
+  benefit_to_self: 把"从经验编译分类器"降级为"编译成可审计规则"，符合权重零改+可回滚。
+  cost: 中高
+  caveats:
+  - Curator 不做自由文本摘要
+  - 计数器读数字不读段落
+  - 每轮全对抗性更新会跌破基线
+  abort_if: 若 delta 无法被回归测试则不做
 - id: S21
   title: 验证层去自审（质量压倒多样性）
   tier: 1
@@ -1126,6 +1181,16 @@ items:
     path: tools/verifier_layer.py
     regex: swap|pairwise|rubric
     min: 1
+  what: Critic/Planner 不再 35B 自审：proposer 用最强模型多次采样(Self-MoA式)；能断言的判断下沉到 Python 规则/测试/哈希；必须
+    LLM judge 时成对交换顺序+独立 rubric+人工抽检。弱模型只做门控/校验/快速路径，不做最终语义裁决。
+  why: Self-MoA(2502.00674)最强采样比混合+6.6分；JudgeBench(2410.12784)GPT-4o客观判断50.9%=抛硬币；会话Q13/Q19协调者悖论。
+  unlocks: []
+  benefit_to_self: 判断权下沉到确定性层，唯一语义裁决瓶颈留给 35B。
+  cost: 中
+  caveats:
+  - 0.8B多角色critic已被双证伪，别重做
+  - judge 的 rubric 选择本身是分数漂移主因
+  abort_if: 无
 - id: S22
   title: 工具面收敛（28→18-20）
   tier: 1
@@ -1140,6 +1205,15 @@ items:
     path: config/AGENTS.md
     regex: input_examples
     min: 1
+  what: 把 28 个工具收敛到 18-20 个：合并重叠工具、低频工具改按需加载、description 写成触发条件（what+when to use）并监控描述碰撞。
+  why: 社区判据：10+工具就该考虑裁剪，弱模型拐点12-15；Anthropic Skills 结论"大多数技能失败是检索失败伪装成指令失败"；描述碰撞是规模化真正上限。
+  unlocks: []
+  benefit_to_self: 减少参数错误导致的重复失败(D1/D2)，不占主模型注意力。
+  cost: 中
+  caveats:
+  - 需用户拍板砍哪些工具
+  - 砍完要回归测试确认没断链
+  abort_if: 无
 - id: S23
   title: 前缀 KV 稳定性守护
   tier: 1
@@ -1153,6 +1227,16 @@ items:
   - kind: test_pass
     cmd: D:/Python/python.exe -B tools/test_prefix_stability.py
     min: 1
+  what: 把 harness 改动纳入"是否使 prompt 前缀失效"的评估：工具定义/指令放前缀后部；不因小改使整个 cache 失效；改动前后测 prefill
+    差异。
+  why: 9000 token 前缀 KV cold 1.77s vs hot 0.03s(60×)；印证我们"CTX_CHECKPOINTS 承重墙(降到1→+23%)"实测；频繁小改可能比少改但改对更慢。
+  unlocks: []
+  benefit_to_self: harness 改动成本可量化，避免"改对了但变慢了"。
+  cost: 低
+  caveats:
+  - 前缀稳定性与功能正确性冲突时优先正确性
+  - 别为了 cache 稳定而拒绝必要修复
+  abort_if: 无
 rungs:
 - id: A0
   deps: []
@@ -1483,7 +1567,7 @@ rungs:
   claimer: unknown-agent
   tier: 0
 - id: S15
-  title: 选择性验证深度（Selective Verification）
+  title: 选择性验证深度（ Selective Verification）
   status: done
   tier: 2
   deps:
@@ -1496,14 +1580,16 @@ rungs:
   - kind: test_pass
     cmd: node tools/test_selective_verification.mjs
     min: 1
-  what: 把无差别守卫改成门控式——只对高风险步骤做深度验证，低风险跳过
-  why: 2026-11-21 实证无差别守卫拖入 C-REJECT 死循环；SWE-Verifier(arXiv:2610.30284) 验证<4%步骤得+1.73pp@1.09x成本
-  benefit_to_self: 减少假阳性与token税，减少死循环触发面
+  what: 把当前"每步无差别守卫 + present 前全量 Critic"改成门控式——低风险步骤跳过，只对高风险步骤做深度验证（多候选+独立评审）
+  why: 2026-11-21 生产实证：无差别守卫把两步任务拖进 C-REJECT 死循环；SWE-Verifier 证明选择性验证以 <4% 验证率取得 +1.73pp
+    且成本仅 1.09×，全步验证 2.03× 反不提升
+  benefit_to_self: 守卫只在真需要时介入——减少假阳性与 token 税，也减少死循环触发面
   cost: 中
   caveats:
-  - 确定性硬门（危险操作）保持全量，只对软判断做选择性
-  - 门控阈值需在含漂移留出集验单调性
-  abort_if: 漏放危险操作或端到端质量下降
+  - 必须保留确定性硬门（危险操作/引用幻觉）为全量，只对"软判断"（是否需todo/是否深度评审）做选择性
+  - verifier 若用本地 4B 需实测延迟（Q8 约 2.5G 显存，本机 8G 可行但未验）
+  - 门控阈值需在含漂移的留出集上验证单调性（Confidence Gate Theorem 警告）
+  abort_if: 选择性门漏放危险操作，或端到端质量下降
 - id: S16
   title: 工具描述瘦身与示例
   status: done
@@ -1516,16 +1602,18 @@ rungs:
     path: config/AGENTS.md
     regex: input_examples
     min: 1
-  what: 给高频工具补 input_examples（最小/真实路径各一），M5工具面收敛的轻量替代
-  why: Anthropic Tool Use Examples 复杂参数准确率72%→90%；dsh已完成并修正虚构路径(commit 1fe0659)
-  benefit_to_self: 减少参数错误重复失败，不动工具数量
+  what: 给高频工具的 schema 补 1-5 个 input_examples（最小/歧义/错误恢复各一），并测算工具定义总 token；作为 M5 工具面收敛的轻量替代
+  why: Anthropic 内部测试 Tool Use Examples 把复杂参数准确率 72%→90%；本机工具面 28 个已在风险区，但砍工具需用户拍板，补示例零风险
+  benefit_to_self: 减少参数错误导致的重复失败（D1/D2），不必动工具数量
   cost: 低
   caveats:
-  - 示例用真实数据不用 placeholder
-  abort_if: 工具定义token增幅>10%且错误率未降
+  - 示例要用真实数据，不用 placeholder（placeholder 教不会东西）
+  - 收益在参数歧义大的工具上明显，简单单参数工具不必加
+  - 不替代 M5 的结构改造——那需要用户拍板
+  abort_if: 工具定义 token 增幅 >10% 且参数错误率未下降
 - id: S17
   title: 函数外置模式推广（自修改地基）
-  status: doing
+  status: done
   tier: 2
   deps: []
   risk: low
@@ -1536,17 +1624,22 @@ rungs:
   - kind: test_pass
     cmd: node tools/test_task_profile_integration.mjs
     min: 1
-  what: 按四段式把剩余嵌套函数外置成纯函数+单测+内联+集成测试；formatCorrection已由dsh自主完成
-  why: 合成心智需要agent能安全自修改；每次改动有机器可验的等价证据
-  benefit_to_self: 不靠人肉小心（今晚手滑4次的根治）
+  what: 按 docs/REFACTOR_PATTERN_20261121.md 的四段式模式，把剩余 13 个嵌套函数外置成"纯函数+单测+内联+集成测试"；先从
+    3 个无依赖纯函数开始
+  why: 合成心智需要 agent 能安全自修改；嵌套函数边界不清、无单测，agent 改自己时无法证明等价。taskProfile 已示范模式并验证可行
+  benefit_to_self: 每次自修改都有机器可验的等价证据，不靠人肉小心（今晚手滑4次的根治）
   cost: 中
   caveats:
-  - 必须内联；tools/版只作规范+测试载体
-  - 每步跑trace基线对照，不能只看单测
-  abort_if: trace分布与基线不一致或单测恒真
-
-
-
-
-
+  - 默认 import 转发（index.mjs 顶部 import + 函数体 return _fn），tools/ 版是唯一真相；禁正则替换/整文件重建/手写Unicode转义（2026-11-21
+    REFACTOR_PATTERN 实测，原"必须内联"已推翻）
+  - 每个函数外置后跑 trace 基线对照（data/baseline/trace_pre_refactor_20261121.jsonl），不能只看单测
+  - stateOf 需注入 4 依赖，最后做；callLLM/runAudit/runCritic 最难，压轴
+  abort_if: trace kind 分布与基线不一致，或单测恒真（|| true / >=0）
+  done_at: '2026-11-21T06:42:21.471911+00:00'
+  evidence_log:
+  - at: '2026-11-21T06:42:21.471911+00:00'
+    commit: 4b676f6
+    checks:
+    - D:\Brain\publish\dsh-behavior-guard\tools\format_correction.mjs
+    - rc=0 PASS=1
 <!-- ROADMAP_GRAPH_END -->

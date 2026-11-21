@@ -162,6 +162,16 @@ def guard_all(manifest_path=MANIFEST):
         a_local = collect('authoritative', repo['authoritative'], repo, m)
         c_rt = collect('runtime', repo['runtime'], repo, m)
 
+        # 2026-11-21 战略锁：STRATEGY.md 必须存在且被纳入 key_files（三处 sha 由下方通用检查覆盖）。
+        # 战略陈述是"锁外"的人工设定，模型只读——把它纳入守卫是 RRSI/Misevolution 的治理要求。
+        if rid == 'harness':
+            sp = Path(repo['authoritative']) / 'STRATEGY.md'
+            in_manifest = 'STRATEGY.md' in repo.get('key_files', [])
+            results.append(check('harness.strategy_lock.exists', sp.exists(),
+                                 'exists' if sp.exists() else 'missing', 'exists'))
+            results.append(check('harness.strategy_lock.in_manifest', in_manifest,
+                                 'in key_files' if in_manifest else 'missing', 'in key_files'))
+
         # A-remote：ls-remote 失败 -> UNKNOWN，不假 PASS、不崩
         remote_commit = None
         try:

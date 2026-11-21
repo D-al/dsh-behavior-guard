@@ -1700,7 +1700,7 @@ autonomy_rungs:
   deps: []
   risk: low
   autonomous: true
-  status: doing
+  status: done
   what: 按 docs/REFACTOR_PATTERN_20261121.md 的四段式模式，把剩余 13 个嵌套函数外置成"纯函数+单测+内联+集成测试"；先从
     3 个无依赖纯函数开始
   why: 合成心智需要 agent 能安全自修改；嵌套函数边界不清、无单测，agent 改自己时无法证明等价。taskProfile 已示范模式并验证可行
@@ -1737,3 +1737,9 @@ autonomy_rungs:
   rank_hint: normal
   rank_derived: false
   advice: ⭐ 自修改地基：agent 自己按模式搬，每步可回滚；先3个纯函数
+  evidence_log:
+  - at: '2026-11-21T06:42:21.471911+00:00'
+    commit: 4b676f6
+    checks:
+    - D:\Brain\publish\dsh-behavior-guard\tools\format_correction.mjs
+    - rc=0 PASS=1
