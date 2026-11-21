@@ -3,6 +3,7 @@
 > **怎么读这份文件**（2026-11-21 重构，按人的阅读顺序）：
 > **① 当前这张卡**（正在做/下一张）→ **② 未来要做哪些卡**（脉络与依赖）→ **③ 已完成哪些卡** → **④ 明确不做**。
 > 机器真相在 [ROADMAP_GRAPH.md](ROADMAP_GRAPH.md)，语义字段在 [CAPABILITY_LADDER.yaml](CAPABILITY_LADDER.yaml)；
+> **🌳 想一眼看依赖和完成状态：打开 [TECH_TREE.html](TECH_TREE.html)**（交互科技树，随 `--refresh` 自动重生成）。
 > 本文件是人读视图，§1-§3 自动块由 `tools/roadmap_check.py --refresh` 生成，勿手改。
 > 更新于 **2026-11-21**（v2.26.6）；入口 [README](README.md) · 细节 [docs/](docs/README.md) · 决策依据 [decisions/](decisions/README.md)。
 

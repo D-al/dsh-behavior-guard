@@ -820,7 +820,15 @@ def main():
         md = ROADMAP.read_text(encoding='utf-8')
         mirror = yaml.safe_load(LADDER.read_text(encoding='utf-8')) if LADDER.exists() else {}
         n = refresh_human_view(data, mirror, md)
-        print(f'REFRESHED: 当前卡 + 未来卡（{n} 张）+ 已完成卡；卡片状态未改动')
+        # 科技树视图随刷新自动重生成（2026-11-21）：状态/依赖/category 变了，图要跟上
+        try:
+            import subprocess
+            r = subprocess.run([sys.executable, str(ROOT / 'tools' / 'tech_tree.py')],
+                               cwd=ROOT, capture_output=True, text=True, timeout=30)
+            tree_msg = ' + 科技树' if r.returncode == 0 else ' + 科技树失败(' + r.stderr.strip()[:50] + ')'
+        except Exception as e:
+            tree_msg = ' + 科技树失败(' + str(e)[:40] + ')'
+        print(f'REFRESHED: 当前卡 + 未来卡（{n} 张）+ 已完成卡{tree_msg}；卡片状态未改动')
         return 0
     cmd_dryrun(data)
     return 0
