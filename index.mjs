@@ -23,6 +23,7 @@ import { writeFileSync, readFileSync, readdirSync, statSync, existsSync, appendF
 import path from 'node:path'
 import { execFile, execFileSync } from 'node:child_process'
 import { collectCorrectorInput as _collectCorrectorInput } from './tools/collect_corrector_input.mjs'
+import { buildTrailText as _buildTrailText } from './tools/build_trail_text.mjs'
 
 export const name = 'agent-harness'
 
@@ -1224,21 +1225,7 @@ export function apply(ctx, config) {
   })
 
   function buildTrailText(s) {
-    const calls = s.trail.filter((x) => x.kind === 'call' || x.kind === 'todo')
-    // v3.1：连续同名调用 run（重复探测信号，如 wait_agent ×3）
-    const runByIndex = []
-    let run = 1
-    for (let i = 1; i <= calls.length; i++) {
-      if (i < calls.length && calls[i].name === calls[i - 1].name) { run++; runByIndex[i - 1] = run }
-      else { if (run >= 3) runByIndex[i - 1] = run; run = 1; runByIndex[i - 1] = runByIndex[i - 1] || 1 }
-    }
-    const lines = calls.map((x, i) => {
-      const st = x.status || (x.ok === undefined ? '?' : (x.ok ? 'OK' : 'FAIL'))
-      const rl = runByIndex[i] || 1
-      const runMark = rl >= 3 ? ` [连续第${rl}次]` : ''
-      return `step${x.step} ${x.name}(${(x.args || '').slice(0, 80)}) -> ${st}${runMark} | ${x.result || ''}`
-    }).filter(Boolean)
-    return lines.join('\n').slice(-4000)
+    return _buildTrailText(s.trail)
   }
 
   const AUDIT_PROMPT = (task, trail, evidLog) => `你是独立会话审计员，没有参与这段 agent 工作。只依据以下事实判断，不要猜测。
