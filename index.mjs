@@ -1620,21 +1620,30 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
     }
   }
 
-  function formatExecutorResult(pkg, exec) {
-    const argsStr = JSON.stringify(pkg.args ?? {}, null, 0)
-    if (!exec.ok) {
-      // 代执行失败（安全边界/目标不存在）→ 降级注入。
-      // ⚠ 2026-11-17 实证修正：此前把纠正器猜的路径原样写进上下文（"目标不存在 <猜测路径>"），
-      // 该失败信息成为干扰源（会话里注入后模型反而进入重问循环）。现在只给方向性指引，
-      // 不把未经验证的猜测路径写进上下文。
-      return `[harness 系统修正] 独立纠正器认为你陷入了「${exec.error && String(exec.error).includes('不存在') ? '目标定位错误' : pkg.tool + ' 调用方式问题'}」（理由：${pkg.reason || '见证据'}）。` +
-        `不要原样重试上一次调用：换一种方法核实目标（glob 搜工作区 / es.exe 全盘搜索 / 用已知短路径重新定位），或向用户确认目标位置。`
-    }
-    if (exec.kind === 'list') {
-      return `[harness 系统修正+代执行] 独立纠正器确定了正确目标（${pkg.reason || '见证据'}），且已代为执行目录列举，结果如下。\n目录：${exec.target}\n内容：\n${exec.content}\n\n请基于以上事实继续任务——无需重新调用工具，也不要改动正确参数。`
-    }
-    return `[harness 系统修正+代执行] 独立纠正器确定了正确参数（理由：${pkg.reason || '见证据'}），且已代为执行读取。\n参数：${argsStr}\n结果${exec.truncated ? '（已截断）' : ''}：\n${exec.content}\n\n请基于以上内容继续任务——该文件内容已在上下文中，无需重新读取；后续引用该路径时使用 ${argsStr} 中的短路径形式。`
+
+function formatExecutorResult(pkg, exec) {
+  if (!pkg || typeof pkg !== 'object' || Array.isArray(pkg)) return null
+  if (!exec || typeof exec !== 'object' || Array.isArray(exec)) return null
+
+  const argsStr = JSON.stringify(pkg.args ?? {}, null, 0)
+
+  // ── 路径 1：代执行失败 → 降级注入 ──
+  if (!exec.ok) {
+    const isMissing = exec.error && String(exec.error).includes('不存在')
+    const issueLabel = isMissing ? '目标定位错误' : (pkg.tool + ' 调用方式问题')
+    return `[harness 系统修正] 独立纠正器认为你陷入了「${issueLabel}」（理由：${pkg.reason || '见证据'}）。` +
+      `不要原样重试上一次调用：换一种方法核实目标（glob 搜工作区 / es.exe 全盘搜索 / 用已知短路径重新定位），或向用户确认目标位置。`
   }
+
+  // ── 路径 2：目录列举 ──
+  if (exec.kind === 'list') {
+    return `[harness 系统修正+代执行] 独立纠正器确定了正确目标（${pkg.reason || '见证据'}），且已代为执行目录列举，结果如下。\n目录：${exec.target}\n内容：\n${exec.content}\n\n请基于以上事实继续任务——无需重新调用工具，也不要改动正确参数。`
+  }
+
+  // ── 路径 3：文件读取（默认分支） ──
+  return `[harness 系统修正+代执行] 独立纠正器确定了正确参数（理由：${pkg.reason || '见证据'}），且已代为执行读取。\n参数：${argsStr}\n结果${exec.truncated ? '（已截断）' : ''}：\n${exec.content}\n\n请基于以上内容继续任务——该文件内容已在上下文中，无需重新读取；后续引用该路径时使用 ${argsStr} 中的短路径形式。`
+}
+
 
   // ── turn-guard L0-L3：turn-stopping 时机判定（合并自 dsh-turn-continuation-guard）──
   function guardDecide(state) {
