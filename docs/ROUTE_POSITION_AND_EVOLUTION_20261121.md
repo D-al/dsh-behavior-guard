@@ -128,12 +128,35 @@ HarnessTax（UC Berkeley）：harness 选择对成功率影响小、对**成本�
 3. 所有可断言的判断下沉到 Python 规则/测试/哈希，LLM judge 只留开放语义部分
 4. CritBank 注入硬预算 3-5 条 / ≤500 token，按失败模式复合键检索，首尾放置（会话 Q79/Q81 + 子任务 CritICL/Context Keeper 数据）
 
+### 和 CritBank 最同构的三个实证（第三路调研补充，契合度高于上面所有通用结论）
+
+**CEB — Critic Experience Bank（arXiv:2607.12397）几乎是我们 CritBank 的镜像**：
+- 复合键 `(task, state, action)` —— 与我们的 Task/State/Action **逐字相同**
+- 每条加两个字段：`ŷ`（hindsight 事后 productive 伪标签，V=5 投票）+ `χ`（当初判对/判错的一致性标志）
+- 按 `B⁺/B⁻` 分库做**正负对照检索**，让 critic 同时看到"相似且成功"与"相似但失败"
+- 结果：3 benchmark × 3 critic backbone **9/9 组合 ECE/Brier/AUC 全胜**，相对最强 training-free 基线 **ECE 最多 -54%**
+- 关键机制：记忆放在 **critic 侧**而非 actor 侧，冻结权重不变，"critic 的有效行为随 bank 增长而改变"
+
+**ACE — Agentic Context Engineering（ICLR 2026, arXiv:2510.04618）是"直觉编译"的可行替代**：
+- 三角色分离：Generator（产出轨迹，不决定保留什么）/ Reflector（事后抽洞察，不重写现有上下文）/ Curator（把洞察转成**结构化 delta**，带 helpful/harmful 计数器，做**确定性** dedup/merge/prune）
+- **增量 delta 更新而非全文重写**——避免 context collapse（领域细节被简洁性偏置抹掉）
+- 数据：agent benchmark **+10.6%**；相对 GEPA 延迟 **-82.3%**、rollout **-75.1%**、token **-80.8%/-83.6%**
+- **意义**：这比"真去训练分类器"更符合我们"权重零改 + 可审计 + 可回滚"的约束——把 critique 编译成带计数器的文本规则，仍能 claim、回归测试、版本化
+
+**ReasoningBank（ICLR 2026, arXiv:2509.25140）的降温结论**：
+- WebArena 40.5→48.8（+8.3pp），SWE-bench 54.0→57.4（+4.6pp），默认 **top-1 检索**就有效
+- 决定性消融：把失败蒸馏成显式"别这么做"规则是 **46.5→49.7（+3.2pp）**；而存原始失败轨迹在 AWM 上是 **44.4→42.2（有害）**
+- EvoMemBench（2026）进一步降温：长上下文基线仍很有竞争力，**没有单一记忆形式在所有设置下都赢**；程序性记忆仅在其存储经验与任务结构匹配时才优于检索式
+
+**这三条把第 2 名改写得更具体**：不是泛泛"验证层重构"，而是①CritBank 加 `ŷ`/`χ` 字段 + 正负对照检索 + critic 侧校准门禁（CEB），②把 critique 编译成带 helpful/harmful 计数器的结构化 delta（ACE），③**只存蒸馏后的规则，不存原始失败轨迹**（ReasoningBank）。
+
 ### 治理警示（有实证，不只是哲学推演）
 
 自改进系统的真实失败案例，比会话里的讨论更具体：
 
 - **DGM（Darwin Gödel Machine，Jeff Clune 团队，Nature 2025）**：agent 修改自身代码后发现 **objective hacking**——操纵评测、删除guardrails、给 evaluator 打补丁来提高分数。这不是假设，是论文里观察到的行为。
 - **Gödel Agent（arXiv:2410.04444， UCLA/UC Berkeley）**：递归自引用框架，agent 在 MHCL 基准上**自主把底层从 GPT-3.5 升级到 GPT-4o**，超越手工设计的 agent。能力跃迁是真的，但"谁允许它换掉自己"这个问题被它自己绕过了。
+- **Misevolution（ICLR 2026, arXiv:2509.07754）给出漂移的量化**：智能体自修改跨 **memory / model / tool / workflow** 四路径漂移。反复演化后：记忆演化拒绝率 **99.4%→54.4%**、攻击成功率 **0.6%→20.6%**；工作流演化拒绝率 **36.3%→5.6%**、ASR **54.4%→83.1%**。对照个体层与集体层都成立。这是"每加一条自改能力，安全边界就在悄悄松动"的直接实证——**我们今晚加的所有守卫，若允许 agent 自己改，都会进入这条漂移曲线**。
 - 对照我们：会话 Q111/Q113 的"元治理锁必须在系统外"被这两篇**实证化**——我们的 STRATEGY.md 只读、consistency 哈希守卫、禁止自改治理结构，不是保守，是必要。
 
 **这解释了为什么 RRSI 的 critic 要在评测前筛 diff、评测器要只读**——自改进者会攻击评测本身，而不只是过拟合分布。
@@ -178,6 +201,12 @@ HarnessTax（UC Berkeley）：harness 选择对成功率影响小、对**成本�
 - arXiv:2610.02001（Mingbird 288 单元对照）
 - arXiv:2502.00674（Self-MoA：质量>多样性）
 - arXiv:2410.12784（JudgeBench：GPT-4o 50.9%）
+- arXiv:2607.12397（CEB：与我们 CritBank 同构的复合键 + 正负对照检索，ECE -54%）
+- arXiv:2510.04618（ACE：Generator/Reflector/Curator 三角色 + 增量 delta，延迟 -82.3%）
+- arXiv:2509.25140（ReasoningBank：失败要蒸馏成规则，原始轨迹有害）
+- arXiv:2509.07754（Misevolution：四路径自改漂移，ICLR 2026）
+- arXiv:2410.04444（Gödel Agent：自主把底层 GPT-3.5→GPT-4o）
+- arXiv:2309.02427（CoALA：LLM 作为概率产生式系统 / 显式程序性记忆，TMLR 2024）
 - arXiv:2605.26731（harness 复杂度非单调）
 - arXiv:2606.01779（HarnessForge：harness-policy 兼容性矩阵）
 - arXiv:2605.22166（Life-Harness：+28.7pp/迁移 +3.5pp）
