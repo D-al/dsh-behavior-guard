@@ -95,3 +95,46 @@ commit 时间轴：
 4. 卡状态 done ≠ 判据通过——S11/A1_7 是 done 卡恒 FAIL 的假失败；反向要查判据本身对不对。
 5. 文本判据（grep/正则）易写错也易恒真——必须配负对照。
 6. 文档宣称 ≠ 代码现实——双向核对，尤其 CHANGELOG/状态三文件。
+
+---
+
+## 六、追加：用户指出"GitHub 人读路线图没更新"后的二次深度维护（13:01-13:25）
+
+### 根因（用户投诉的直接原因）
+`roadmap_check.py --refresh` 只重渲染 `HUMAN_CARDS` 区（23 张非 done 卡），
+**漏刷 `HUMAN_PROGRESS` 进度表**——S15/S16 是 done，从不出现在人读视图；
+且人读进度表的"完成证据"列写死 `docs/reflection-{id}.md`（大多不存在，假链接）。
+
+### 修复
+1. 抽出公共 `render_human_progress(data)`，`save_authoritative` 与 `--refresh` 共用（防漂移）；
+   `--refresh` 现在同时刷 CARDS + PROGRESS 两区。假链接改为真实 evidence_log。
+   → S15/S16 现在出现在 GitHub 人读进度表（✅ done），进度表 26→30 项。
+2. ROADMAP.md 全文状态一致：line66 旧"--next=NO_READY_ITEM/自治耗尽"→ S12（与 line51/333 一致）；
+   "23张卡"→53张、"35项"→30项；README 版本 2.26.2→2.26.6、脚本数不写死。
+3. docs/README.md 补 REFACTOR_PATTERN_20261121 / DEEP_MAINTENANCE_20261121 索引。
+4. 三文件权威定义统一：状态权威=ROADMAP_GRAPH.md / 语义=CAPABILITY_LADDER.yaml / 人读=ROADMAP.md
+   （原 CAPABILITY_LADDER.yaml meta 自称 authority=自己、roadmap_check docstring 也说 LADDER 权威，均改）。
+5. **判据假失败/假绿根治**（反向检验副产品）：
+   - S4/S7/gpu_guard/rebaseline 的 `file_exists` **缺 path** → KeyError 恒 FAIL；补真实文件路径。
+   - S15 verify 原本查 `MUTATION_AUDIT.md` + `test_task_profile`（与选择性验证无关却会 PASS）→ 改查
+     `selective_verification.mjs` + 它自己的 57/57 单测。
+   - roadmap dry-run: PASS **24→28**，FAIL **14→10**，KeyError 消失。
+
+### 反向检验（用户强调"记得反向检验"——逐条从远端/运行版倒推，不看我改了什么）
+| # | 检验 | 方法 | 结果 |
+|---|---|---|---|
+| 1 | GitHub 人读路线图真更新 | `git show origin/main:ROADMAP.md` | ✅ S15/S16 done、next=S12、53卡/30项 |
+| 2 | README 远端版本 | `git show origin/main:README.md` | ✅ v2.26.6 |
+| 3 | refresh 修复在远端 | `git show origin/main:tools/roadmap_check.py` | ✅ render_human_progress×3 + HUMAN_BEGIN/HUMAN_END/progress |
+| 4 | S15 判据远端正确 | 从远端 blob yaml.safe_load | ✅ 测 selective_verification 自身 |
+| 5 | 5 张卡判据远端正确 | 从远端 blob 解析 | ✅ path/cmd 均真实 |
+| 6 | 运行版 vs 权威源 sha | sha256 逐文件 | ⚠️ 首轮抓到 GRAPH 未同步 → 已修 → 复验一致 |
+| 7 | lock 指向最新 commit | grep lock + git HEAD | ⚠️ 首轮指向旧 commit → 已修 → 三处一致 f02bcd5 |
+| 8 | **负对照（防恒真）** | 临时把 S15 test cmd 改成不存在文件 | ✅ 真 FAIL（rc=1 PASS=0）→ 恢复后 PASS，判据非假绿 |
+
+**反向检验的价值实证**：第 6、7 项是我自查"通过"但反向查出的真遗漏（运行版 GRAPH 没同步、lock 指向旧 commit）——
+靠"我改了文件 + 本地测试过"根本发现不了。
+
+### 最终状态
+HEAD = origin/main = lock = `f02bcd5`；门禁 35/35；roadmap PASS=28 FAIL=10 MANUAL=15；
+consistency 38 PASS；工作区干净。剩余 10 FAIL 为历史遗留卡（非本次范围）。
