@@ -146,6 +146,10 @@ const DEFAULTS = {
   // 含 已确立/已排除/当前项/已用步数 + "列 2-3 个候选再选一个"——模拟 Meta Controller 的四个动作。
   controlEverySteps: 8,
   maxControlPerSession: 24,     // 6 只覆盖前 48 步 → 现场 140+ 事件空窗；与 GitHub v2.8 对齐
+  // 阶段边界标记（2026-11-21）：同会话切卡时注入确定性分隔符，切断跨任务注意力污染。
+  // 只在显式"下一张卡/继续推进"指令时触发，不误伤普通追问。
+  phaseBoundaryEnabled: true,
+  phaseBoundaryMaxPerSession: 12,
   controlEnabled: true,
   // ── 心智拼图（P0-P2，2026-11-18 广搜后落地；v2.9 合并：GitHub 版 ⊕ 运行版）──
   frameEnabled: true,            // P2-7：结构化轨迹事件流 (role,goal,evidence,provenance,trust)
@@ -890,6 +894,7 @@ export function apply(ctx, config) {
         // continuity P1 计数重置
         s.turnTodoInjections = 0
         s.controlCount = 0
+        s.phaseBoundaryInjected = false
         s.remindedNoTodo = false
         // D4 present-gate 本轮重置
         s.presentCalled = false
@@ -919,6 +924,12 @@ export function apply(ctx, config) {
           s.latest = t.slice(0, 1000)
           if (cfg.frameEnabled) s.frame.goal = t.slice(0, 300)
           if (cfg.bdiEnabled) { s.bdi.goal = t.slice(0, 250); s.bdi.updatedAt = Date.now() }
+          // 阶段边界：显式切卡指令 → 下一 turn 注入分隔符（确定性，不靠模型自省）
+          if (cfg.phaseBoundaryEnabled && s.turn > 1 &&  // 首轮(turn=1)没有"上一张卡"，不注入
+              /(下一张卡|继续推进|下一个任务|继续做|新任务)/.test(t) &&
+              (s.phaseBoundaryCount || 0) < (cfg.phaseBoundaryMaxPerSession ?? 12)) {
+            s.pendingPhaseBoundary = t.slice(0, 300)
+          }
         }
         return
       }
@@ -2135,6 +2146,25 @@ function formatExecutorResult(pkg, exec) {
       // 安全注入（pendingInject 承载 D1-D2 / S6 / 危险操作提示）不受次数/token 双闸门约束（ADR-0017）
       if (!s.pendingInject && s.sharedInjections >= cfg.sharedMaxPerTurn) return decision
       if (!s.pendingInject && (s.injectionTokensThisTurn || 0) >= cfg.maxInjectionTokensPerTurn) return decision
+
+      // 阶段边界标记（2026-11-21）：切卡时注入确定性分隔符，明确"上一张已归档，不要复用其探测结果"
+      if (s.pendingPhaseBoundary && !s.phaseBoundaryInjected) {
+        const pb = s.pendingPhaseBoundary
+        s.pendingPhaseBoundary = null
+        s.phaseBoundaryInjected = true
+        s.phaseBoundaryCount = (s.phaseBoundaryCount || 0) + 1
+        const text = '[harness 阶段边界] === 新章节开始 ===\n' +
+          '上一段工作已归档：其失败轨迹、重复探测路径、临时文件列表都不要带入本段。\n' +
+          '本段指令：' + pb + '\n' +
+          '规则：从这一行开始重新判断该用什么工具；若需要上一张卡的产物，用 read/grep 现取，不要凭记忆引用。'
+        s.turnInjections += 1
+        s.sessionInjections = (s.sessionInjections || 0) + 1
+        trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'phase_boundary', step: s.step,
+                turn: s.turn, count: s.phaseBoundaryCount })
+        const msg = createMessage(text, 'phase-boundary', s)
+        const messages = Array.isArray(decision?.messages) ? [...decision.messages, msg] : [msg]
+        return { ...decision, messages }
+      }
 
       // v3.2 P0：代验收结果（spawn 验收 wait 连续超时 → verify_agent.py 环境判定）
       if (s.pendingVerify) {

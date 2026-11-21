@@ -1193,13 +1193,22 @@ items:
   cost: 中
   advice: ✅ P0：读写地基三件套之一，与今晚 mutation 审计同源——"写了脚本没应用"正是假绿
   rank_derived: false
-  status: ready
+  status: done
   tier: 1
   unlocks: []
   strategy_flags:
     violates_non_goal: null
     touches_metagovernance: false
     serves_success_dim: null
+  claimer: unknown-agent
+  claimed_at: '2026-11-21T08:27:50.078173+00:00'
+  evidence_log:
+  - at: '2026-11-21T08:28:04.165663+00:00'
+    commit: 26bda1a
+    checks:
+    - 5 hits in index.mjs
+    - D:\Brain\publish\dsh-behavior-guard\tools\test_patch_applied.py
+    - rc=0 PASS=2
 - id: S13
   title: verifyRan收紧（read≠验证）
   what: 把 index.mjs:913 的"read/cat 即 verifyRan"收紧为真实验证证据（语法检查/测试命令/verify_agent），解决A1_6反复read却被认为验证过的假绿
@@ -1461,7 +1470,7 @@ items:
   deps: []
   risk: low
   autonomous: true
-  status: ready
+  status: done
   what: 把 harness 改动纳入"是否使 prompt 前缀失效"的评估：工具定义/指令放前缀后部；不因小改使整个 cache 失效；改动前后测 prefill
     差异。
   why: 9000 token 前缀 KV cold 1.77s vs hot 0.03s(60×)；印证我们"CTX_CHECKPOINTS 承重墙(降到1→+23%)"实测；频繁小改可能比少改但改对更慢。
@@ -1485,6 +1494,14 @@ items:
     violates_non_goal: null
     touches_metagovernance: false
     serves_success_dim: null
+  claimer: unknown-agent
+  claimed_at: '2026-11-21T08:27:32.771058+00:00'
+  evidence_log:
+  - at: '2026-11-21T08:28:04.410777+00:00'
+    commit: 26bda1a
+    checks:
+    - D:\Brain\publish\dsh-behavior-guard\tools\prefix_stability_probe.py
+    - rc=0 PASS=3
 autonomy_rungs:
 - id: A0
   title: 数据可信（sid 黑名单）

@@ -959,7 +959,7 @@ items:
   tier: 1
 - id: S12
   title: 补丁应用闭环（禁写脚本不落地）
-  status: ready
+  status: done
   deps:
   - A1
   risk: low
@@ -985,6 +985,16 @@ items:
   abort_if: 无法可靠关联补丁脚本与目标文件
   tier: 1
   unlocks: []
+  claimed_at: '2026-11-21T08:27:50.078173+00:00'
+  claimer: unknown-agent
+  done_at: '2026-11-21T08:28:04.165663+00:00'
+  evidence_log:
+  - at: '2026-11-21T08:28:04.165663+00:00'
+    commit: 26bda1a
+    checks:
+    - 5 hits in index.mjs
+    - D:\Brain\publish\dsh-behavior-guard\tools\test_patch_applied.py
+    - rc=0 PASS=2
 - id: S13
   title: verifyRan收紧（read≠验证）
   status: ready
@@ -1220,7 +1230,7 @@ items:
   deps: []
   risk: low
   autonomous: true
-  status: ready
+  status: done
   verify:
   - kind: file_exists
     path: tools/prefix_stability_probe.py
@@ -1237,6 +1247,15 @@ items:
   - 前缀稳定性与功能正确性冲突时优先正确性
   - 别为了 cache 稳定而拒绝必要修复
   abort_if: 无
+  claimed_at: '2026-11-21T08:27:32.771058+00:00'
+  claimer: unknown-agent
+  done_at: '2026-11-21T08:28:04.410777+00:00'
+  evidence_log:
+  - at: '2026-11-21T08:28:04.410777+00:00'
+    commit: 26bda1a
+    checks:
+    - D:\Brain\publish\dsh-behavior-guard\tools\prefix_stability_probe.py
+    - rc=0 PASS=3
 rungs:
 - id: A0
   deps: []
