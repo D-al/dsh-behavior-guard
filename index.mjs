@@ -16,7 +16,13 @@
  *
  * 降级链：纠正器失败/JSON 解析失败 → 退回 v1 的一句话 fix 注入。
  * 安全阀：fetch 失败静默；每轮 <=1 次注入、每会话 <=4 次；注入后清轨迹防重复。
+ *
+ * S12 补丁应用闭环：_apply_*.py / _fix_*.py 脚本写入后必须有 applyEvidence
+ *（目标文件 mtime 变化 + 语法通过），否则提示"脚本已写但未应用"。
  */
+
+// ── S12: patch applied evidence marker (applyEvidence / 补丁应用标记) ──
+const PATCH_EVIDENCE_DIR = 'docs/archive/a16-patch-scripts'; // _apply_*.py targets live here
 
 import { randomUUID } from 'node:crypto'
 import { writeFileSync, readFileSync, readdirSync, statSync, existsSync, appendFileSync, openSync, readSync, closeSync, renameSync } from 'node:fs'
