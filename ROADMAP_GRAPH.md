@@ -676,7 +676,7 @@ items:
   deps: []
   risk: high
   autonomous: false
-  status: manual-blocked
+  status: rejected
   verify:
   - kind: manual
     reason: 需先验证 86M 分类器 + A/B 端到端提速
@@ -828,7 +828,7 @@ items:
   deps: []
   risk: high
   autonomous: false
-  status: manual-blocked
+  status: rejected
   verify:
   - kind: manual
     reason: 须换 86M 且召回 A/B ≥80%；0.6B 已证伪

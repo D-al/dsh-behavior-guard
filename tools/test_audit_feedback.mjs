@@ -26,6 +26,7 @@ apply(ctx, {
   criticEnabled: false, plannerCheckEnabled: false, presentGateEnabled: false,
   skillsEnabled: false, learningEnabled: false, fepEnabled: false,
   specSignalEnabled: false, todoEchoEnabled: false, dangerGuardEnabled: false,
+  injectionClassifierEnabled: false,  // 隔离：本测审计自校准，不跑注入分类器(它有独立测试)
   deepCheckEnabled: false, continuityEnabled: false,
 })
 

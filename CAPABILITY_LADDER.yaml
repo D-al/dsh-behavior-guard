@@ -392,7 +392,7 @@ items:
   deps: []
   risk: high
   autonomous: false
-  status: manual-blocked
+  status: rejected
   verify:
   - kind: manual
     reason: 需先验证 86M 分类器 + A/B 端到端提速
@@ -412,7 +412,7 @@ items:
   - 'P-AB-SPEEDUP: A/B端到端提速>=10%（仍需实测）'
   benefit: 中
   cost: 低
-  advice: ⛔ 降级：0.6B 生成式已证伪(4-6s)；分类器延迟已达标但 A/B 端到端收益未测
+  advice: ⛔ 明确不做:0.6B证伪(4-6s)+verify-on-edit已覆盖;原前置"分类器延迟"设错(Horizon是注入检测不识别格式错)
   rank: 7
   rank_derived: false
   unlocks: *id006
@@ -628,7 +628,7 @@ items:
   deps: []
   risk: high
   autonomous: false
-  status: manual-blocked
+  status: rejected
   verify:
   - kind: manual
     reason: 须换 86M 且召回 A/B ≥80%；0.6B 已证伪
@@ -648,7 +648,7 @@ items:
   - 'P-RECALL-AB: 召回 A/B>=80%（端到端A/B仍需实测）'
   benefit: 低
   cost: 高
-  advice: 降级：无实证收益前不做
+  advice: ⛔ 明确不做:Critic门控可行性验证=无产物文本/无标签+分类器对产物质量零区分度(占位符@0.9检出0/8)
   rank: 13
   rank_derived: false
   unlocks: *id012

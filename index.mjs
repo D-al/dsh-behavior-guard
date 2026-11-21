@@ -120,7 +120,7 @@ const DEFAULTS = {
   injectionScanEnabled: true,
   injectionMaxPerSession: 3,
   // S6 Tier-2：ONNX 分类器（可选；只写 trace + info 日志，绝不 steer）
-  injectionClassifierEnabled: false,   // 默认关，观察稳定后再开
+  injectionClassifierEnabled: true,    // 2026-11-22启用:大样本@0.9=93.3%/0.3%/99.6%,只写trace不steer
   injectionClassifierPort: 9899,
   injectionClassifierThreshold: 0.9,
   // 共享每轮注入预算（audit 注入 + D4 steer 合计，防叠加刷屏）
