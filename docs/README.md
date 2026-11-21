@@ -50,6 +50,7 @@
 | [ROUTE_POSITION_AND_EVOLUTION_20261121.md](ROUTE_POSITION_AND_EVOLUTION_20261121.md) | 战略/调研 | 广泛调研定位：我们在harness递归自改进路线B；RRSI正则/Self-MoA质量>多样性/最高杠杆排序 |
 | [SINGLE_SESSION_ANTI_POLLUTION_20261121.md](SINGLE_SESSION_ANTI_POLLUTION_20261121.md) | 架构/实证 | 同会话抗污染：两卡连推实验(第二张更顺)+污染真形态=未折叠噪声+分阶段边界标记方案 |
 | [DEPENDENCY_UNLOCK_AUDIT_20261121.md](DEPENDENCY_UNLOCK_AUDIT_20261121.md) | 路线图/审计 | deps与unlocks一致性：8处显式解锁5一致3软解锁;灰实线硬依赖+紫虚线逻辑解锁 |
+| [TECH_TREE_CLEANLINESS_20261121.md](TECH_TREE_CLEANLINESS_20261121.md) | 设计原则 | 科技树清爽化：只有阻塞关系才画线;闸门默认隐藏留角标;软关联按需开启;86M五卡处理 |
 | [WALKING_PLAN_20261120.md](WALKING_PLAN_20261120.md) | 方案 | **学会自己走路 6 阶执行阶梯**（用现有器官逐步自主化）|
 | [GROWTH_CARD_DESIGN_20261120.md](GROWTH_CARD_DESIGN_20261120.md) | 设计 | 能力阶梯成长卡片：what/why/解锁/好处/代价/坑/反思 |
 | [CONSISTENCY_VERDICT_20261120.md](CONSISTENCY_VERDICT_20261120.md) | 事故自审 | GitHub/权威/生产一致性 verdict + 守卫机制 + agent 教训 |
