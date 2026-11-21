@@ -22,6 +22,7 @@ import { randomUUID } from 'node:crypto'
 import { writeFileSync, readFileSync, readdirSync, statSync, existsSync, appendFileSync, openSync, readSync, closeSync, renameSync } from 'node:fs'
 import path from 'node:path'
 import { execFile, execFileSync } from 'node:child_process'
+import { collectCorrectorInput as _collectCorrectorInput } from './tools/collect_corrector_input.mjs'
 
 export const name = 'agent-harness'
 
@@ -1424,13 +1425,7 @@ ${evidence || '(无证据可用)'}
 
   /** v2 纠正器：从失败详情 + 成功证据产出修正包 */
   function collectCorrectorInput(s) {
-    const fails = s.trail.filter((x) => x.kind === 'call' && x.ok === false)
-    const evid = s.trail.filter((x) => x.kind === 'call' && x.ok === true && x.fullEvidence)
-    const failDetail = fails.slice(-4).map((x) =>
-      `step${x.step} ${x.name} 参数=${x.args}\n  错误=${(x.result || '').slice(0, 150)}`).join('\n')
-    const evidence = evid.map((x) =>
-      `step${x.step} ${x.name}(${(x.args || '').slice(0, 100)}) 返回：\n${x.result}`).join('\n---\n')
-    return { failDetail, evidence }
+    return _collectCorrectorInput(s.trail)
   }
 
   // ── P2 Planner 检查：首次 [VERIFY] 项是否"可验证"（1 次 LLM，每会话 1 次）──
