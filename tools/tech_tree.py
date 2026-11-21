@@ -165,9 +165,14 @@ function render(){
  const mode=window.__mode||'all';
  const ns=DATA.filter(n=>mode==='all'||(mode==='done'?n.status==='done':n.status!=='done'));
  const maxd=Math.max(...ns.map(n=>n.depth));
- const cols=[];for(let d=0;d<=maxd;d++)cols.push(ns.filter(n=>n.depth===d));
+ // 每层内：未完成靠上、已完成靠下（当前该做的自然浮到视线里）
+ const rank=n=>(n.status==='done'?1:0);
+ const cols=[];for(let d=0;d<=maxd;d++)cols.push(
+   ns.filter(n=>n.depth===d).sort((a,b)=>rank(a)-rank(b)||a.tier-b.tier||a.id.localeCompare(b.id)));
  $('#cols').style.width=((maxd+1)*236)+'px';
- $('#cols').innerHTML=cols.map((col,d)=>`<div class="col"><div class="col-h">第 ${d} 层</div>`+
+ $('#cols').innerHTML=cols.map((col,d)=>{
+  const todo=col.filter(n=>n.status!=='done').length,done=col.length-todo;
+  return `<div class="col"><div class="col-h">第 ${d} 层 · <span style="color:#A32D2D">${todo} 待办</span> / <span style="color:#1D9E75">${done} 完成</span></div>`+
   col.map(n=>{
    const done=n.status==='done';
    const hubdim=window.__hub && n.id!=='A1' && !n.deps.includes('A1');
@@ -181,7 +186,7 @@ function render(){
     <div class="id">${esc(n.id)} · tier ${n.tier}</div>
     <div class="t">${esc(n.title)}</div>
     <div class="meta">${SL[n.status]||n.status} · ${esc(n.risk)}</div></div>`
-  }).join('')+'</div>').join('');
+  }).join('')+'</div>';}).join('');
  drawLinks(ns);
 }
 function drawLinks(ns){
