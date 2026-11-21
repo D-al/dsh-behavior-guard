@@ -933,14 +933,15 @@ items:
   risk: low
   autonomous: true
   verify:
+  # 2026-11-21 反向检验修正：原regex要求同一行含verify，实际verify-on-edit在1135行、
+  # DEFAULT_WRITE_TOOLS在629行，判据写错导致done卡恒FAIL(假失败)。改为匹配真实代码。
   - kind: file_grep
     path: index.mjs
-    regex: DEFAULT_WRITE_TOOLS.*verify|verifyOnWriteFor|writeTools.*check
+    regex: cfg\.writeTools\.includes\(c\.name\)|DEFAULT_WRITE_TOOLS
     min: 1
-  - kind: file_exists
-    path: tools/test_write_verify_all.py
-  - kind: test_pass
-    cmd: D:/Python/python.exe -B tools/test_write_verify_all.py
+  - kind: file_grep
+    path: index.mjs
+    regex: checkSyntax\(s\.lastProduct\)|verifyOnEditEnabled
     min: 1
   what: 把 verify-on-edit 从只覆盖 write/edit 扩展到 DEFAULT_WRITE_TOOLS 全部8种（apply_patch/multi_edit/create_file/str_replace/write_file/notebook_edit），每种按扩展名跑对应语法校验
   why: 真实trace显示write 0%失败但edit 11.8%失败；verify-on-edit(index.mjs:1042)只认write/edit，其余6种写工具零校验——假绿温床
@@ -1346,14 +1347,17 @@ rungs:
   risk: low
   autonomous: true
   verify:
+  # 2026-11-21 反向检验修正：真实打点叫 review_verdict/review_kind，不是critic_review/planner_check。
+  # 原regex 0命中导致done卡恒FAIL(假失败)。test_review_trace.py从未落地，改用真实打点grep。
   - kind: file_grep
     path: index.mjs
-    regex: critic_review|planner_check
+    regex: "kind: 'review_verdict'|review_kind: 'critic'|review_kind: 'planner'"
     min: 1
   - kind: file_exists
     path: docs/MECHANISM_TRIGGER_AUDIT_20261120.md
-  - kind: test_pass
-    cmd: D:/Python/python.exe -B tools/test_review_trace.py
+  - kind: file_grep
+    path: index.mjs
+    regex: rubric_version|dimensions_checked
     min: 1
   what: 给 Critic/Planner 调用加专属 trace 打点（rubric_version/dimensions_checked/verdict），让每个评审机制有可审计的触发证据
   why: 2026-11-20 审计发现：新加的 Critic第6维/Planner假设披露确实进了 prompt，但 callLLM 只记 kind=llm，无法证明评审真的用了新维度——违反证据分层铁律

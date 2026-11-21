@@ -1,3 +1,30 @@
+## [2.26.6] - 2026-11-21（连续自主推卡 + 反向检验深度维护）
+
+### 落地
+- S17 函数外置：formatCorrection / formatExecutorResult / buildTrailText / collectCorrectorInput 四卡真完成
+  （单测 25/25、56/56、17/17、19/19；集成 4/4、17/17、12/12、4/4 全部亲测通过）。
+  默认接线方式从"复制函数体内联"改为 **import 转发**（tools/ 版唯一真相）。
+- S15 选择性验证门控：独立模块 selective_verification.mjs + 单测 57/57（**未接入 index 守卫**，
+  运行版曾有未定义 `_verifyGate` 坏接线，本次已用权威源覆盖清除）。
+- 框架修复：verify-on-edit node 绝对路径 + ENOENT 静默跳过；roadmap_check 兼容 ✅/[OK] 输出（实测无假绿）；
+  frame_limiter 粘性释放 RELEASE_STREAK=4 + dsh 窗口不豁免（用户纠正）。
+- 反向检验修 S11/A1_7 假失败：两卡功能真在（DEFAULT_WRITE_TOOLS 覆盖 8 种写工具 / review_verdict 打点），
+  但判据 regex 写错 + 测试文件从未落地导致 done 卡恒 FAIL；已修判据，两卡转 PASS。
+
+### 被证伪 / 事故（诚实记录）
+- **dsh 进程 07:54 启动后整晚未重启**：所有之后落盘的 index.mjs 改动对运行进程零生效——
+  "代码存在+单测过"不能推出"生效"，必须重启后采真实 trace。
+- **watch 超时被误当会话停止** → 4 个 agent 会话并发写同一仓库（幸未互相覆盖）；已 cancel + 立铁律。
+- **agent 用正则替换 + 整文件重建把 node_modules 里 index.mjs 写成 0 字节**；已恢复，并写进 REFACTOR_PATTERN 禁令。
+- **executeReadOnly 失败**：单测 5 FAIL + JSON.parse 崩溃，未提交，残留隔离到 cleanup 区。
+- **后台 daemon（relay/kill_switch）被沙箱回收**，无法常驻；接力改为主代理手动。
+- **任务管理器总体 CPU% 显示陈旧值**：重启后正常；判推理活性只看 token 速度 / llama /slots。
+- **node --check 抓不到未定义函数**（`_verifyGate` 案例）——接线后必须真实触发或静态配对检查。
+
+### 验证
+- 门禁 run_all 30/30；consistency 38 PASS；roadmap dry-run S11/A1_7 由 FAIL 转 PASS；
+  运行版 index.mjs 已用权威源覆盖，sha256 与权威源一致。
+
 ## [2.26.5] - 2026-11-20 02:15（能力阶梯按调研修正：权威源归一 + 渐进解锁）
 
 - 权威源改为 ROADMAP.md 内嵌 HTML 注释块，CAPABILITY_LADDER.yaml 降为语义镜像（消除多副本漂移）

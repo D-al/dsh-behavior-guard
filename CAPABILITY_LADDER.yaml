@@ -1447,7 +1447,7 @@ autonomy_rungs:
   deps: []
   risk: low
   autonomous: true
-  status: ready
+  status: done
   what: 给高频工具的 schema 补 1-5 个 input_examples（最小/歧义/错误恢复各一），并测算工具定义总 token；作为 M5 工具面收敛的轻量替代
   why: Anthropic 内部测试 Tool Use Examples 把复杂参数准确率 72%→90%；本机工具面 28 个已在风险区，但砍工具需用户拍板，补示例零风险
   benefit_to_self: 减少参数错误导致的重复失败（D1/D2），不必动工具数量
