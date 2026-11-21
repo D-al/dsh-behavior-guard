@@ -136,6 +136,10 @@ items:
   rank: 1
   rank_derived: false
   unlocks: *id001
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: M8
   title: 轨迹 FSM 监控器
   tier: 1
@@ -189,6 +193,10 @@ items:
   rank: 2
   rank_derived: false
   unlocks: *id002
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: M3
   title: 用户意图 BDI 三槽
   tier: 2
@@ -236,6 +244,10 @@ items:
   rank_derived: true
   unlocks: *id003
   rank_hint: normal
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: M9
   title: 意图分类器
   tier: 2
@@ -274,6 +286,10 @@ items:
   rank_derived: false
   unlocks: *id004
   rank_hint: normal
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: M2
   title: 会话树实时化
   tier: 2
@@ -312,6 +328,10 @@ items:
   rank_derived: false
   unlocks: *id005
   rank_hint: normal
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: M5
   title: 工具面结构改造
   tier: 3
@@ -343,6 +363,10 @@ items:
   rank_derived: false
   unlocks: *id006
   rank_hint: blocked
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: M7
   title: 格式修复器（降级）
   tier: 3
@@ -374,6 +398,10 @@ items:
   rank_derived: false
   unlocks: *id007
   rank_hint: last
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: S6_model
   title: S6 模型层升级
   tier: 3
@@ -403,6 +431,10 @@ items:
   rank_derived: false
   unlocks: *id008
   rank_hint: last
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: L2
   title: 标准化 eval
   tier: 4
@@ -434,6 +466,10 @@ items:
   rank_derived: false
   unlocks: *id009
   rank_hint: normal
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: L6
   title: 专属误差预测器
   tier: 4
@@ -464,6 +500,10 @@ items:
   rank_derived: false
   unlocks: *id010
   rank_hint: normal
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: L1
   title: FEP 深化 → 世界模型
   tier: 4
@@ -498,6 +538,10 @@ items:
   rank_derived: false
   unlocks: *id011
   rank_hint: last
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: L8
   title: 多标签心智编码器
   tier: 4
@@ -529,6 +573,10 @@ items:
   rank_derived: false
   unlocks: *id012
   rank_hint: normal
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: L5
   title: 小模型 Critic 预警（降级）
   tier: 4
@@ -560,6 +608,10 @@ items:
   rank_derived: false
   unlocks: *id013
   rank_hint: explore
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: L3
   title: 脑功能分区空白区
   tier: 4
@@ -590,6 +642,10 @@ items:
   rank_derived: false
   unlocks: *id014
   rank_hint: explore
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: L4
   title: 独立轨道（上游 PR）
   tier: 4
@@ -621,6 +677,10 @@ items:
   rank_derived: false
   unlocks: *id015
   rank_hint: explore
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: L7
   title: FAKEOK 抑制（探索）
   tier: 4
@@ -651,6 +711,10 @@ items:
   rank_derived: false
   unlocks: *id016
   rank_hint: explore
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: S1
   title: Self-Harness P0-P2
   tier: 1
@@ -670,6 +734,10 @@ items:
   advice: 已完成，见 evidence
   rank: 99
   rank_derived: true
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: S2
   title: 可控遗忘常态化
   tier: 1
@@ -688,6 +756,10 @@ items:
   advice: 已完成，见 evidence
   rank: 99
   rank_derived: true
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: S3
   title: 频次收尾（trace 带 turn/controlTotal）
   tier: 1
@@ -705,6 +777,10 @@ items:
   advice: 已完成，见 evidence
   rank: 99
   rank_derived: true
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: S4
   title: 自适应 A/B
   tier: 2
@@ -724,6 +800,10 @@ items:
   advice: 已完成，见 evidence
   rank: 99
   rank_derived: true
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: S5
   title: 角色失效修复
   tier: 2
@@ -741,6 +821,10 @@ items:
   advice: 已完成，见 evidence
   rank: 99
   rank_derived: true
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: S6
   title: 注入检测
   tier: 2
@@ -759,6 +843,10 @@ items:
   advice: 已完成，见 evidence
   rank: 99
   rank_derived: true
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: S7
   title: CPU 小模型基准
   tier: 3
@@ -778,6 +866,10 @@ items:
   advice: 已完成，见 evidence
   rank: 99
   rank_derived: true
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: S8
   title: 审计自校准落盘
   tier: 2
@@ -795,6 +887,10 @@ items:
   advice: 已完成，见 evidence
   rank: 99
   rank_derived: true
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: S9
   title: 有状态反馈
   tier: 2
@@ -812,6 +908,10 @@ items:
   advice: 已完成，见 evidence
   rank: 99
   rank_derived: true
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: M4
   title: 注入预算 token 化
   tier: 1
@@ -830,6 +930,10 @@ items:
   advice: 已完成，见 evidence
   rank: 99
   rank_derived: true
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: M6
   title: 安全规则不可覆盖
   tier: 1
@@ -848,6 +952,10 @@ items:
   advice: 已完成，见 evidence
   rank: 99
   rank_derived: true
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: GWT_FEP_done
   title: GWT 共享状态总线 + FEP 预期闭环
   tier: 1
@@ -865,6 +973,10 @@ items:
   advice: 已完成，见 evidence
   rank: 99
   rank_derived: true
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: archive_dedup
   title: 压缩存档去重
   tier: 2
@@ -882,6 +994,10 @@ items:
   advice: 已完成，见 evidence
   rank: 99
   rank_derived: true
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: regression_106
   title: 回归审计 106 PASS / 0 FAIL
   tier: 1
@@ -899,6 +1015,10 @@ items:
   advice: 已完成，见 evidence
   rank: 99
   rank_derived: true
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: gpu_guard
   title: GPU 引擎守护
   tier: 1
@@ -916,6 +1036,10 @@ items:
   advice: 已完成，见 evidence
   rank: 99
   rank_derived: true
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: watcher_freq3
   title: learn_watcher 频次三层改造
   tier: 1
@@ -933,6 +1057,10 @@ items:
   advice: 已完成，见 evidence
   rank: 99
   rank_derived: true
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: rebaseline
   title: 路线图重定基线
   tier: 2
@@ -952,6 +1080,10 @@ items:
   advice: 已完成，见 evidence
   rank: 99
   rank_derived: true
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: outcome_all
   title: 结果反馈捕获 / 确定性门控 / 三角色 / P0-P2 心智拼图
   tier: 1
@@ -970,6 +1102,10 @@ items:
   advice: 已完成，见 evidence
   rank: 99
   rank_derived: true
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: M10
   title: 会话生命周期治理（刹车）
   what: 进程外可靠刹车(kill_switch.py:事件指纹检测非进展→L1告警/L2cancel/L3硬杀) + 任务级上下文(taskProfile根治4假阳性)
@@ -996,6 +1132,10 @@ items:
   rank_derived: false
   status: ready
   unlocks: []
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: S10
   title: 推理活性判据纠偏（取消单帧采样）
   what: 废除"单帧硬件快照判推理活性"，改用 token 计数连续采样(n_decoded/n_prompt_tokens 5-10秒增长)作为唯一判据
@@ -1013,6 +1153,10 @@ items:
   rank_derived: false
   status: manual-blocked
   tier: 1
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: S11
   title: 写后校验覆盖全部写工具
   what: 把 verify-on-edit 从只覆盖 write/edit 扩展到 DEFAULT_WRITE_TOOLS 全部8种（apply_patch/multi_edit/create_file/str_replace/write_file/notebook_edit），每种按扩展名跑对应语法校验
@@ -1031,6 +1175,10 @@ items:
   claimer: unknown-agent
   claimed_at: '2026-11-20T16:57:05.100377+00:00'
   tier: 1
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: S12
   title: 补丁应用闭环（禁写脚本不落地）
   what: 检测"写了修复脚本但没真正应用"的模式：补丁脚本(_apply_*.py/_fix_*.py)写入后必须有对应的apply证据（目标文件mtime变化+语法通过），否则守卫提示"脚本已写但未应用"
@@ -1048,6 +1196,10 @@ items:
   status: ready
   tier: 1
   unlocks: []
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: S13
   title: verifyRan收紧（read≠验证）
   what: 把 index.mjs:913 的"read/cat 即 verifyRan"收紧为真实验证证据（语法检查/测试命令/verify_agent），解决A1_6反复read却被认为验证过的假绿
@@ -1065,6 +1217,10 @@ items:
   status: ready
   tier: 1
   unlocks: []
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: S14
   title: 编辑协议升级（降低复现负担）
   what: 把 AGENTS.md:105 的裸 read→edit 升级为"短文件(<400行)整块输出、长文件紧邻重读+最短唯一锚点、压缩后强制重读"；失败时回灌精确差异(edit-doctor模式)。不押注结构化diff格式——Diff-XYZ证明小模型换格式收益很小
@@ -1095,6 +1251,10 @@ items:
     - D:\Brain\publish\dsh-behavior-guard\tools\test_edit_protocol.py
     - rc=0 PASS=6
   tier: 1
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: STRAT1
   title: 战略陈述（模型只读顶层约束）
   tier: 0
@@ -1126,6 +1286,11 @@ items:
     regex: STRATEGY
     min: 1
   rank_hint: normal
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: true
+    serves_success_dim: 元治理锁
+    note: 本卡由人类推进(autonomous=False)，非agent自改治理
 - id: S18
   title: 自改进正则化（RRSI 纪律）
   tier: 1
@@ -1157,6 +1322,10 @@ items:
     regex: noise_floor|NOISE_FLOOR|holdout
     min: 1
   rank_hint: normal
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: S19
   title: CritBank 校准门禁（CEB 路线）
   tier: 1
@@ -1186,6 +1355,10 @@ items:
     cmd: D:/Python/python.exe -B tools/test_critbank_calibration.py
     min: 1
   rank_hint: normal
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: S20
   title: Critique 编译为结构化 delta（ACE 路线）
   tier: 2
@@ -1216,6 +1389,10 @@ items:
     regex: helpful|harmful
     min: 1
   rank_hint: normal
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: S21
   title: 验证层去自审（质量压倒多样性）
   tier: 1
@@ -1244,6 +1421,10 @@ items:
     regex: swap|pairwise|rubric
     min: 1
   rank_hint: normal
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: S22
   title: 工具面收敛（28→18-20）
   tier: 1
@@ -1270,6 +1451,10 @@ items:
     regex: input_examples
     min: 1
   rank_hint: normal
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: S23
   title: 前缀 KV 稳定性守护
   tier: 1
@@ -1296,6 +1481,10 @@ items:
     cmd: D:/Python/python.exe -B tools/test_prefix_stability.py
     min: 1
   rank_hint: normal
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 autonomy_rungs:
 - id: A0
   title: 数据可信（sid 黑名单）
@@ -1347,6 +1536,10 @@ autonomy_rungs:
   rank: 99
   rank_derived: true
   tier: 0
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: A1
   title: 会记路（机器判据 + dry-run 核验）
   deps:
@@ -1388,6 +1581,10 @@ autonomy_rungs:
   rank: 3
   rank_derived: false
   tier: 0
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: A2
   title: 会指路（自动勾选，只写权威源）
   deps:
@@ -1418,6 +1615,10 @@ autonomy_rungs:
   rank_derived: true
   rank_hint: normal
   tier: 1
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: A3
   title: 会迈步（预批低风险队列取任务）
   deps:
@@ -1448,6 +1649,10 @@ autonomy_rungs:
   rank_derived: true
   rank_hint: normal
   tier: 1
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: A3_5
   title: 安全地基（真实 diff + e2e + 回滚）
   deps: []
@@ -1488,6 +1693,10 @@ autonomy_rungs:
   rank: 99
   rank_derived: true
   tier: 0
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: A4
   title: 会转弯（旁路 meta_decision）
   deps:
@@ -1523,6 +1732,10 @@ autonomy_rungs:
   rank_derived: true
   rank_hint: normal
   tier: 2
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: A5
   title: 自己走（常驻闭环）
   deps:
@@ -1557,6 +1770,10 @@ autonomy_rungs:
   rank_derived: true
   rank_hint: normal
   tier: 2
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: A1_5
   title: 判据元验证（防假绿）
   what: 写 check_verify.py 检测判据自身的四类病：自引用递归、格式不匹配、恒真判据、测试sid污染
@@ -1583,6 +1800,10 @@ autonomy_rungs:
     - rc=0 PASS=7
     - 7 hits in tools/check_verify.py
   tier: 0
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: A1_6
   title: 守卫 L1 补将来时承诺检测
   what: 把 guardDecide 的 L1 从只校验过去时声明（已写入X）扩展到将来时承诺（现在写X/接下来创建X），要求承诺的产物在本轮真实产生
@@ -1611,6 +1832,10 @@ autonomy_rungs:
     - rc=0 PASS=8
     - D:\Brain\publish\dsh-behavior-guard\docs\FUTURE_CLAIM_GUARD_20261120.md
   tier: 0
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: A1_7
   title: 评审机制可观测性
   what: 给 Critic/Planner 调用加专属 trace 打点（rubric_version/dimensions_checked/verdict），让每个评审机制有可审计的触发证据
@@ -1630,6 +1855,10 @@ autonomy_rungs:
   claimer: unknown-agent
   claimed_at: '2026-11-20T16:45:21.583892+00:00'
   tier: 0
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: S15
   title: 选择性验证深度（ Selective Verification）
   tier: 2
@@ -1665,6 +1894,10 @@ autonomy_rungs:
   rank_hint: normal
   rank_derived: false
   advice: ⭐ P1：与 S12/S13 同族（反假绿），且直接治今晚死循环；先做纯规则门控版（零 LLM），4B verifier 后置
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: S16
   title: 工具描述瘦身与示例
   tier: 1
@@ -1694,6 +1927,10 @@ autonomy_rungs:
   rank_hint: normal
   rank_derived: false
   advice: ⭐ 低成本高证据：先给 3-5 个高频工具补示例，A/B 看参数错误率；与 M5 不冲突
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
 - id: S17
   title: 函数外置模式推广（自修改地基）
   tier: 2
@@ -1743,3 +1980,7 @@ autonomy_rungs:
     checks:
     - D:\Brain\publish\dsh-behavior-guard\tools\format_correction.mjs
     - rc=0 PASS=1
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null

@@ -648,6 +648,22 @@ def save_authoritative(data):
         LADDER.write_text(yaml.safe_dump(mirror, allow_unicode=True, sort_keys=False), encoding='utf-8')
 
 
+def validate_strategy_alignment(item, sem):
+    """战略对齐检查（2026-11-21）：claim 前对照 STRATEGY.md 的机器可读条款。
+
+    只认结构化字段 strategy_flags，不扫自由文本标题/内容——避免"守卫正则扫内容误判"坑。
+    返回 (ok: bool, reason: str)。
+    """
+    flags = (sem.get(item['id'], {}) or {}).get('strategy_flags') or {}
+    ng = flags.get('violates_non_goal')
+    if ng:
+        return False, f'违反战略非目标: {ng}（STRATEGY.md §3）'
+    meta = bool(flags.get('touches_metagovernance'))
+    if meta and item.get('autonomous'):
+        return False, '触及元治理锁且 autonomous=True（STRATEGY.md §5: 治理卡必须由人类推进）'
+    return True, 'aligned'
+
+
 def cmd_claim(data, item_id):
     """修正4: CAS 原子领取 ready→doing（防双领），记录 claimer/claimed_at。"""
     found = [i for i in data['items'] + data['rungs'] if i['id'] == item_id]
@@ -658,6 +674,12 @@ def cmd_claim(data, item_id):
         print(f'CLAIM_REFUSED: {item_id} status={it.get("status")} != ready'); return 1
     if not it.get('autonomous'):
         print(f'CLAIM_REFUSED: {item_id} not autonomous（需人工）'); return 1
+    # 战略对齐：读取 STRATEGY.md 语义镜像里的结构化 flags（模型只读，不改战略文件）
+    mirror = yaml.safe_load(LADDER.read_text(encoding='utf-8')) if LADDER.exists() else {}
+    sem = {i['id']: i for i in mirror.get('items', []) + mirror.get('autonomy_rungs', [])}
+    aligned, why = validate_strategy_alignment(it, sem)
+    if not aligned:
+        print(f'CLAIM_REFUSED: {item_id} {why}'); return 1
     sm = status_map_of(data)
     if not deps_done(it, sm) or not tier_unlocked(it, sm, data):
         print(f'CLAIM_REFUSED: {item_id} deps/tier 未满足'); return 1
