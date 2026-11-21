@@ -46,6 +46,7 @@
 | [AUTONOMY_GAP_20261120.md](AUTONOMY_GAP_20261120.md) | 评估 | 心智模型"学会自己走路"现状 L1 与三级差距 |
 | [REFACTOR_PATTERN_20261121.md](REFACTOR_PATTERN_20261121.md) | 模式/铁律 | 函数外置四段式：默认 import 转发（禁正则/整文件重建/手写转义）+ 反向检验铁律 |
 | [DEEP_MAINTENANCE_20261121.md](DEEP_MAINTENANCE_20261121.md) | 维护/验收 | 反向检验深度维护：时间线错位总根因 + 四卡真完成 + S15 假生效 + 8 项修复 |
+| [STRATEGIC_SESSION_ANALYSIS_20261121.md](STRATEGIC_SESSION_ANALYSIS_20261121.md) | 战略/源头 | 77轮战略会话完整通读：五阶段演进 + 我们路线缺战略陈述/元治理锁 + 6条启发 |
 | [WALKING_PLAN_20261120.md](WALKING_PLAN_20261120.md) | 方案 | **学会自己走路 6 阶执行阶梯**（用现有器官逐步自主化）|
 | [GROWTH_CARD_DESIGN_20261120.md](GROWTH_CARD_DESIGN_20261120.md) | 设计 | 能力阶梯成长卡片：what/why/解锁/好处/代价/坑/反思 |
 | [CONSISTENCY_VERDICT_20261120.md](CONSISTENCY_VERDICT_20261120.md) | 事故自审 | GitHub/权威/生产一致性 verdict + 守卫机制 + agent 教训 |
