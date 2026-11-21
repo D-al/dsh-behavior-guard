@@ -122,6 +122,11 @@ h1{margin:0 0 6px;font-size:18px;font-weight:600}
 .ok{color:#1D9E75;font-weight:600}
 svg.links{position:absolute;top:0;left:0;pointer-events:none;z-index:1}
 .node{position:relative;z-index:2}
+.node.dim{opacity:.13!important;filter:grayscale(1)}
+.node.sel{box-shadow:0 0 0 2px #A32D2D,0 2px 8px rgba(0,0,0,.15);opacity:1!important}
+.node.inchain{opacity:1!important}
+path.link-dim{opacity:.06!important}
+path.link-hot{stroke:#A32D2D!important;stroke-width:2.2!important;opacity:1!important}
 #side{width:320px;border-left:1px solid var(--line);background:var(--panel);
  padding:18px;overflow:auto}
 #side h2{font-size:15px;margin:0 0 8px}
@@ -165,9 +170,12 @@ function render(){
  $('#cols').innerHTML=cols.map((col,d)=>`<div class="col"><div class="col-h">第 ${d} 层</div>`+
   col.map(n=>{
    const done=n.status==='done';
-   const dim=window.__hub && n.id!=='A1' && !n.deps.includes('A1');
+   const hubdim=window.__hub && n.id!=='A1' && !n.deps.includes('A1');
+   const sel=window.__sel===n.id, inchain=window.__chain && window.__chain.has(n.id);
+   const fade=window.__chain && !inchain;
+   const cls=['node',done?'done':'todo',sel?'sel':'',inchain?'inchain':'',fade?'dim':''].filter(Boolean).join(' ');
    const c=CATC[n.category]||'#888';
-   return `<div class="node ${done?'done':'todo'}" data-id="${esc(n.id)}" style="border-left-color:${c};opacity:${dim?'0.25':''}" onclick="show('${esc(n.id)}')">
+   return `<div class="${cls}" data-id="${esc(n.id)}" style="border-left-color:${c};opacity:${hubdim?'0.25':''}" onclick="show('${esc(n.id)}')">
     <span class="chip" style="background:${c}">${CATL[n.category]||'其他'}</span>
     ${done?'<span class="ok">✓</span>':''}
     <div class="id">${esc(n.id)} · tier ${n.tier}</div>
@@ -186,21 +194,38 @@ function drawLinks(ns){
  ns.forEach(n=>n.deps.forEach(d=>{
   const a=pos[d],b=pos[n.id];if(!a||!b)return;
   const x1=a.x+a.w,y1=a.y,x2=b.x,y2=b.y;
-  paths+=`<path d="M${x1},${y1} C${x1+18},${y1} ${x2-18},${y2} ${x2},${y2}" fill="none" stroke="#b4b2a9" stroke-width="1" opacity=".7"/>`;
+  const hot=window.__chain && window.__chain.has(d) && window.__chain.has(n.id);
+  const fade=window.__chain && !hot;
+  const cls=hot?'link-hot':(fade?'link-dim':'');
+  paths+=`<path class="${cls}" d="M${x1},${y1} C${x1+18},${y1} ${x2-18},${y2} ${x2},${y2}" fill="none" stroke="#b4b2a9" stroke-width="1"/>`;
  }));
  svg.setAttribute('width',tree.scrollWidth);svg.setAttribute('height',tree.scrollHeight);
  svg.innerHTML=paths;
 }
+function chainOf(id){
+ // 递归上游(deps)+下游(谁依赖它)，返回整条链的 id 集合
+ const up=new Set([id]),down=new Set([id]);
+ const go=(x,seen,get)=>{get(x).forEach(d=>{if(!seen.has(d)){seen.add(d);go(d,seen,get)}})};
+ go(id,up,x=>{const n=DATA.find(y=>y.id===x);return n?n.deps:[]});
+ go(id,down,x=>DATA.filter(y=>y.deps.includes(x)).map(y=>y.id));
+ return new Set([...up,...down]);
+}
 function show(id){
  const n=DATA.find(x=>x.id===id);if(!n)return;
+ window.__sel=id;window.__chain=chainOf(id);
+ render();  // 重绘以应用高亮
  const rev=DATA.filter(x=>x.deps.includes(id)).map(x=>x.id);
  $('#side').innerHTML=`<h2>${esc(n.id)} · ${esc(n.title)}</h2>
  <div class="sub">${CATL[n.category]} · ${SL[n.status]} · tier ${n.tier} · ${esc(n.risk)}</div>
  <div class="field"><b>依赖（前置）</b>${n.deps.map(d=>`<span class="kbd">${esc(d)}</span>`).join(' ')||'无'}</div>
  <div class="field"><b>解锁（下游）</b>${(n.unlocks.length?n.unlocks:rev).map(d=>`<span class="kbd">${esc(d)}</span>`).join(' ')||'无'}</div>
  <div class="field"><b>做什么</b>${esc(n.what)}</div>
- <div class="field"><b>为什么</b>${esc(n.why)}</div>`;
+ <div class="field"><b>为什么</b>${esc(n.why)}</div>
+ <div class="field"><button onclick="clearSel()">清除高亮</button></div>`;
 }
+function clearSel(){window.__sel=null;window.__chain=null;render();
+ $('#side').innerHTML='<h2>点击节点看详情</h2><div class="sub">依赖链、解锁项、判据状态都在这里。</div>';}
+$('#tree').addEventListener('click',e=>{if(e.target.id==='tree'||e.target.id==='cols')clearSel()});
 init();window.addEventListener('resize',()=>drawLinks(DATA));
 </script></body></html>'''
 
