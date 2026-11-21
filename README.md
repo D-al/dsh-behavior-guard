@@ -13,7 +13,7 @@
 | 你是谁 | 从哪读起 |
 |---|---|
 | **只想用** | [一键开箱](#一键开箱) → [说明书](docs/MANUALS.md) |
-| **想接手开发** | [文档地图](docs/README.md) → [路线图](ROADMAP.md) → [决策档案](decisions/README.md) |
+| **想接手开发** | [文档地图](docs/README.md) → [科技树](TECH_TREE.html) → [决策档案](decisions/README.md) |
 | **想知道为什么这么做** | [说明书 §8 心智拼图](docs/MANUALS.md) → [调研汇总](docs/MIND_GAPS_RESEARCH.md) → [社区对比](docs/COMPETITIVE_ANALYSIS.md) → [同族 harness 对标](docs/PEER_HARNESS_BENCHMARK.md) |
 | **想看脑功能分区对照** | [覆盖度盘点](docs/BRAIN_PARITY.md)（人脑分区 → 我们的机制 → 空白区）|
 | **想看 harness 自进化方案** | [Self-Harness 落地方案](docs/SELF_HARNESS_PLAN.md)（短期①的实现路径）|
@@ -37,8 +37,8 @@
 1. **一句话定位**：这是 dsh（DeepSeek Harness）的一个 cordis 插件，入口是根目录 `index.mjs` 的 `apply(ctx, config)`。
    它在模型**外部**注入确定性规则（L0-L3 早收尾、D1-D5 风险门控、todo 闹钟、控制回合、Critic/审计、verify-on-stop、学习回注），
    **不改模型权重**。目标是让一个 8G 显存上的 35B MoE 模型 behave 得像一个可靠 agent。
-2. **看现状**：[ROADMAP §1 当前位置](ROADMAP.md#1-当前位置30-秒读懂) —— 已完成什么、现在在哪一波、为什么是这个顺序。
-3. **看边界**：[ROADMAP §8 明确不做](ROADMAP.md#8-明确不做防止新人重造轮子--走回头路) + 下面「硬约束」—— 别做与权重零改冲突、或已被证伪的事。
+2. **看现状**：打开 [TECH_TREE.html](TECH_TREE.html) —— 交互科技树：依赖层级/完成状态/性价比/上下游高亮，一眼看清。
+3. **看边界**：[明确不做清单](CAPABILITY_LADDER.yaml)（`rejected` 字段，也是科技树最左红列）+ 下面「硬约束」—— 别做与权重零改冲突、或已被证伪的事。
 4. **验证环境没坏**：`node --check index.mjs` → `python tools/regression_check.py`（期望 30/30）→ `python tools/config_check.py`（期望全栈一致）。
 5. **领活**：`python tools/roadmap_check.py --next` 选下一张卡（当前 M8），`--card <ID>` 读它的 what/why/坑；§3 短期已归档，自治卡在 [ROADMAP_GRAPH.md](ROADMAP_GRAPH.md)（机器真相源，人勿手改）。**任何改动都要跑第 4 步的门禁。**
 
@@ -83,23 +83,19 @@
 
 ---
 
-## 路线图（Now/Next/Later，重排于 v2.14.0，维护于 v2.26.2）
+## 路线图（机器权威 + 交互视图）
 
-> 完整、可验证的目标（每条带完成标准 DoD + 性价比）见 [ROADMAP.md](ROADMAP.md)。这里只列骨架。
-> **先做哪个？看 [ROADMAP §2 性价比速查](ROADMAP.md#2-性价比速查先做哪个)**（收益/成本/解锁排序）。
-> **已完成项归档在 ROADMAP §7，不再占用短中长期位置。**
+> 人读版路线图已下线（2026-11-21）。**唯一视图是 [TECH_TREE.html](TECH_TREE.html)**；
+> **机器真相是 [ROADMAP_GRAPH.md](ROADMAP_GRAPH.md)**（状态/依赖/preconditions）+ **[CAPABILITY_LADDER.yaml](CAPABILITY_LADDER.yaml)**（what/why/判据/性价比/rejected）。
+> 两份都由 `roadmap_check.py` 与 `tech_tree.py` 生成/维护，提交时 pre-commit hook 自动刷新——不手改。
+> 选下一张卡：`python tools/roadmap_check.py --next`；读任意卡：`--card <ID>`。
 
-| 阶段 | 时间 | 主题 | 核心目标（可验证） |
-|---|---|---|---|
-| 🟢 **Now 短期** | 1-2 周 | **把数据变成能力** | S1 技能自进化（=Self-Harness 四阶段）· S2 可控遗忘 · S3 频次重设收尾 · S4 自适应端到端对照 |
-| 🟡 **Next 中期** | 1-2 月 | **器官间流动** | M1 情景检索进主循环 · M2 会话树实时化 · M3 BDI 三槽 · M4 注入预算 token 化 · M5 工具面结构改造 · M6 安全规则不可覆盖 |
-| 🔴 **Later 长期** | 季度级 | **架构完整性与外部效度** | L1 FEP→世界模型 · L2 标准化 eval · L3 脑分区空白区 · L4 独立轨道（上游 PR / v1.0.0）|
 
-**执行顺序的根据**：结构性地基越晚越贵（已完成）→ 数据型目标时间站在我们这边 → 需要世界模型/外部基准的最后做。详见 [ADR-0017](decisions/0017-gwt-first-then-fep.md) 和 [ROADMAP §6 四波次依赖逻辑](ROADMAP.md#6-四波次依赖逻辑稳定不变判断新工作先问属于哪波)。
+**执行顺序的根据**：结构性地基越晚越贵（已完成）→ 数据型目标时间站在我们这边 → 需要世界模型/外部基准的最后做。详见 [ADR-0017](decisions/0017-gwt-first-then-fep.md) ——依赖层级含义见科技树列头（地基/工程改造/结构/攻坚/自主化终局）。
 
 **近期焦点**：频次审计（[CADENCE_AUDIT](docs/CADENCE_AUDIT.md)）证明大部分自动化频次经实测校准合理，
 真问题只有 learn_watcher 过密（已改）和注入预算按次数不按 token（列 M4）——**不要无差别调频次**。
-**明确不做**：多模态/CUA、通用 agent 框架、向量检索、训练微调、堆 judge、改 Electron 参数降 3D。理由见 [ROADMAP §8](ROADMAP.md#8-明确不做防止新人重造轮子--走回头路)。
+**明确不做**：多模态/CUA、通用 agent 框架、向量检索、训练微调、堆 judge、改 Electron 参数降 3D。理由见科技树最左红列（点开看每条理由）或 [LADDER.rejected](CAPABILITY_LADDER.yaml)。
 
 ---
 
@@ -133,7 +129,8 @@ git clone https://github.com/D-al/dsh-behavior-guard.git && cd dsh-behavior-guar
 | 文档 | 职责 |
 |---|---|
 | **README.md**（本文）| 薄入口：定位 + 路线骨架 + 导航 |
-| [ROADMAP.md](ROADMAP.md) | **活文档**：短中长期目标，每条含验证方法 |
+| [TECH_TREE.html](TECH_TREE.html) | **活视图**：交互科技树（依赖/完成/ROI/上下游高亮） |
+| [ROADMAP_GRAPH.md](ROADMAP_GRAPH.md) | **机器权威**：状态/依赖/前置条件 |
 | [docs/README.md](docs/README.md) | 全部文档的索引与分工 |
 | [docs/MANUALS.md](docs/MANUALS.md) | **说明书集合**：怎么装、怎么调、怎么查 |
 | [docs/history/](docs/history/README.md) | **历史说明书**：时间线 + 调优决策 + 经验证据 |

@@ -8,7 +8,8 @@
 | 文档 | 类型 | 职责 |
 |---|---|---|
 | [../README.md](../README.md) | 入口 | 定位 + 路线骨架 + 导航（薄，不放细节）|
-| [../ROADMAP.md](../ROADMAP.md) | 参考/活文档 | 短中长期目标，每条带验证方法 |
+| [../TECH_TREE.html](../TECH_TREE.html) | 活视图 | 交互科技树：依赖/完成/ROI/上下游高亮 |
+| [../ROADMAP_GRAPH.md](../ROADMAP_GRAPH.md) | 机器权威 | 状态/依赖/preconditions |
 
 ## 二、操作层（怎么做事）
 
@@ -52,6 +53,7 @@
 | [DEPENDENCY_UNLOCK_AUDIT_20261121.md](DEPENDENCY_UNLOCK_AUDIT_20261121.md) | 路线图/审计 | deps与unlocks一致性：8处显式解锁5一致3软解锁;灰实线硬依赖+紫虚线逻辑解锁 |
 | [TECH_TREE_CLEANLINESS_20261121.md](TECH_TREE_CLEANLINESS_20261121.md) | 设计原则 | 科技树清爽化：只有阻塞关系才画线;闸门默认隐藏留角标;软关联按需开启;86M五卡处理 |
 | [GATE_EVIDENCE_STANDARD_20261121.md](GATE_EVIDENCE_STANDARD_20261121.md) | 设计原则 | 闸门证据标准：需拍板≠空泛,数据支撑型闸门必须有data_gates;M5工具拍板实例+tool_audit修复 |
+| [HUMAN_VIEW_RETIRED_20261121.md](HUMAN_VIEW_RETIRED_20261121.md) | 架构决策 | 人读版路线图下线：12条不做迁LADDER.rejected,三副本变两权威一视图 |
 | [TECH_TREE_CLEANLINESS_20261121.md](TECH_TREE_CLEANLINESS_20261121.md) | 设计原则 | 科技树清爽化：只有阻塞关系才画线;闸门默认隐藏留角标;软关联按需开启;86M五卡处理 |
 | [WALKING_PLAN_20261120.md](WALKING_PLAN_20261120.md) | 方案 | **学会自己走路 6 阶执行阶梯**（用现有器官逐步自主化）|
 | [GROWTH_CARD_DESIGN_20261120.md](GROWTH_CARD_DESIGN_20261120.md) | 设计 | 能力阶梯成长卡片：what/why/解锁/好处/代价/坑/反思 |

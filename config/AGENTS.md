@@ -3,7 +3,7 @@
 > 结构：**〇 铁律**（环境与不可违反的规则）→ **一 开工**（先定标准再动手）→ **二 做工**（失败纠错与工具）→ **三 收工**（验收与协作）。
 > 越靠前优先级越高；括号内的实测/文献依据帮助你判断边界情况。
 > 文档入口：`p/bench/docs/`（索引 README.md）；技能卡 `p/bench/skills/`；决策档案 `p/bench/decisions/`。
-> 目标状态以 `p/bench/ROADMAP.md` 为准，版本史见 `p/bench/CHANGELOG.md`——不要依赖记忆里的旧版本号。
+> 目标状态以 `p/bench/ROADMAP_GRAPH.md`（机器权威）+ `p/bench/TECH_TREE.html`（交互视图）为准，版本史见 `p/bench/CHANGELOG.md`——不要依赖记忆里的旧版本号。
 
 ---
 

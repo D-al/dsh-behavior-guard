@@ -9,7 +9,7 @@ PY="D:/Python/python.exe"
 [ -x "$PY" ] || PY="$(command -v python3 || command -v python)"
 [ -n "$PY" ] || { echo "[pre-commit] 找不到 Python，跳过视图刷新"; exit 0; }
 
-# 刷新会重生成 ROADMAP.md（人读块）+ TECH_TREE.html（科技树）
+# 刷新会重生成 TECH_TREE.html（人读视图已下线，权威=GRAPH+LADDER）
 OUT="$("$PY" tools/roadmap_check.py --refresh 2>&1)"
 RC=$?
 if [ $RC -ne 0 ]; then
@@ -20,5 +20,5 @@ fi
 echo "$OUT" | tail -1
 
 # 把生成物纳入本次提交（git add 不触发新 commit，无递归风险）
-git add ROADMAP.md TECH_TREE.html 2>/dev/null || true
+git add TECH_TREE.html 2>/dev/null || true
 exit 0

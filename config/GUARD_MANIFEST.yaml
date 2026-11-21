@@ -10,7 +10,6 @@ repos:
   - cordis.patch.yml
   - surfaces.json
   - STRATEGY.md
-  - ROADMAP.md
   - ROADMAP_GRAPH.md
   - CAPABILITY_LADDER.yaml
   - tools/roadmap_check.py

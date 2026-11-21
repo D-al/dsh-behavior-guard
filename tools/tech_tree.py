@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """科技树视图生成器（2026-11-21）。
 
-读 ROADMAP_GRAPH.md（权威状态）+ CAPABILITY_LADDER.yaml（语义），
+读 ROADMAP_GRAPH.md（权威状态）+ CAPABILITY_LADDER.yaml（语义+明确不做），
 生成自包含交互式 HTML：依赖分层 + category 分色 + done/未做一目了然。
 
 用法:
@@ -53,22 +53,11 @@ STATUS_LABEL = {'done': '已完成', 'ready': '可领取', 'backlog': '待办',
 
 
 def load_rejected():
-    """从 ROADMAP.md §4 解析"明确不做"表格 → 红色科技卡节点。"""
-    md = (ROOT / 'ROADMAP.md').read_text(encoding='utf-8')
-    m = re.search(r'## 4\. 明确不做.*?\n(.*?)(?:\n## |\n---)', md, re.S)
-    if not m:
-        return []
-    out = []
-    for line in m.group(1).splitlines():
-        if not line.startswith('|'):
-            continue
-        cells = [c.strip() for c in line.strip('|').split('|')]
-        if len(cells) < 2 or cells[0] in ('不做', '') or set(cells[0]) <= set('-: '):
-            continue
-        title = re.sub(r'\*\*', '', cells[0])
-        reason = re.sub(r'\[([^]]+)\]\([^)]+\)', r'\1', cells[1])  # 链接→文字
-        out.append({'id': 'X' + str(len(out) + 1), 'title': title, 'reason': reason[:200]})
-    return out
+    """从 CAPABILITY_LADDER.yaml 的 rejected 字段读"明确不做"→红色科技卡节点。
+    2026-11-21 迁移：原从 ROADMAP.md §4 解析，随人读版路线图下线改为机器权威源。"""
+    ladder = ROOT / 'CAPABILITY_LADDER.yaml'
+    l = yaml.safe_load(ladder.read_text(encoding='utf-8'))
+    return l.get('rejected') or []
 
 
 def load():

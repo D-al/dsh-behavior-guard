@@ -46,8 +46,6 @@ def decision_files():
     for f in adr.glob('*.md'):
         if not f.name.startswith('_'):
             out.append(f)
-    # ROADMAP 的已证伪章节也是决策性质
-    out.append(ROOT / 'ROADMAP.md')
     return out
 
 
@@ -105,8 +103,8 @@ def check():
     ]
     for f in decision_files():
         txt = f.read_text(encoding='utf-8')
-        if f.name == 'ROADMAP.md' or not re.search(r'^#\s*ADR-\d+', txt, re.M):
-            continue  # ROADMAP 和非 ADR 文档不套 ADR 模板（ADR 前缀在标题里，不在文件名里）
+        if not re.search(r'^#\s*ADR-\d+', txt, re.M):
+            continue  # 非 ADR 文档不套 ADR 模板
         m = re.search(r'^-\s*日期[：:]\s*(\d{4}-\d{2}-\d{2})', txt, re.M)
         if not m or m.group(1) < DISCIPLINE_SINCE:
             continue  # 老 ADR 或日期缺失 → 历史欠账，不检查

@@ -530,26 +530,14 @@ def render_done_cards(data, mirror):
     return '\n'.join(out)
 
 
-def refresh_human_view(data, mirror, md):
-    """把 ROADMAP.md 的人读自动块按"当前→未来→已完成"重渲染并落盘。
+def refresh_human_view(data, mirror, md=None):
+    """人读版路线图已下线（2026-11-21），此函数只返回未来卡数供 --refresh 显示。
 
-    三块各有独立标记；若某块标记缺失则跳过（不擅自创建，避免破坏手工正文结构）。
-    返回未来卡数量。save_authoritative 与 --refresh 共用，防漂移。
+    保留签名是为了不破坏 save_authoritative 与 --refresh 的调用点；
+    状态真相只在 ROADMAP_GRAPH.md，视图只在 TECH_TREE.html。
     """
-    new_md = md
-    blocks = [
-        (CURRENT_BEGIN, CURRENT_END, render_current_card(data, mirror)),
-        (FUTURE_BEGIN, FUTURE_END, render_future_cards(data, mirror)),
-        (DONE_BEGIN, DONE_END, render_done_cards(data, mirror)),
-    ]
-    for begin, end, body in blocks:
-        if begin in new_md and end in new_md:
-            pat = re.escape(begin) + r'[^\n]*-->' + r'.*?' + re.escape(end)
-            new_md = re.sub(pat, lambda _m, b=body: b, new_md, flags=re.S)
-    ROADMAP.write_text(new_md, encoding='utf-8')
     sm = status_map_of(data)
-    n_future = sum(1 for i in data['items'] + data['rungs'] if sm.get(i['id']) != 'done')
-    return n_future
+    return sum(1 for i in data['items'] + data['rungs'] if sm.get(i['id']) != 'done')
 
 
 def render_human_cards(data, mirror):
@@ -636,11 +624,7 @@ def save_authoritative(data):
     new_gm = re.sub(re.escape(GRAPH_BEGIN) + r'.*?' + re.escape(GRAPH_END),
                     lambda _m: GRAPH_BEGIN + '\n' + inner + GRAPH_END, gm, flags=re.S)
     GRAPH_FILE.write_text(new_gm, encoding='utf-8')
-    # 同步人类视图（设计稿承诺：机器块与人类视图不再漂移）
-    # 2026-11-21 重构：统一走 refresh_human_view（当前→未来→已完成），与 --refresh 共用防漂移
-    md = ROADMAP.read_text(encoding='utf-8')
-    mirror_pre = yaml.safe_load(LADDER.read_text(encoding='utf-8')) if LADDER.exists() else {}
-    refresh_human_view(data, mirror_pre, md)
+    # 人读视图已下线；只同步语义镜像 LADDER（2026-11-21）
     mirror = yaml.safe_load(LADDER.read_text(encoding='utf-8')) if LADDER.exists() else {}
     sm = status_map_of(data)
     for group, key in (('items', 'items'), ('rungs', 'autonomy_rungs')):
@@ -816,10 +800,8 @@ def main():
     if args.apply:
         return cmd_apply(data)
     if args.refresh:
-        # 只重渲染 ROADMAP.md 的人读自动块，不改 GRAPH/LADDER（纯视图刷新）
-        md = ROADMAP.read_text(encoding='utf-8')
-        mirror = yaml.safe_load(LADDER.read_text(encoding='utf-8')) if LADDER.exists() else {}
-        n = refresh_human_view(data, mirror, md)
+        # 人读视图已下线；--refresh 只重生成科技树（GRAPH/LADDER 是权威源，不改）
+        n = refresh_human_view(data, None)
         # 科技树视图随刷新自动重生成（2026-11-21）：状态/依赖/category 变了，图要跟上
         try:
             import subprocess
@@ -828,7 +810,7 @@ def main():
             tree_msg = ' + 科技树' if r.returncode == 0 else ' + 科技树失败(' + r.stderr.strip()[:50] + ')'
         except Exception as e:
             tree_msg = ' + 科技树失败(' + str(e)[:40] + ')'
-        print(f'REFRESHED: 当前卡 + 未来卡（{n} 张）+ 已完成卡{tree_msg}；卡片状态未改动')
+        print(f'REFRESHED: 未来卡 {n} 张{tree_msg}；卡片状态未改动（权威=GRAPH，视图=科技树）')
         return 0
     cmd_dryrun(data)
     return 0

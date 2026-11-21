@@ -2157,3 +2157,42 @@ autonomy_rungs:
     touches_metagovernance: false
     serves_success_dim: null
   category: infra
+rejected:
+- id: X1
+  title: 多模态 / CUA
+  reason: 与纯文本 8GB 环境不匹配，社区主战场但非我们场景
+- id: X2
+  title: 通用 agent 框架 / 向量检索代码
+  reason: Harness Engineering 2609.00006：11 个主流 harness 全用确定性循环，无人用
+- id: X3
+  title: 训练 / 微调模型（含 RL 优化 harness）
+  reason: 与"权重零改"路线冲突；agent-lightning 等 RL 路线只作技术雷达
+- id: X4
+  title: 堆更多 judge
+  reason: 'Apple: 9 judge≈2 票；信号源多样性 >> judge 数量'
+- id: X5
+  title: 强制二选一 / 质疑式干预
+  reason: 现场"写完又重做"+ 自我纠错需外部信号（ICLR2024）；原 76.6% 数据系幻觉已作废（ADR-0014）
+- id: X6
+  title: FEP 偏差走运行时注入通道
+  reason: 实测挤掉 D5 审计额度（ADR-0017）——学习信号只进 trace/学习队列
+- id: X7
+  title: 改 Electron 启动参数降 3D
+  reason: '`--disable-gpu` 等已证伪反效果（Electron #50469）；见 GPU 守护'
+- id: X8
+  title: 无差别提高自动化频次
+  reason: 频次审计证明大部分参数经实测校准合理；只按证据调（CADENCE_REDESIGN）
+- id: X9
+  title: 小模型（0.8B 级）做审计/纠正/验收
+  reason: JudgeBench 小 judge 一致率仅 45-60%（近抛硬币）；"强 judge 才鲁棒"要求 judge ≥ actor；弱 verifier
+    放行强 actor 错误比不审查更糟。**验收员本就是 Python 规则，零 LLM**（评估）
+- id: X10
+  title: 0.6B/1B 级 LLM 做实时外设
+  reason: S7 实测：Qwen3-0.6B Q8_0 纯 CPU 分类 4.2s / 格式 6.0s（比文献边缘设备 392ms 慢 10×），且 thinking
+    吃光 content 需 max_tokens≥512。实时注入检测须用 86M 级 BERT 分类器，不是 LLM（基准）
+- id: X11
+  title: 开启 adaptiveThinkEnabled 默认值
+  reason: S4 P3 A/B：token 4172→4168 未降（DoD 要求"token 降且成功率不降"）；单次 FAIL→PASS 有噪声，不足以证明机制有效。保持默认关闭（结果）
+- id: X12
+  title: 递归自喂式蒸馏
+  reason: Nature 2024：第 9 代退化为"野兔清单"；只做单次 n=1 且保留 UNCERTAIN 样本（评估）
