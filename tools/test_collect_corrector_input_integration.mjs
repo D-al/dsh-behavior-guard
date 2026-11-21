@@ -6,16 +6,16 @@
  */
 
 import { readFileSync } from 'node:fs'
-import path from 'node:path'
+import { dirname, join } from 'node:path'
+
+const __dirname = join(process.cwd(), 'tools')
+const indexPath = join(__dirname, '..', 'index.mjs')
+const indexContent = readFileSync(indexPath, 'utf-8')
 
 let pass = 0, fail = 0
 const check = (label, ok, detail = '') => {
   if (ok) { pass++; console.log(`PASS  ${label}`) } else { fail++; console.error(`FAIL  ${label} ${detail}`) }
 }
-
-// ── 读取 index.mjs ──
-const indexPath = 'D:/Brain/publish/dsh-behavior-guard/index.mjs'
-const indexContent = readFileSync(indexPath, 'utf-8')
 
 // ── 测试 1：确认有 import 语句 ──
 check('1. index.mjs import 了外置模块',
