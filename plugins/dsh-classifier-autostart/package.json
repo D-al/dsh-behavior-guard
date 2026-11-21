@@ -1,0 +1,36 @@
+{
+  "name": "dsh-classifier-autostart",
+  "version": "0.1.0",
+  "description": "DeepSeek Harness 插件: 随 dsh 启动本地注入检测分类器服务(Python ONNX, 绑 E 核); 退出时精确 kill。命中只写 trace, 不 steer。",
+  "type": "module",
+  "main": "index.mjs",
+  "exports": {
+    ".": "./index.mjs",
+    "./package.json": "./package.json"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "cordis",
+    "classifier",
+    "injection-detection",
+    "autostart"
+  ],
+  "license": "MIT",
+  "files": [
+    "index.mjs",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "dsh": {
+    "displayName": "注入分类器自动启动",
+    "description": "随 dsh 启动本地注入检测分类器服务(绑 E 核); 退出时自动关闭。命中只记 trace 不改行为。",
+    "engines": {
+      "dsh": ">=0.2.0-rc.2"
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}
