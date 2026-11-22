@@ -143,6 +143,20 @@ def inv7_rulepack_pinned():
     record('INV-7', '评判规则包未漂移 (版本钉住)', ok, summary or ('漂移' if not ok else 'pinned'))
 
 
+def inv8_criteria_health():
+    """INV-8: 判据执行层未腐化（解释器/路径/正则/门槛）"""
+    ok, out = run_script('criteria-health', [TOOLS / 'audit_criteria_health.py'])
+    n = 0
+    m = re.search(r'发现 (\d+) 处隐患', out)
+    if m:
+        n = int(m.group(1))
+    first = ''
+    for l in out.splitlines():
+        if l.strip().startswith('[') and ']' in l:
+            first = l.strip()[:140]; break
+    record('INV-8', '判据执行层健康', ok, f'隐患={n} {first}')
+
+
 def write_drift(all_ok):
     entry = {
         'ts': datetime.now(timezone.utc).isoformat(),
@@ -175,6 +189,7 @@ def main():
     inv5_no_tautology()
     inv6_sentinel()
     inv7_rulepack_pinned()
+    inv8_criteria_health()
 
     all_ok = all(r['ok'] for r in results)
     passed = sum(1 for r in results if r['ok'])

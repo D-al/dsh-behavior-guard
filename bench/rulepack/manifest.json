@@ -1,15 +1,15 @@
 {
-  "version": "v1.2.0",
+  "version": "v1.3.0",
   "created": "2026-11-22",
   "protected": {
     "tools/run_all.sh": {
-      "sha256": "b1b5e530dad2dffd6c46969946a627338bfe736b0738e031ecd6cbaad91ddcb1",
+      "sha256": "12105424dba7bd127ca37a81d1c687ab36243f18b72d0970ce7b39e79dc736c7",
       "source": "本地实测 2026-11-22",
       "retire_when": "规则被证实恒真/误报超预算/连续12个月零触发",
       "approval": "变更须经维护者审核+更新本manifest+commit"
     },
     "tools/foundation_guard.py": {
-      "sha256": "71fc2477b70fa2f095ed781a25e588ca4afb63e84ea7f57d0abf8c02f3864824",
+      "sha256": "b1b63373a951005da60cbe025eda9f3285317bb1190ab6ce1b441c4a7de62384",
       "source": "本地实测 2026-11-22",
       "retire_when": "规则被证实恒真/误报超预算/连续12个月零触发",
       "approval": "变更须经维护者审核+更新本manifest+commit"
@@ -57,5 +57,5 @@
     "有回归测试与回滚版本"
   ],
   "note": "agent只读+可提staging diff;变更默认拒绝,读取默认允许;紧急修复先执行后复审",
-  "version_note": "修A6判据输出格式:census加标准PASS标记(用户批准的判据修复)"
+  "version_note": "用户授权:修6张判据虚报+加INV-8判据健康体检+双保险"
 }

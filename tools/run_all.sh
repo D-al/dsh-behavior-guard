@@ -91,6 +91,8 @@ if command -v "$PYTHON" >/dev/null 2>&1; then
     run_test "foundation-guard" "$PYTHON \"$ROOT/tools/foundation_guard.py\""
     # 规则包版本钉住:agent不得偷改评判规则(INV-7也含此检查,这里双保险)
     run_test "rulepack-pinned" "$PYTHON \"$ROOT/tools/rulepack_guard.py\""
+    # 判据执行层体检:解释器/路径/正则/门槛腐化(INV-8也含此检查,双保险)
+    run_test "criteria-health" "$PYTHON \"$ROOT/tools/audit_criteria_health.py\""
 else
     echo "[skip] python not found"
 fi
