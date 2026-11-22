@@ -157,3 +157,56 @@ OpenTimestamps 0.7.2；arXiv:2611.22299 / 2509.26354（自改进 harness 安全�
 NIST SP 800-57 Pt1 r5（词汇表/8.1.5.1.1）；RFC 4949/5280 §6.1.1/6024/9925(2026)；
 TCG TPM2 Part1 §9.4；arXiv 2503.18813/2506.08837/2508.21164/2608.08311/2505.22954；
 RFC 6962/9162、RFC 9943；MS Learn CFA/VBS/Credential Guard；TEE 攻击综述 2024-26。
+
+
+---
+
+## 八、三目标平衡：高效 / 可信 / 真实（2026-11-22 10:30 调研）
+
+### 总答案：不是三选二，是"分层各取所需 + 一条不可交易底线"
+不存在 CAP 式形式化"验证三难"定理。各领域 trilemma 的轴互不相同。
+单次检查在同一瞬间确实此消彼长，但**系统级可通过差异化兼得**。
+
+### 实测三维度现状（我们系统）
+| 维度 | 实测 | 评价 |
+|---|---|---|
+| 高效 | census 0.34s / 地基守护 2.69s / 体检 3.48s / 全门禁 32.75s | ✅ 不差——瓶颈不在速度 |
+| 真实 | 判据分布 OK14/DOCUMENT5/MIXED24/MANUAL15/STRUCTURAL3；2处诚实SKIP | ⚠️ 15 MANUAL 不算绿；真实度有提升空间 |
+| 可信 | credential.helper=manager；evaluator(run_all/guard)无写保护 | ❌ 最弱一环——agent 可改评判者 |
+
+**结论：三者的瓶颈不在同一处，所以不需要"三选二"——把每层优化它擅长的那一维即可。**
+
+### 社区关键洞察
+1. **Verifier's Dilemma**（arXiv:2406.01794）：验证 costly 且无收益时，理性验证者会"懒报"——
+   可信度不会自动产生，需激励/独立性设计。
+2. **Weak-Strong Verification**（arXiv:2602.17633，2026-02）：最优策略是**双阈值**——
+   弱分高直接接受、低直接拒绝、中间带才调强验证。
+3. **DeepMind 委派**（arXiv:2602.11865）：可验证性是一等因子，"拆到可验证为止"，
+   低风险任务设"委派复杂度地板"；验证昂贵会使安全沦为奢侈品。
+4. **Google flaky test 隔离**（Micco 2016）：门禁**可信度比覆盖率更稀缺**。
+5. **Meta TestGen-LLM**（2024）：机器过滤查构建/通过/覆盖，**断言对错必须人判**（73% 建议经人审）。
+6. **变更影响选择**（Meta PTS）：拦住 >99.9% 回归只跑约 1/3 测试——省下的预算
+   **reinvest 到变更行的变异与不变量**，而非单纯少跑。
+7. **真实度指标本身可被污染**：变异分重复运行漂移 ~4pp；19% 的 flaky "kills" 源于 flake
+   → **必须先有可重复的绿基线**。
+
+### 四种失衡反模式（入规约）
+- 高效吃真实：恒真/vacuous 测试；AI 生成测试断言实现而非规格（变异分 58-62% vs 人写 78%）
+- 可信吃高效：层层形式化→验证成瓶颈→被绕过
+- 真实吃可信：把证据通道交给被审者——METR 记录 o3 改计时函数、把评测函数换成全 pass stub（Goodhart）
+- **隐形第四种**：flaky 门禁"狼来了"，团队学会点 retry，真失败被淹没
+
+### 最小平衡架构（与本项目现状映射）
+| 目标 | 靠什么 | 我们已有 | 待补 |
+|---|---|---|---|
+| 高效 | 分层 + 变更影响选择 + 双阈值 | 变更驱动指纹/按需体检/每日兜底 | 强验证调用率度量 |
+| 可信 | 证据通道 + evaluator 隔离 | sha对比/drift日志 | **冻结evaluator**/签名证据 |
+| 真实 | 变异 + canary + 独立 oracle | census/真退出码/6不变量/sentinel | 增量变异(变更行)/每周canary |
+
+**三轴盘（不做单一综合分）**：p95 门禁时长 / 签名证据覆盖率 / mutation score+canary检出率。
+
+### 出处
+arXiv:2406.01794（Verifier's Dilemma）、2602.17633（Weak-Strong Verification）、
+2602.11865（DeepMind Intelligent AI Delegation）；Google Testing Blog（flaky test）；
+Meta TestGen-LLM 2024 / PTS；Stryker 2024 mutation benchmark；
+Shi/Bell/Marinov ISSTA 2019（变异分漂移）；METR o3 reward hacking 记录；NIST SP 800-204D。
