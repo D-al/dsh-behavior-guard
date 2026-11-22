@@ -250,16 +250,13 @@ path.link-unlock.hot.dir-down{stroke:#D85A30!important;stroke-dasharray:"4 3"}
 button{font:inherit;padding:4px 10px;border:1px solid var(--line);background:#fff;border-radius:6px;cursor:pointer}
 </style></head><body>
 <header>
-<h1>Agent 能力科技树 · 统一视图 v3 <span style="font-weight:400;color:#5F5E5A;font-size:11px">__STAMP__ · __NODES__节点</span></h1>
+<h1>Agent 能力科技树 · 统一视图 v3.1 <span style="font-weight:400;color:#5F5E5A;font-size:11px">__STAMP__ · __NODES__节点</span></h1>
 <div class="sub" id="sub"></div>
 <div class="legend" id="legend"></div>
 <div style="margin-top:8px"><button onclick="setMode('all')">全部</button>
 <button onclick="setMode('todo')">只看未做</button>
 <button onclick="setMode('done')">只看已完成</button>
-<button onclick="highlightHubs()">高亮枢纽 A1</button>
-<button onclick="toggleSoft()">软关联线</button>
-<button onclick="toggleGates()">闸门列</button>
-<span style="font-size:11px;color:var(--muted);margin-left:8px">默认清爽：软关联线/闸门列隐藏，点按钮展开</span></div>
+<span style="font-size:11px;color:var(--muted);margin-left:8px">依赖线只画左→右 · 闸门列把待拍板项排前</span></div>
 </header>
 <div class="wrap"><div id="tree"><svg class="links" id="links"><defs>
 <marker id="arrow-dep" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M2 1L8 5L2 9" fill="none" stroke="#b4b2a9" stroke-width="1.5"/></marker>
@@ -287,9 +284,6 @@ const EDGES=(()=>{const m=new Map(),PRI={dep:0,gate:1,unlock:2},add=(f,t,kind)=>
 const $=s=>document.querySelector(s);
 function esc(s){return String(s||'').replace(/[<>]/g,'')}
 function setMode(m){window.__mode=m;render()}
-function highlightHubs(){window.__hub=!window.__hub;render()}
-function toggleSoft(){window.__showSoft=!window.__showSoft;render()}
-function toggleGates(){window.__showGates=!window.__showGates;render()}
 window.__view='system'; // 唯一的体系视图（2026-11-22 用户要求删其他视图）
 function init(){
  const done=DATA.filter(n=>n.status==='done').length;
@@ -328,8 +322,20 @@ function render(){
   }
   else arr=ns.filter(n=>n.kind==='card'&&n.depth===Number(sp.key.slice(5)));
   // 未完成在前；组内按性价比(ROI)降序——最划算的浮到最上面
-  return {key:sp.key,head:sp.head,nodes:arr.sort((a,b)=>rank(a)-rank(b)||
-    (isSystem?(String(a.organ||'').localeCompare(String(b.organ||''))||a.tier-b.tier):((b.roi||0)-(a.roi||0)))||a.id.localeCompare(b.id))};
+  const isGate=sp.key==='gate';
+  const needsDecision=n=>/用户拍板|是否|待定|人工排期|决策/.test(n.title||'');
+  arr.sort((a,b)=>{
+   if(isGate){ // 闸门列：待拍板项优先，其次未满足优先
+    if(needsDecision(a)!==needsDecision(b))return needsDecision(a)?-1:1;
+    return a.id.localeCompare(b.id);
+   }
+   // 其他列：器官分组 -> 组内按性价比(ROI)降序 -> 未完成靠前 -> id
+   const oa=String(a.organ||'').localeCompare(String(b.organ||''));
+   if(oa)return oa;
+   const ra=rank(a)-rank(b);if(ra)return ra;
+   return ((b.roi||0)-(a.roi||0))||a.id.localeCompare(b.id);
+  });
+  return {key:sp.key,head:sp.head,nodes:arr};
  });
  $('#cols').style.width=((cols.length)*170)+'px';
  $('#cols').innerHTML=cols.map(col=>{
@@ -339,7 +345,6 @@ function render(){
   return `<div class="col"><div class="col-h">${col.head}${prog}</div>`+
   col.nodes.map((n,ni,arr)=>{
    const done=n.status==='done';
-   const hubdim=window.__hub && n.id!=='A1' && !n.deps.includes('A1');
    const sel=window.__sel===n.id;
    const isUp=window.__chains && window.__chains.up.has(n.id) && !sel;
    const isDown=window.__chains && window.__chains.down.has(n.id) && !sel;
@@ -348,7 +353,7 @@ function render(){
    const cls=['node',done?'done':'todo',sel?'sel':'',isUp?'up-node':'',isDown?'down-node':'',fade?'dim':''].filter(Boolean).join(' ');
    const c=isSystem?(ORGCOLOR[n.organ]||'#888780'):(CATC[n.category]||'#888');
      const organHead=(isSystem && (ni===0 || arr[ni-1].organ!==n.organ))?`<div style="font-size:10px;color:#5F5E5A;margin:6px 0 2px;border-top:1px dashed #d3d1c7;padding-top:4px">▸ ${ORGAN[n.organ]||"未分器官"}</div>`:"";
-   return `${organHead}<div class="${cls}" data-id="${esc(n.id)}" style="border-left-color:${c};opacity:${hubdim?'0.25':''}" onclick="show('${esc(n.id)}')">
+   return `${organHead}<div class="${cls}" data-id="${esc(n.id)}" style="border-left-color:${c};" onclick="show('${esc(n.id)}')">
     ${isSystem&&n.kr?`<span class="gatebadge" style="background:#E6F1FB;color:#0C447C" title="KR">${esc(n.kr==="evolution_path"?"进化":n.kr)}</span>`:""}
     <span class="chip" style="background:${c}">${isSystem?(ORGAN[n.organ]||n.category||'其他'):(CATL[n.category]||'其他')}</span>
     ${(n.gates||[]).length?`<span class="gatebadge" title="前置未满足: ${(n.gates||[]).join(', ')}">⏳${(n.gates||[]).length}</span>`:''}
@@ -398,9 +403,7 @@ function drawLinks(ns){
  };
  const nodeMap={};DATA.forEach(n=>nodeMap[n.id]=n);
  EDGES.forEach(e=>{
-  // 软解锁默认不画（保持清爽）
-  if(e.kind==='unlock' && !window.__showSoft) return;
-  // 体系视图：闸门线始终画（gate是独立列，不画线看不出它挡谁）
+  if(e.kind==='unlock') return; // 体系视图不画软解锁线
   const cf=colOf(nodeMap[e.from]),ct=colOf(nodeMap[e.to]);
   // 只画从左到右的依赖线（cf<ct）——反向的交叉线会让树看起来乱
   if(cf>=0&&ct>=0&&cf>ct) return;
