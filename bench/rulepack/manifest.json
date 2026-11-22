@@ -1,9 +1,9 @@
 {
-  "version": "v1.14.0",
+  "version": "v1.15.0",
   "created": "2026-11-22",
   "protected": {
     "tools/run_all.sh": {
-      "sha256": "a324ee2199582b079bdb7103ef98b8492ba00738ae6996d3361b4c041f537312",
+      "sha256": "9ebb282dc754a0e85e310110b5e1ea1451fcbfe5e54e9f6bdc5d53f1e217b5e7",
       "source": "本地实测 2026-11-22",
       "retire_when": "规则被证实恒真/误报超预算/连续12个月零触发",
       "approval": "变更须经维护者审核+更新本manifest+commit"

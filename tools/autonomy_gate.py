@@ -112,6 +112,7 @@ def main():
     ap.add_argument('--card', help='只判定指定卡')
     ap.add_argument('--ready', action='store_true', help='只判定 ready 卡')
     ap.add_argument('--json', action='store_true')
+    ap.add_argument('--check-report', action='store_true', help='门禁用:工具正常即0,不管准入数')
     args = ap.parse_args()
 
     try:
@@ -131,6 +132,10 @@ def main():
 
     results = [assess(c, strong) for c in cards]
     allowed = [r for r in results if r['allowed']]
+    if args.check_report:
+        # 门禁模式：报告有效即可（0准入是安全状态，不是工具故障）
+        print(f'CHECK-REPORT OK: 评估 {len(results)} 张, 可自动 {len(allowed)} 张')
+        return 0
 
     if args.json:
         print(json.dumps({'strong_kinds': sorted(strong), 'results': results,

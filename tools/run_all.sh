@@ -97,13 +97,7 @@ if command -v "$PYTHON" >/dev/null 2>&1; then
     run_test "traceability" "$PYTHON \"$ROOT/tools/audit_traceability.py\""
     # 证据生成器诚实性:防生成器造假(probe不污染/缺输入N-M退出)
     run_test "generator-honesty" "$PYTHON \"$ROOT/tools/audit_generator_honesty.py\""
-    # 自主决策环准入门控:只验证工具可运行(JSON有效);0准入=安全状态不算FAIL
-    _gate=$($PYTHON "$ROOT/tools/autonomy_gate.py" --ready --json 2>/dev/null)
-    if echo "$_gate" | $PYTHON -c "import sys,json; json.load(sys.stdin)" 2>/dev/null; then
-        echo "  PASS: autonomy-gate (admission report valid)"
-    else
-        echo "  FAIL: autonomy-gate (no valid report)"; FAILED="$FAILED autonomy-gate"
-    fi
+    run_test "autonomy-gate" "$PYTHON \"$ROOT/tools/autonomy_gate.py\" --check-report"
 else
     echo "[skip] python not found"
 fi
