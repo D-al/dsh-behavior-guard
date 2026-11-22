@@ -95,6 +95,8 @@ if command -v "$PYTHON" >/dev/null 2>&1; then
     run_test "criteria-health" "$PYTHON \"$ROOT/tools/audit_criteria_health.py\""
     # 目的追溯制:每个机制必须追溯到STRATEGY条款,orphan需人工判断
     run_test "traceability" "$PYTHON \"$ROOT/tools/audit_traceability.py\""
+    # 证据生成器诚实性:防生成器造假(probe不污染/缺输入N-M退出)
+    run_test "generator-honesty" "$PYTHON \"$ROOT/tools/audit_generator_honesty.py\""
 else
     echo "[skip] python not found"
 fi

@@ -1,9 +1,9 @@
 {
-  "version": "v1.8.0",
+  "version": "v1.9.0",
   "created": "2026-11-22",
   "protected": {
     "tools/run_all.sh": {
-      "sha256": "93f8e90ebe06f4e6ed0f4ad828a23907c1e0c18a2a98ce094d7fb2e8d0c8c6ef",
+      "sha256": "ca9dd41412996d0eb7ccea2bb400f89f4d8d976f16424f836d22ecd608ff9c9e",
       "source": "本地实测 2026-11-22",
       "retire_when": "规则被证实恒真/误报超预算/连续12个月零触发",
       "approval": "变更须经维护者审核+更新本manifest+commit"
@@ -69,5 +69,5 @@
     "有回归测试与回滚版本"
   ],
   "note": "agent只读+可提staging diff;变更默认拒绝,读取默认允许;紧急修复先执行后复审",
-  "version_note": "用户批准落地STRATEGY v3.1(ADR-0020):§0目标替换+§2.1六指标并入KR;task_trace打点;ADR登记"
+  "version_note": "用户授权:5个KR证据生成器+诚实性验收器接入门禁;probe不污染,缺输入N/M退出"
 }
