@@ -382,10 +382,24 @@ def self_test():
     check('real_diff: CONTROL_PROMPT 白名单改动允许', real_diff_check('SURF-PROMPT-CONTROL', {'index.mjs': {'base': b3, 'candidate': c3}})['allowed'])
     check('real_diff: 无变化允许', real_diff_check('SURF-PROMPT-CONTROL', {'index.mjs': {'base': b3, 'candidate': b3}})['allowed'])
     check('surface_check: legacy list 签名安全拒绝', not surface_check('SURF-PROMPT-CRITIC', ['x'])['allowed'])
+    # ── S22: 真断言 — 两会话各自独立disabledWarned，互不污染 ──
+    import re as _re
+    src = open(gate_py.parent / 'index.mjs', encoding='utf-8').read()
+    # ① 禁止模块级 _s22_disabled_warned（旧bug）
+    has_module_global = bool(_re.search(r'^let\s+_s22_disabled_warned\b', src, _re.M))
+    check('s22-no-module-global: _s22_disabled_warned已移除', not has_module_global)
+    # ② session-state中有disabledWarned字段
+    has_session_field = "'disabledWarned'" in src or '"disabledWarned"' in src
+    check('s22-session-field: state含disabledWarned', has_session_field)
+    # ③ tool/call handler用 s.disabledWarned.has() 判断
+    uses_session_check = 's.disabledWarned.has(s22_name)' in src or 's.disabledWarned.has( s22_name )' in src
+    check('s22-handler-check: tool/call使用session级disabledWarned', uses_session_check)
+    # ④ DISABLED_TOOLS集合存在且含3个工具
+    has_set = 'DISABLED_TOOLS = new Set([' in src or 'DISABLED_TOOLS=new Set([' in src
+    contains_web_fetch = "web_fetch" in src and 'DISABLED_TOOLS' in src.split('DISABLED_TOOLS')[0].split('\n')[-1] if 'DISABLED_TOOLS' in src else False
+    check('s22-disabled-set: DISABLED_TOOLS定义正确', has_set and ('job_output' in src and 'job_kill' in src and 'web_fetch' in src))
+    
     print(f'\n══════ {passed}/{total} 通过 ══════')
-    return 0 if passed == total else 1
-
-def main():
     ap = argparse.ArgumentParser(description='Self-Harness P0 acceptance gate')
     ap.add_argument('--baseline', help='JSON file with baseline run data')
     ap.add_argument('--candidate', help='JSON file with candidate run data')
