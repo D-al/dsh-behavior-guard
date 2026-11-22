@@ -1,5 +1,5 @@
 {
-  "version": "v1.21.0",
+  "version": "v1.22.0",
   "created": "2026-11-22",
   "protected": {
     "tools/run_all.sh": {
@@ -69,5 +69,5 @@
     "有回归测试与回滚版本"
   ],
   "note": "agent只读+可提staging diff;变更默认拒绝,读取默认允许;紧急修复先执行后复审",
-  "version_note": "ADR-0023双轴战略:体系智能(进化轴)+6KR(护栏轴),KR5交汇,6卡归evolution_path"
+  "version_note": "ADR-0024三层归一+ADR-0025 dsh按需+6活文档更新+STATUS现状总览"
 }

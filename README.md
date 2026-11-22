@@ -2,6 +2,11 @@
 
 > **合成心智（Synthetic Mind）**：用一个 35B 本地模型 + 一套确定性脚手架，合成比模型本身可靠得多的心智——**模型权重一个字节没动，变的是它外面的脑区**。
 
+> **三层定位（ADR-0024）**：合成心智是**身份与机制**（我们是什么 / 怎么让同一模型更聪明）；
+> [STRATEGY.md](STRATEGY.md) 的"持续成长的计算体"是**方向**（往哪走，体系智能进化轴）；
+> §2.1 的 6 个 KR 是**验收边界**（不许怎么走）。三者不冲突——**被 KR 取代的是旧六项能力指标（ADR-0020），不是"合成心智"这个身份**。
+> 决策时按层判断：改机制看 [认知谱系](lineage/ORIGIN.md)，定方向看 STRATEGY §1，判达标看 STRATEGY §2.1。
+
 本仓库是 **Single Source of Truth**：插件代码 + 生产配置 + 11 个技能卡 + 分析/守卫脚本群（tools/，数量以目录为准）+ 决策档案 + 认知谱系 + 一键安装。
 > 资产盘点与调度见 [资产地图](lineage/ASSET_MAP.md)；新增资产须登记 [资产索引](config/ASSET_INDEX.json)，否则等于没接入。
 当前 **v2.26.6**（2026-11-21：S17 四卡外置 + S15 门控模块 + 反向检验深度维护）。仓库名沿用历史名 `dsh-behavior-guard`，npm 包名/插件 id 为 `dsh-agent-harness`。
@@ -37,7 +42,8 @@
 1. **一句话定位**：这是 dsh（DeepSeek Harness）的一个 cordis 插件，入口是根目录 `index.mjs` 的 `apply(ctx, config)`。
    它在模型**外部**注入确定性规则（L0-L3 早收尾、D1-D5 风险门控、todo 闹钟、控制回合、Critic/审计、verify-on-stop、学习回注），
    **不改模型权重**。目标是让一个 8G 显存上的 35B MoE 模型 behave 得像一个可靠 agent。
-2. **看现状**：打开 [TECH_TREE.html](TECH_TREE.html) —— 交互科技树：依赖层级/完成状态/性价比/上下游高亮，一眼看清。
+2. **看现状**：先读 [STATUS.md](STATUS.md) —— 文字版现状快照（KR 判据状态、三层结构、下一步、已知债务）；
+   再看 [TECH_TREE.html](TECH_TREE.html) —— 交互科技树：依赖层级/完成状态/性价比/上下游高亮，点"按 KR 视图"看目标映射。
 3. **看边界**：[明确不做清单](CAPABILITY_LADDER.yaml)（`rejected` 字段，也是科技树最左红列）+ 下面「硬约束」—— 别做与权重零改冲突、或已被证伪的事。
 4. **验证环境没坏**：`node --check index.mjs` → `python tools/regression_check.py`（期望 30/30）→ `python tools/config_check.py`（期望全栈一致）。
 5. **领活**：`python tools/roadmap_check.py --next` 选下一张卡（当前 M8），`--card <ID>` 读它的 what/why/坑；§3 短期已归档，自治卡在 [ROADMAP_GRAPH.md](ROADMAP_GRAPH.md)（机器真相源，人勿手改）。**任何改动都要跑第 4 步的门禁。**
