@@ -19,9 +19,20 @@ def find_asset(name):
     return os.path.join(BENCH, name)
 TPL = find_asset('chat_template_zh.jinja')
 USERPROFILE = os.environ.get('USERPROFILE') or r'C:\Users\Ad'
-AGENTS = str(Path(USERPROFILE) / '.dsh' / 'AGENTS.md')
-PLUG = str(Path(USERPROFILE) / '.dsh' / 'profiles' / 'desktop' / 'node_modules')
-CORDIS = str(Path(USERPROFILE) / '.dsh' / 'profiles' / 'desktop' / 'cordis.patch.yml')
+AGENTS = next((x for x in [r'D://Brain//dsh-data//AGENTS.md',
+                           str(Path(USERPROFILE) / '.dsh' / 'AGENTS.md'),
+                           os.path.join(ROOT, 'config', 'AGENTS.md')] if os.path.exists(x)),
+              str(Path(USERPROFILE) / '.dsh' / 'AGENTS.md'))
+# 2026-11-22 修路径漂移：profile 实际在 D:/Brain/dsh-data/profiles/desktop，
+# 旧硬编码 ~/.dsh/profiles/desktop 在那次迁移后失效（regression_106 判据一直真 FAIL）
+PROFILE_CANDIDATES = [
+    os.environ.get('DSH_PROFILE_DIR', ''),
+    r'D://Brain//dsh-data//profiles//desktop',
+    str(Path(USERPROFILE) / '.dsh' / 'profiles' / 'desktop'),
+]
+PROFILE = next((x for x in PROFILE_CANDIDATES if x and os.path.isdir(x)), PROFILE_CANDIDATES[-1])
+PLUG = os.path.join(PROFILE, 'node_modules')
+CORDIS = os.path.join(PROFILE, 'cordis.patch.yml')
 
 results = []
 def check(name, ok, detail=''):

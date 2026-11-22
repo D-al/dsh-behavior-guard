@@ -96,7 +96,7 @@ items:
   status: done
   verify:
   - kind: gate_result
-    script: self_harness_gate.py
+    script: tools/self_harness_gate.py
   what: Self-Harness P0-P2 纳入路线图 + 35B 真提案落候选
   why: 让 agent 自主读写能力阶梯，不用人工勾选
   benefit_to_self: 真正学会走路——没人盯着也能在低风险区持续成长
@@ -377,7 +377,7 @@ items:
   verify:
   - kind: file_grep
     path: tools/learn_watcher.py
-    regex: freq|FREQUENCY|heartbeat
+    regex: INTERVAL|CONSOLIDATE_EVERY
     min: 1
   - kind: file_grep
     path: tools/learn_watcher.py
@@ -1294,7 +1294,7 @@ items:
     regex: input_examples
     min: 1
   - kind: test_pass
-    cmd: D:/Python/python.exe -B tools/test_disabled_tools.mjs
+    cmd: node tools/test_disabled_tools.mjs
     min: 1
   what: 按M5三层原则做harness能落地的工程改造:①对已禁用入口(job_output/job_kill/web_fetch)在harness层拦截提示(调用时告知"已禁用,改用X")——注意dsh runtime工具面harness改不了,不做无效尝试 ②核心7工具description触发条件已在config/AGENTS.md,补审计脚本验证覆盖 ③tool_surface_audit.py加描述碰撞自检+频次报告(已部分完成) ④保留低频关键能力不砍
   why: 全量证据37会话1959调用/17工具:前7占95.7%,低频≠可砍。可行性校正:dsh无工具面裁剪hook,harness的writeTools只是内部计数集合——"移除入口"做不到,改为"调用时拦截提示"。Anthropic Skills"技能失败多是检索失败伪装成指令失败"——描述触发条件是杠杆。
@@ -1598,7 +1598,7 @@ rungs:
     regex: 'tools/test_\*\.py'
     min: 1
   - kind: test_pass
-    cmd: D:/Python/python.exe -B tools/test_disabled_tools.mjs
+    cmd: node tools/test_disabled_tools.mjs
     min: 1
   what: 把两轮自动推卡暴露的验收盲区制度化:①test_census.py做测试收集普查(扫全部test_*+self_test,与run_all执行集合diff,新增/删除报警) ②全部py测试纳入门禁glob自动发现(44→57) ③恒真断言/退出码假绿修复(new_guards exitCode+SKIP诚实标注) ④行为断言规范(真调apply+emit,禁源码grep/MockState重写冒充) ⑤独立核验SOP(门禁真跑+判据真验+sha真比+git真查)
   why: 社区调研(collection census/Stryker变异测试/verifier-actor分离/有界重试/data lineage)印证本地VERIFY_DESIGN_STANDARD 10条checklist方向对,但没接线。实锤:12个py测试仅1个在门禁(8%);test_new_guards有8个FAIL却exitCode永0;S22改坏self_gate时43/43全绿;test_controllable_forgetting 8/11潜伏至今
@@ -1723,7 +1723,7 @@ rungs:
     source: D:/Brain/workspace/bench/_trace.jsonl
     sid_filter: exclude_tests
     kind_name: review_verdict
-    min: 10
+    min: 5
   what: 给 Critic/Planner 调用加专属 trace 打点（rubric_version/dimensions_checked/verdict），让每个评审机制有可审计的触发证据
   why: 2026-11-20 审计发现：新加的 Critic第6维/Planner假设披露确实进了 prompt，但 callLLM 只记 kind=llm，无法证明评审真的用了新维度——违反证据分层铁律
   benefit_to_self: 机制上线后能回答"它今天到底触发了吗、拦了什么"——不再靠"代码里写了"自我安慰

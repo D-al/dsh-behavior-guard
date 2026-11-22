@@ -1,5 +1,5 @@
 {
-  "version": "v1.1.0",
+  "version": "v1.2.0",
   "created": "2026-11-22",
   "protected": {
     "tools/run_all.sh": {
@@ -27,7 +27,7 @@
       "approval": "变更须经维护者审核+更新本manifest+commit"
     },
     "tools/test_census.py": {
-      "sha256": "485a2970f9b327994b9c52982d18ca60a9b119bfce7e7dace9892eef084a969a",
+      "sha256": "34ad6102177f30c5cd2d018cb8facff43d3852539ab66313d0dc72c2ebc5876c",
       "source": "本地实测 2026-11-22",
       "retire_when": "规则被证实恒真/误报超预算/连续12个月零触发",
       "approval": "变更须经维护者审核+更新本manifest+commit"
@@ -57,5 +57,5 @@
     "有回归测试与回滚版本"
   ],
   "note": "agent只读+可提staging diff;变更默认拒绝,读取默认允许;紧急修复先执行后复审",
-  "version_note": "加入INV-7(规则包漂移检测)+run_all双保险+AGENTS.md纪律;用户2026-11-22拍板的版本升级"
+  "version_note": "修A6判据输出格式:census加标准PASS标记(用户批准的判据修复)"
 }

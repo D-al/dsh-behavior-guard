@@ -99,6 +99,9 @@ def main():
 
     ok = not missing and not unexplained_removed
     print(f'[CENSUS] VERDICT: {"PASS" if ok else "FAIL"}')
+    # 标准PASS标记：让 roadmap_check 的 test_pass 判据（^PASS / ^[PASS] / ^✅ / ^[OK]）能识别
+    # 此前只输出 [CENSUS] VERDICT: PASS，判据正则不匹配 → A6 判据假FAIL
+    print(('PASS  census: 测试全在门禁' if ok else 'FAIL  census: 测试缺失'))
     return 0 if ok else 1
 
 
