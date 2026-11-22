@@ -101,3 +101,4 @@
 | [GOAL_STATEMENT_V2_20261122.md](GOAL_STATEMENT_V2_20261122.md) | 提案 | 目标打磨版:六个误解词修正(生命→持续成长的计算体/超越人类→可验证任务逼近专家/对抗自然选择→面对变化保持有效/可演化→权重冻结的累积改进/认识自己→外部能力画像/搜寻策略→边界内选路径);Vision aspirational+四个可达锚点(全部有现成零件)+安全边界+三条防表述回流纪律 |
 | [GOAL_V2_VALIDATION_20261122.md](GOAL_V2_VALIDATION_20261122.md) | 评审 | 目标v2科学性检验:14判据评分4✅/3⚠️/7❌;可达性KR1可达/KR2需埋点/KR3当前不可达(0 confidence事件);修正为v2.1 |
 | [GOAL_STATEMENT_V2_1_20261122.md](GOAL_STATEMENT_V2_1_20261122.md) | 提案 | 目标v2.1:补diagnosis(决策环断裂)+二值KR+预写失败条件+证据源+月度review+KR3降级;文本自检14/14但标注"关键词命中非有效性证明" |
+| [GOAL_STATEMENT_V3_20261122.md](GOAL_STATEMENT_V3_20261122.md) | 提案 | 战略目标v3合格版:诊断+6个二值KR(三态验证)+代理构念关系表(CUR/CIV)+means-end闭合(补KR5专家/KR6可关闭)+guardrail表;实测KR全N/M=合格≠完成 |
