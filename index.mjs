@@ -307,6 +307,17 @@ function loadSkills(dir) {
   return out
 }
 
+
+// ── S22:禁用工具拦截提示(harness层调用检测,不改行为只提示)──
+// job_output/job_kill/web_fetch已被项目标记为不可用——此处仅注入steer不阻断
+const DISABLED_TOOLS = new Set(['job_output', 'job_kill', 'web_fetch']);
+const DISABLED_REPLACEMENTS = Object.freeze({
+  job_output: '使用pwsh Get-Job查询或查archive/snapshots目录',
+  job_kill:   '使用kill_switch.py或pwsh Remove-Job',
+  web_fetch:  '一律用web_search替代(本机SearXNG无需API key)'
+});
+let _s22_disabled_warned = null; // per-session set of warned tool names
+
 // ── Observability：trace 记录（追加 jsonl，失败静默；超过 maxTraceBytes 轮转一次）──
 const WRITE_TOOLS = new Set(['write', 'edit', 'apply_patch', 'multi_edit', 'create_file', 'str_replace', 'write_file', 'notebook_edit'])
 const VERIFY_TOOLS = new Set(['pwsh', 'bash', 'verify_agent', 'regression_check', 'config_check', 'read'])
@@ -982,6 +993,17 @@ export function apply(ctx, config) {
       }
       if (event.type === 'tool/call') {
         // turn-guard：工具调用计数 + writeTools 计数（L2/L3 判定依据）
+        // S22: disable tool steer — detect & inject hint, do NOT block
+        const s22_name = String(event.data?.name ?? '');
+        if (DISABLED_TOOLS.has(s22_name)) {
+          if (_s22_disabled_warned == null) _s22_disabled_warned = new Set();
+          if (!_s22_disabled_warned.has(s22_name)) {
+            const repl = DISABLED_REPLACEMENTS[s22_name] || '查阅项目文档';
+            s.pendingInject = '[harness 工具拦截] 「' + s22_name + '」已在本项目禁用——该工具不在可用范围内，请改用：' + repl + '。';
+            info('behavior-guard: [S22] disabled tool detected: ' + s22_name);
+            _s22_disabled_warned.add(s22_name);
+          }
+        }
         s.toolCalls += 1
         if (cfg.writeTools.includes(String(event.data?.name ?? ''))) s.writeCalls += 1
         const fullArgs = String(event.data?.arguments ?? '')
