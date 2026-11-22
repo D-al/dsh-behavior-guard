@@ -1,3 +1,15 @@
+## [2.27.14] - 2026-11-23（M9 毙掉 + 依赖图清理）
+
+- 用户拍板"把M9暂时毙了"：CAPABILITY_LADDER.yaml + ROADMAP_GRAPH.md 双源同步。
+- M9 → status=rejected / deps=[] / unlocks=[]；title 加"已毙 2026-11-22"；
+  what/why/benefit_to_self/advice 改为理由（BDI槽零增量证伪 + 开局长短分类器学术强否定
+  + 本地零成本规则94.3%够用），human_note 留重开条件。
+- L1 deps 去掉 M9（M1+M3），caveat/human_note/abort_if 同步；M3 unlocks 去掉 M9；
+  GRAPH 顶部隐式边表去掉 M9→M3 与 L1→M9 两条。
+- 踩坑：M9 rejected 后 deps 仍留 M3 会让 audit_implicit_deps 要求 M3 unlocks 回填 M9
+  （INV-4 FAIL）；清空 rejected 卡的 deps/unlocks（跟 M7 一致）后 audit/tech_tree/foundation 全过。
+- 门禁 77/77，GRAPH/LADDER/HTML 三副本一致，roadmap_check M9=[MANUAL] rejected。
+
 ## [2.27.13] - 2026-11-22（科技树同步：S6 守门/M3 观察线）
 
 - CAPABILITY_LADDER.yaml + ROADMAP_GRAPH.md 双源同步，TECH_TREE.html 重生成(105卡/7锚点)。

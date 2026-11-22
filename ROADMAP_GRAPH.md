@@ -50,8 +50,6 @@ edges:
   - S1_data
 - - M3
   - GWT_FEP
-- - M9
-  - M3
 - - M2
   - GWT_FEP
 - - S6_model
@@ -62,8 +60,6 @@ edges:
   - M1
 - - L1
   - M3
-- - L1
-  - M9
 - - L8
   - GWT_FEP
 - - A1
@@ -589,25 +585,23 @@ items:
   instrumentation_needed:
   - tools/test_s6_pattern_guard.mjs + test_pattern_lock_wire.mjs + test_intent_drift_trace.mjs(均已落地)
   unlocks:
-  - M9
   - L1
   cost: 中
   category: mind
   review: docs/M3_VALUE_REVIEW_20261122.md + docs/CLASSIFIER_ECOSYSTEM_RESEARCH_20261122.md + docs/M3_ANCHOR_COST_BENEFIT_20261122.md + docs/M3_PATTERN_GUARD_LANDING_20261122.md
 - id: M9
   tier: 2
-  deps:
-  - M3
+  deps: []
   risk: high
   autonomous: false
-  status: backlog
+  status: rejected
   verify:
   - kind: manual
-    reason: 需验证中文表现 + embedding 编码器（8G 显存硬约束）
-  title: 意图分类器
-  what: 用意图分类器填 BDI 意图槽，高置信直接用、低置信交三角色
-  why: 规则判意图太脆，但本机 8G 挂 embedding 编码器不可行
-  benefit_to_self: 意图识别从"靠关键词猜"变成有置信度的判断，低置信时会主动求助而非乱做
+    reason: 已毙——原定位证伪+替代定位学术否定+本地规则基线够用；见 what
+  title: 意图分类器（已毙 2026-11-22）
+  what: 【已毙】原"意图分类器填BDI槽"零增量已证伪；"开局判长短分类器"学术强否定且本地零成本规则94.3%够用；不实现
+  why: BDI槽被P0存档覆盖(零增量)；开局长短prompt-only近随机(AUC0.599/R²0.025)且同任务30×波动；本地关键词规则已94.3%
+  benefit_to_self: 已无——价值被P0存档+⑤漂移检测+本地零成本规则覆盖
   caveats:
   - 8G 显存硬约束：先验证 86M CPU 分类器，别直接上 embedding
   - GLiClass 英文为主，中文表现未验证
@@ -622,8 +616,7 @@ items:
   - 'P-86M-EMBEDDING: 86M分类器<=8G显存可运行（M9.caveat硬约束）'
   instrumentation_needed:
   - tools/test_intent_classifier.mjs（新建）
-  unlocks:
-  - L1
+  unlocks: []
   cost: 中
   category: mind
 - id: M2
@@ -796,7 +789,6 @@ items:
   deps:
   - M1
   - M3
-  - M9
   risk: high
   autonomous: false
   status: backlog
@@ -808,12 +800,12 @@ items:
   why: 存在性判据太浅，产物写错内容也能过
   benefit_to_self: 能真正判断"做对了没"，不只是"做了没"
   caveats:
-  - 需 M1+M3+M9 先完成
+  - 需 M1+M3 先完成（M9已毙）
   - 误报不能侵占注入通道（ADR-0017）
   - 断言精度/召回必须可测
   - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection: []
-  abort_if: 无（长期，依赖三个前置）
+  abort_if: 无（长期，依赖M1+M3两个前置）
   instrumentation_needed:
   - tools/test_world_model.mjs（新建）
   unlocks: []

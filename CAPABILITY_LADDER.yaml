@@ -239,7 +239,6 @@ items:
     min: 1
     note: 观察线已落地(只写trace)；原test_bdi_slots不存在+mind_state假绿判据已移除
   unlock: &id002
-  - M9
   - L1
   human_note: 2026-11-22全流程复核+原型：价值复核证三槽冗余(P0已覆盖)；论文调研证state complexity非漂移主因(Goal Drift消融)、RGE混合架构可行；LLM抽锚点实测15-16s且6/6锚点是initial原文子串→零增量、不值得；反模式匹配观察线已落地(s6_pattern_guard.mjs，pattern_lock trace，只写trace不steer)，⑤漂移trace加时机字段(StepShield教训)。核心目标锚定未做(需人工确认改bdi)，保持backlog。
   what: 反模式匹配目标锚定(重定位)：①观察线已落地——工具分布固化>=0.6且距目标重述>=6步，只写trace不steer，依据Goal Drift论文state complexity消融证伪"状态存更多"；②LLM抽锚点(RGE式)已证伪——15-16s/次且6/6锚点是P0 initial子串、零增量，不做；③⑤漂移trace加时机字段(StepShield:时机随机=没用)。
@@ -275,22 +274,20 @@ items:
   root_why: 构建脑早期的意图BDI三槽,是当时造的器官;虽现归evolution_path但谱系属组装期
   review: docs/M3_VALUE_REVIEW_20261122.md + docs/CLASSIFIER_ECOSYSTEM_RESEARCH_20261122.md + docs/M3_ANCHOR_COST_BENEFIT_20261122.md + docs/M3_PATTERN_GUARD_LANDING_20261122.md
 - id: M9
-  title: 意图分类器
+  title: 意图分类器（已毙 2026-11-22）
   tier: 2
-  deps:
-  - M3
+  deps: []
   risk: high
   autonomous: false
-  status: backlog
+  status: rejected
   verify:
   - kind: manual
-    reason: 需验证中文表现 + embedding 编码器（8G 显存硬约束）
-  unlock: &id003
-  - L1
-  human_note: 本机 8G 不可行挂编码器；先验证 86M CPU 分类器，暂 manual-blocked
-  what: 用意图分类器填 BDI 意图槽，高置信直接用、低置信交三角色
-  why: 规则判意图太脆，但本机 8G 挂 embedding 编码器不可行
-  benefit_to_self: 意图识别从"靠关键词猜"变成有置信度的判断，低置信时会主动求助而非乱做
+    reason: 已毙——原定位证伪+替代定位学术否定+本地规则基线够用；见 what
+  unlock: &id003 []
+  human_note: 2026-11-22用户拍板毙掉：原定位"用分类器填BDI意图槽"已证伪——BDI槽零增量(6/6锚点是P0存档initial原文子串，LLM抽锚点实测15-16s不值得)；替代定位"开局判长短分类器"学术强否定(prompt-only AUC0.599近随机/自预测r≤0.39且30×波动/三篇系统论文判静态预测无效)+本地零成本关键词规则已94.3%。参考docs/M9_REPOSITION_RESEARCH_20261122.md + docs/FIRST_STEP_PREDICTION_EVIDENCE_20261122.md + docs/DSH_CUSTOM_TOOL_API_20261122.md。若将来出现P0覆盖不了的场景且成本可接受可重开。
+  what: 【已毙】原"意图分类器填BDI槽"零增量已证伪；"开局判长短分类器"学术强否定且本地零成本规则94.3%够用；不实现
+  why: BDI槽被P0存档覆盖(零增量)；开局长短prompt-only近随机(AUC0.599/R²0.025)且同任务30×波动；本地关键词规则已94.3%
+  benefit_to_self: 已无——价值被P0存档+⑤漂移检测+本地零成本规则覆盖
   caveats:
   - 8G 显存硬约束：先验证 86M CPU 分类器，别直接上 embedding
   - GLiClass 英文为主，中文表现未验证
@@ -307,7 +304,7 @@ items:
   - tools/test_intent_classifier.mjs（新建）
   benefit: 中
   cost: 中
-  advice: embedding+LR 1-20ms/92-93%
+  advice: ⛔ 已毙(2026-11-22用户拍板)；原abort_if/preconditions随定位撤销自然失效
   rank: 4
   rank_derived: false
   unlocks: *id003
@@ -624,7 +621,6 @@ items:
   deps:
   - M1
   - M3
-  - M9
   risk: high
   autonomous: false
   status: backlog
@@ -632,17 +628,17 @@ items:
   - kind: manual
     reason: 产物内容满足 what 的断言精度/召回可测
   unlock: &id009 []
-  human_note: 最后做，依赖 M1+M3+M9
+  human_note: 最后做，依赖 M1+M3（M9已于2026-11-22毙掉，与本卡产物内容断言无关）
   what: FEP 从"产物是否存在"升级为"产物内容满足 what"的世界模型断言
   why: 存在性判据太浅，产物写错内容也能过
   benefit_to_self: 能真正判断"做对了没"，不只是"做了没"
   caveats:
-  - 需 M1+M3+M9 先完成
+  - 需 M1+M3 先完成（M9已毙）
   - 误报不能侵占注入通道（ADR-0017）
   - 断言精度/召回必须可测
   - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection: []
-  abort_if: 无（长期，依赖三个前置）
+  abort_if: 无（长期，依赖M1+M3两个前置）
   instrumentation_needed:
   - tools/test_world_model.mjs（新建）
   benefit: 高
