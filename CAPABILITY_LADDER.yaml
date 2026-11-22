@@ -1056,9 +1056,9 @@ items:
   category: short
   kr: null
   kr_why: CPU 小模型基准是证伪性性能测试，不产出任何 KR 证据
-  root_stage: tuning
-  organ: validation
-  root_why: 0.6B CPU分类基准实测证伪实时外设可行性，属性能/时延实测的验证卡
+  root_stage: assembly
+  organ: foundation
+  root_why: 依赖M8轨迹监控器=组装期产物(小模型基准是器官验证,非引擎调优)
 - id: S8
   title: 审计自校准落盘
   tier: 2
@@ -1463,9 +1463,9 @@ items:
   category: infra
   kr: null
   kr_why: 推理活性判据纠偏是 GPU 争抢性能优化且 manual-blocked，不产出 KR 证据
-  root_stage: tuning
+  root_stage: assembly
   organ: validation
-  root_why: 废除单帧硬件快照、改用token计数连续采样判推理活性，是解码/推理性能判据的纠偏
+  root_why: 依赖A1机器判据=组装期产物(推理活性判据是器官验证)
 - id: S11
   title: 写后校验覆盖全部写工具
   what: 把 verify-on-edit 从只覆盖 write/edit 扩展到 DEFAULT_WRITE_TOOLS 全部8种（apply_patch/multi_edit/create_file/str_replace/write_file/notebook_edit），每种按扩展名跑对应语法校验

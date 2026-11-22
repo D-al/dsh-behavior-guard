@@ -250,7 +250,7 @@ path.link-unlock.hot.dir-down{stroke:#D85A30!important;stroke-dasharray:"4 3"}
 button{font:inherit;padding:4px 10px;border:1px solid var(--line);background:#fff;border-radius:6px;cursor:pointer}
 </style></head><body>
 <header>
-<h1>Agent 能力科技树 · 统一视图 v2 <span style="font-weight:400;color:#5F5E5A;font-size:11px">__STAMP__ · __NODES__节点</span></h1>
+<h1>Agent 能力科技树 · 统一视图 v3 <span style="font-weight:400;color:#5F5E5A;font-size:11px">__STAMP__ · __NODES__节点</span></h1>
 <div class="sub" id="sub"></div>
 <div class="legend" id="legend"></div>
 <div style="margin-top:8px"><button onclick="setMode('all')">全部</button>
@@ -259,7 +259,6 @@ button{font:inherit;padding:4px 10px;border:1px solid var(--line);background:#ff
 <button onclick="highlightHubs()">高亮枢纽 A1</button>
 <button onclick="toggleSoft()">软关联线</button>
 <button onclick="toggleGates()">闸门列</button>
-<button onclick="toggleView()" id="viewBtn">按 KR 视图</button>
 <span style="font-size:11px;color:var(--muted);margin-left:8px">默认清爽：软关联线/闸门列隐藏，点按钮展开</span></div>
 </header>
 <div class="wrap"><div id="tree"><svg class="links" id="links"><defs>
@@ -291,18 +290,10 @@ function setMode(m){window.__mode=m;render()}
 function highlightHubs(){window.__hub=!window.__hub;render()}
 function toggleSoft(){window.__showSoft=!window.__showSoft;render()}
 function toggleGates(){window.__showGates=!window.__showGates;render()}
-function toggleView(){const seq=['tier','kr','system'];
- const i=seq.indexOf(window.__view||'tier');window.__view=seq[(i+1)%3];
- const label={tier:'按 KR 视图',kr:'按体系视图',system:'按层级视图'};
- document.getElementById('viewBtn').textContent=label[window.__view];init();}
+window.__view='system'; // 唯一的体系视图（2026-11-22 用户要求删其他视图）
 function init(){
  const done=DATA.filter(n=>n.status==='done').length;
- const vw=window.__view||'tier';
- $('#sub').textContent=vw==='system'
-  ? `体系视图：根系(调优→组装→优化→治理→进化)为骨架 · 列内按器官分组 · 节点显示 KR 归属与状态 · 点卡片看它为什么在这`
-  : vw==='kr'
-  ? `${DATA.length} 张卡按战略目标(KR)分组 · 浅色标记当前KR状态(PASS/N/M) · 每列内未完成优先 · 点卡片看它为什么归这个KR`
-  : `${DATA.length} 张卡 · ${done} 已完成 · ${DATA.length-done} 未做 · 从左到右按依赖层级展开`;
+ $('#sub').textContent=`体系树 · ${DATA.length} 节点 · ${done} 已完成 · 左→右：明确不做 | 证据地基 | 闸门 | 调优→组装→优化→治理→进化；依赖线只画左→右；列内按器官分组`;
  $('#legend').innerHTML=Object.keys(CATL).map(k=>
    `<span><i class="dot" style="background:${CATC[k]}"></i>${CATL[k]}</span>`).join('')+
    `<span><i class="dot" style="border:1px dashed #888"></i>虚线框=未完成</span>`+
@@ -320,38 +311,17 @@ function render(){
  const rank=n=>(n.status==='done'?1:0);
  // 列定义：已排除(红) | 证据 | 第0..N层
  // 顺序：旁挂区(不做/证据)在左，闸门紧贴第0层——减少跨列连线穿过卡片
- const iskr=window.__view==='kr';
- const isSystem=window.__view==='system';
+ const isSystem=true;
  const specs=[];
- if(isSystem){
-  for(const k of Object.keys(STAGE))specs.push({key:'stage:'+k,head:STAGE[k]});
-  specs.push({key:'stage:none',head:'未分类'});
-  specs.push({key:'rejected',head:'⛔ 明确不做'});
-  specs.push({key:'evidence',head:'▤ 证据/地基'});
- }else if(iskr){
-  for(const k of Object.keys(KRNAME)){
-   const st=(KRSTATUS[k]||{}).status||'N/M';
-   const tag=st==='PASS'?'✓PASS':st==='FAIL'?'✗FAIL':'N/M';
-   specs.push({key:'kr:'+k,head:KRNAME[k]+' · '+tag+' ('+k+')'});
-  }
-  specs.push({key:'kr:evolution_path',head:'体系智能 · 进化路径 (ADR-0023)'});
-  specs.push({key:'kr:null',head:'地基/其他 · 不直接支撑KR'});
-  specs.push({key:'rejected',head:'⛔ 明确不做'});
-  specs.push({key:'evidence',head:'▤ 证据/地基'});
- }else{
-  specs.push({key:'rejected',head:'⛔ 明确不做'},{key:'evidence',head:'▤ 证据/地基'});
-  if(window.__showGates)specs.push({key:'gate',head:'⏳ 前置闸门'});
-  for(let d=0;d<=maxd;d++)specs.push({key:'layer'+d,head:'第'+d+'层·'+(LAYER[d]||'')});
- }
+ specs.push({key:'rejected',head:'⛔ 明确不做'});
+ specs.push({key:'evidence',head:'▤ 证据/地基'});
+ specs.push({key:'gate',head:'⏳ 前置闸门'});
+ for(const k of Object.keys(STAGE))specs.push({key:'stage:'+k,head:STAGE[k]});
  const cols=specs.map(sp=>{
   let arr;
   if(sp.key==='rejected')arr=ns.filter(n=>n.kind==='rejected');
   else if(sp.key==='gate')arr=ns.filter(n=>n.kind==='gate');
   else if(sp.key==='evidence')arr=ns.filter(n=>n.kind==='evidence');
-  else if(sp.key.startsWith('kr:')){
-   const k=sp.key.slice(3);
-   arr=ns.filter(n=>n.kind==='card'&&((k==='null')?!n.kr:n.kr===k));
-  }
   else if(sp.key.startsWith('stage:')){
    const k=sp.key.slice(6);
    arr=ns.filter(n=>(n.kind==='card'||n.kind==='tuning')&&((k==='none')?!n.root_stage:n.root_stage===k));
@@ -417,10 +387,23 @@ function drawLinks(ns){
   const midX=(x1+x2)/2;
   paths+=`<path class="${cls}" d="M${x1},${y1} C${x1+18},${y1} ${x2-18},${y2} ${x2},${y2}" fill="none" stroke="${col}" stroke-width="${style==='gate'?'1.8':'1.4'}" opacity="${hot?'0.95':'0.5'}" ${soft?'stroke-dasharray="4 3"':''} marker-end="url(#arrow-${style==='gate'?'gate':soft?'unlock':'dep'})"/>`;
  };
+ // 体系视图列序：明确不做(0) 证据(1) 闸门(2) 调优(3) 组装(4) 优化(5) 治理(6) 进化(7)
+ const STAGE_ORDER=['rejected','evidence','gate','tuning','assembly','optimization','governance','evolution'];
+ const colOf=n=>{
+  if(!n)return -1;
+  if(n.kind==='rejected')return 0;
+  if(n.kind==='evidence')return 1;
+  if(n.kind==='gate')return 2;
+  return STAGE_ORDER.indexOf(n.root_stage); // tuning=3..evolution=7
+ };
+ const nodeMap={};DATA.forEach(n=>nodeMap[n.id]=n);
  EDGES.forEach(e=>{
-  // 清爽原则：软解锁(unlock)默认不画线，只在显式开启时显示；硬依赖/闸门始终画
+  // 软解锁默认不画（保持清爽）
   if(e.kind==='unlock' && !window.__showSoft) return;
-  if(e.kind==='gate' && !window.__showGates) return;
+  // 体系视图：闸门线始终画（gate是独立列，不画线看不出它挡谁）
+  const cf=colOf(nodeMap[e.from]),ct=colOf(nodeMap[e.to]);
+  // 只画从左到右的依赖线（cf<ct）——反向的交叉线会让树看起来乱
+  if(cf>=0&&ct>=0&&cf>ct) return;
   edge(e.from,e.to,e.kind!=='dep',e.kind);
  });
  svg.setAttribute('width',tree.scrollWidth);svg.setAttribute('height',tree.scrollHeight);
