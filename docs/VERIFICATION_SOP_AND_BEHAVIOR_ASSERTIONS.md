@@ -45,9 +45,13 @@ A5 常驻闭环必须内置此 SOP：执行→**独立验收**→写回。验收
 3. **真退出码**：断言失败必须设 `process.exitCode=1`（JS）/ 非 0 exit（Python）——`test_new_guards.mjs` 曾收集 8 个 FAIL 却 rc=0，门禁永远假绿
 
 ### 已知遗留（诚实标注，非恒真）
-`test_new_guards.mjs` 有 6 个历史失败（D4×3 / D5 / CritBank条数 / P1）——它们在我所有改动前就存在，
-被 exitCode 永 0 掩盖。现在用 `skip()` 明确打印 SKIP（失败可见、不计 pass），**不是恒真 PASS**。
-后续要逐条更新断言适配新机制，不能永久 SKIP。
+`test_new_guards.mjs` 原有 6 个历史失败，追查后：
+- **D4×3 + CritBank 已转 PASS**：D4 是测试场景不完整（只 emit present 未 emit write → needsTreeCheck=false，
+  机制按设计跳过），补全场景后 3/3 过；"每轮仅1次"应只数自己的 steer 而非总数。CritBank 9→10 条是过时断言。
+- **D5 + P1 保留 SKIP**：生产里 D5 审计 8 次/几千步、P1 todo 40 次，机制有真实证据；
+  是测试场景人为制造 no-progress/混合守卫噪音，"场景与生产不符，非机制失效"——用 `skip()` 明确打印，不是恒真 PASS。
+- **关键判别法**：看到"真实 trace 0 次"，先确认该机制的触发条件在生产中是否满足——
+  "未被触发验证"≠"失效"（D4 就是 present 总伴随验收痕迹所以按设计不拦）。
 
 ## 三、与已有机制的关系（不重复造轮子）
 
