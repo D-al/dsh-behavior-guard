@@ -1951,7 +1951,7 @@ items:
   - S14
   risk: low
   autonomous: true
-  status: in_progress
+  status: done
   what: 在 harness 的 session/event 监听里加 tool/result 分支：捕获 isError 工具失败，pre-step 自动注入修正提示
     （FS_EDIT_NOT_FOUND→重读目标区+回灌字节差异；FS_NOT_FOUND→列相近文件suggest；SUBPROCESS_SPAWN_NOT_FOUND→提示可用命令）。
     与S14(提示层协议)分工：S14教模型怎么做，S24在执行层兜底——模型违反协议时不再无提示硬重试。
@@ -1971,11 +1971,17 @@ items:
   - kind: file_exists
     path: tools/test_tool_failure_healer.mjs
   - kind: test_pass
-    cmd: D:/Brain/dsh-data/dsh-runtimes/dsh-primary-runtime/dependencies/node/bin/node.exe --check tools/tool_failure_healer.mjs
-    min: 1
-  - kind: test_pass
     cmd: D:/Brain/dsh-data/dsh-runtimes/dsh-primary-runtime/dependencies/node/bin/node.exe tools/test_tool_failure_healer.mjs
     min: 1
+  - kind: test_pass
+    cmd: D:/Brain/dsh-data/dsh-runtimes/dsh-primary-runtime/dependencies/node/bin/node.exe tools/test_tool_failure_heal_integration.mjs
+    min: 1
+  evidence_log:
+  - at: '2026-11-22T19:50:00+08:00'
+    checks:
+    - 单测 9/9（纯函数）
+    - 集成测试 4/4（真实 FS_STALE_VERSION 事件结构 → session/event → pre-step 注入，确定性验证接线）
+    - 真实验证首轮抓到 FS_STALE_VERSION 覆盖缺口（单测覆盖想象码，真实用另一码）→ 已补 case
   rank_hint: normal
   strategy_flags:
     violates_non_goal: null

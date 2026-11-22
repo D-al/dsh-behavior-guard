@@ -96,6 +96,25 @@ function harness(config) {
     check('P0-5 无关 read 不短路 verify-on-stop（闸门仍拦截）', steered > 0)
   }
 
+  // 2026-11-22 修复：verify-on-stop 提示与 S13 判据一致性
+  // 旧提示叫模型"read 一下就能收尾"，判据却不认普通 read → 二次拦截死循环
+  {
+    const steers = []
+    const h = harness({ verifyOnStopEnabled: true, maxVerifyOnStopSteers: 2, frameEnabled: true,
+      traceEnabled: false, controlEnabled: false, criticEnabled: false, plannerCheckEnabled: false,
+      presentGateEnabled: false, auditEnabled: false, auditEverySteps: 9999, mindStateEnabled: false,
+      maxInjectionsPerSession: 4, fepEnabled: false, learningEnabled: false, verifyOnEditEnabled: false })
+    const agent = { session: { id: 'consistency-gate' }, steer: (m) => { steers.push(m?.content?.[0]?.text || '') } }
+    await h.emit('session/event', { id: 'consistency-gate' }, { type: 'turn/start', data: { turn: 1 } })
+    await h.emit('session/event', { id: 'consistency-gate' }, { type: 'tool/call', data: { name: 'write', arguments: '{"file_path":"a.txt"}' } })
+    await h.emit('session/event', { id: 'consistency-gate' }, { type: 'tool/result', data: { message: { content: [{ type: 'text', text: 'ok' }] } } })
+    await h.emit('session/event', { id: 'consistency-gate' }, { type: 'assistant/message', data: { message: { content: [{ type: 'text', text: '完成' }] } } })
+    await h.stopping(agent)
+    const t = steers.join(' ')
+    check('verify-on-stop 提示不再说普通 read 就能收尾', steers.length > 0 && !t.includes('读回之后才能收尾'))
+    check('verify-on-stop 提示给出判据认可的动作', t.includes('真实验证命令') && t.includes('[VERIFY]'))
+  }
+
   // P1-1 sessionInjections 按会话隔离
   {
     const h = harness({ traceEnabled: false, controlEnabled: true, controlEverySteps: 1, maxControlPerSession: 5,

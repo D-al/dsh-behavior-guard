@@ -1886,13 +1886,17 @@ function formatExecutorResult(pkg, exec) {
         // P0 修复：verify-on-stop 的 steer 原先不计数，绕过每轮共享预算、并挤掉 D5 审计额度
         state.sharedInjections += 1
         trace({ ts: new Date().toISOString(), sid: sessionId || '', kind: 'verify_on_stop', step: state.step, n })
+        // 2026-11-22 修复：原提示叫模型"read 一下就能收尾"，但 S13 判据只认真实验证
+        // （命令型工具的验证动作 / 带 [VERIFY] 标记或 test_ 文件）→ 提示与判据矛盾，
+        // 模型照做 read 后仍被二次拦截，形成"读来读去"死循环。提示必须与判据同源。
         const text = n === 1
           ? '[harness 停止条件｜必须执行] 你本轮修改了文件，现在还不能结束。' +
-            '下一步只做一件事：调用 read 工具读取你刚写的文件路径，确认内容正确。' +
-            '读回之后才能收尾。不要跳过这一步，也不要用文字声称"已验证"。'
-          : '[harness 停止条件｜第 ' + n + ' 次拦截] 你上一条结束尝试已被否决——缺少验证动作。' +
-            '现在必须调用 read 工具读取刚写的文件（真实工具调用，不是文字说明）。' +
-            '在看到工具结果之前不要结束本轮。'
+            '下一步只做一件事：用 pwsh 运行真实验证命令确认产物（如 python -m py_compile / node --check / pytest）；' +
+            '若产物是数据文件，则 read 一个路径含 [VERIFY] 的验收文件。普通 read 不算验证。' +
+            '看到工具结果后才能收尾，不要用文字声称"已验证"。'
+          : '[harness 停止条件｜第 ' + n + ' 次拦截] 你上一条结束尝试已被否决——仍缺少判据认可的验证证据。' +
+            '现在必须调用一次真实工具：pwsh 跑语法检查/测试，或 read 路径带 [VERIFY] 的文件。' +
+            '单纯 read 刚写的普通文件不计入验证。'
         agent.steer(createSteeringMessage(text, 'behavior-guard'))
         return
       }
