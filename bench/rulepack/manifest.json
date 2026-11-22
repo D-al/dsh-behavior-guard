@@ -1,5 +1,5 @@
 {
-  "version": "v1.23.0",
+  "version": "v1.24.0",
   "created": "2026-11-22",
   "protected": {
     "tools/run_all.sh": {
@@ -57,7 +57,7 @@
       "approval": "变更须经维护者审核+更新本manifest+commit"
     },
     "tools/goal_verify.py": {
-      "sha256": "8771bb60bbad02195a19d5c1c315e47311d03e84a987e61eacae4298565ef924",
+      "sha256": "3c350d11ae1e50ee861fcf6e5967c3b70f9626c6820fb92135da969010e3bf98",
       "source": "KR三态验证器",
       "retire_when": "目标KR重构后不再使用",
       "approval": "变更须经维护者审核+更新本manifest+commit"

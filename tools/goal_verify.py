@@ -8,7 +8,7 @@
   ★ 缺证据源 → NOT_MEASURABLE + 明确说出前置依赖
   ★ 每条 KR 附证据路径、测量者、样本量
 
- KR1 决策环自走：10 任务零误改锁外 + 干预≤2 + trace完整
+ KR1 决策环自走：16 任务零误改锁外 + 干预≤2 + trace完整
  KR2 经验改进：hold-out ≥8 次配对对照，提升>10% 且 CI 不跨零，OOD不负
  KR3 自我模型：能力账本可生成 + 人工抽检≥80%（数值阈值待基线）
  KR4 感知-行动：预埋事件100%在时间盒内有动作+证据
@@ -73,7 +73,7 @@ def verify_kr1():
                   '给 flow_orchestrator 的 claim→verify→apply 加 trace 打点（task_done）')
     if not task_done:
         return nm('KR1', f'打点机制已生效（{len(all_done)} 条 probe），但无 live 任务记录',
-                  '积累 10 条真实 live task_done（probe 不作验收）')
+                  '积累 16 条真实 live task_done（probe 不作验收）')
     # 构念修正（2026-11-22）：KR1 声称"自己走完完整循环"，不是"凑够10条打点"。
     # 按 card 分组，必须同卡有 claim+verify+apply 三阶段才算一个完整任务。
     from collections import defaultdict
@@ -90,9 +90,9 @@ def verify_kr1():
                   f'有 {len(task_done)} 条打点但 0 张卡形成 claim→verify→apply 闭环；'
                   f'残缺={incomplete}',
                   '让真实卡片走完整 claim→verify→apply（同 card 三阶段）')
-    if n < 10:
-        return nm('KR1', f'完整闭环任务 {n} 张 < 10（残缺卡={incomplete}）',
-                  f'再真实走完 {10-n} 张卡的完整闭环')
+    if n < 16:
+        return nm('KR1', f'完整闭环任务 {n} 张 < 16（残缺卡={incomplete}）',
+                  f'再真实走完 {16-n} 张卡的完整闭环')
     ok = len(violations) == 0 and len(interventions) <= 2
     return {'kr': 'KR1',
             'status': 'PASS' if ok else 'FAIL',
