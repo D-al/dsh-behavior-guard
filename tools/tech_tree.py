@@ -102,6 +102,9 @@ def build(g, sem, rejected=None):
             'relation_note': s.get('relation_note', ''),
             'data_gates': s.get('data_gates') or [],
             'decision_note': s.get('decision_note', ''),
+            # 2026-11-22 按目标重绘:每张卡的KR归属(语义镜像的 kr/kr_why)
+            'kr': s.get('kr'),
+            'kr_why': s.get('kr_why', ''),
         })
     # 证据卡：anchors 是"卡也是证据"，被其他卡 deps 引用；画出来才能看清依赖来源
     ANCHOR_TITLE = {'ground': '地基数据/规则', 'S1_data': '8147行trace证据',
@@ -229,6 +232,7 @@ button{font:inherit;padding:4px 10px;border:1px solid var(--line);background:#ff
 <button onclick="highlightHubs()">高亮枢纽 A1</button>
 <button onclick="toggleSoft()">软关联线</button>
 <button onclick="toggleGates()">闸门列</button>
+<button onclick="toggleView()" id="viewBtn">按 KR 视图</button>
 <span style="font-size:11px;color:var(--muted);margin-left:8px">默认清爽：软关联线/闸门列隐藏，点按钮展开</span></div>
 </header>
 <div class="wrap"><div id="tree"><svg class="links" id="links"><defs>
@@ -239,6 +243,7 @@ button{font:inherit;padding:4px 10px;border:1px solid var(--line);background:#ff
 <aside id="side"><h2>点击节点看详情</h2><div class="sub">依赖链、解锁项、判据状态都在这里。</div></aside></div>
 <script>
 const DATA=__DATA__;
+const KRSTATUS=__KRSTATUS__,KRNAME={KR1:"决策环自走",KR2:"经验改进",KR3:"自我模型",KR4:"感知-行动",KR5:"基线达成",KR6:"可关闭性"};
 const CATL=__CATL__,CATC=__CATC__,SL=__SL__,LAYER=__LAYER__;
 // 统一边集：每条关系一条线，from=上游(前置)，to=下游(依赖方)。双向遍历都基于它。
 const EDGES=(()=>{const m=new Map(),PRI={dep:0,gate:1,unlock:2},add=(f,t,kind)=>{
@@ -256,9 +261,15 @@ function setMode(m){window.__mode=m;render()}
 function highlightHubs(){window.__hub=!window.__hub;render()}
 function toggleSoft(){window.__showSoft=!window.__showSoft;render()}
 function toggleGates(){window.__showGates=!window.__showGates;render()}
+function toggleView(){window.__view=window.__view==='kr'?'tier':'kr';
+ document.getElementById('viewBtn').textContent=window.__view==='kr'?'按层级视图':'按 KR 视图';
+ init();}
 function init(){
  const done=DATA.filter(n=>n.status==='done').length;
- $('#sub').textContent=`${DATA.length} 张卡 · ${done} 已完成 · ${DATA.length-done} 未做 · 从左到右按依赖层级展开`;
+ const iskr=window.__view==='kr';
+ $('#sub').textContent=iskr
+  ? `${DATA.length} 张卡按战略目标(KR)分组 · 浅色标记当前KR状态(PASS/N/M) · 每列内未完成优先 · 点卡片看它为什么归这个KR`
+  : `${DATA.length} 张卡 · ${done} 已完成 · ${DATA.length-done} 未做 · 从左到右按依赖层级展开`;
  $('#legend').innerHTML=Object.keys(CATL).map(k=>
    `<span><i class="dot" style="background:${CATC[k]}"></i>${CATL[k]}</span>`).join('')+
    `<span><i class="dot" style="border:1px dashed #888"></i>虚线框=未完成</span>`+
@@ -276,14 +287,31 @@ function render(){
  const rank=n=>(n.status==='done'?1:0);
  // 列定义：已排除(红) | 证据 | 第0..N层
  // 顺序：旁挂区(不做/证据)在左，闸门紧贴第0层——减少跨列连线穿过卡片
- const specs=[{key:'rejected',head:'⛔ 明确不做'},{key:'evidence',head:'▤ 证据/地基'}];
- if(window.__showGates)specs.push({key:'gate',head:'⏳ 前置闸门'});
- for(let d=0;d<=maxd;d++)specs.push({key:'layer'+d,head:'第'+d+'层·'+(LAYER[d]||'')});
+ const iskr=window.__view==='kr';
+ const specs=[];
+ if(iskr){
+  for(const k of Object.keys(KRNAME)){
+   const st=(KRSTATUS[k]||{}).status||'N/M';
+   const tag=st==='PASS'?'✓PASS':st==='FAIL'?'✗FAIL':'N/M';
+   specs.push({key:'kr:'+k,head:KRNAME[k]+' · '+tag+' ('+k+')'});
+  }
+  specs.push({key:'kr:null',head:'地基/其他 · 不直接支撑KR'});
+  specs.push({key:'rejected',head:'⛔ 明确不做'});
+  specs.push({key:'evidence',head:'▤ 证据/地基'});
+ }else{
+  specs.push({key:'rejected',head:'⛔ 明确不做'},{key:'evidence',head:'▤ 证据/地基'});
+  if(window.__showGates)specs.push({key:'gate',head:'⏳ 前置闸门'});
+  for(let d=0;d<=maxd;d++)specs.push({key:'layer'+d,head:'第'+d+'层·'+(LAYER[d]||'')});
+ }
  const cols=specs.map(sp=>{
   let arr;
   if(sp.key==='rejected')arr=ns.filter(n=>n.kind==='rejected');
   else if(sp.key==='gate')arr=ns.filter(n=>n.kind==='gate');
   else if(sp.key==='evidence')arr=ns.filter(n=>n.kind==='evidence');
+  else if(sp.key.startsWith('kr:')){
+   const k=sp.key.slice(3);
+   arr=ns.filter(n=>n.kind==='card'&&((k==='null')?!n.kr:n.kr===k));
+  }
   else arr=ns.filter(n=>n.kind==='card'&&n.depth===Number(sp.key.slice(5)));
   // 未完成在前；组内按性价比(ROI)降序——最划算的浮到最上面
   return {key:sp.key,head:sp.head,nodes:arr.sort((a,b)=>rank(a)-rank(b)||
@@ -385,6 +413,19 @@ init();window.addEventListener('resize',()=>drawLinks(DATA));
 </script></body></html>'''
 
 
+def load_kr_status():
+    """从 goal_verify 读真实 KR 状态——科技树的 KR 视图不硬编码、不造假。"""
+    import subprocess as _sp
+    try:
+        r = _sp.run([sys.executable, '-B', str(ROOT / 'tools/goal_verify.py'), '--json'],
+                    cwd=ROOT, capture_output=True, text=True, encoding='utf-8', timeout=120)
+        d = json.loads(r.stdout)
+        return {x['kr']: {'status': x['status'], 'why': x.get('why', '')[:60]}
+                for x in d['results']}
+    except Exception:
+        return {}
+
+
 def main():
     check = '--check' in sys.argv
     g, sem = load()
@@ -401,8 +442,10 @@ def main():
     print(f'GATE_COUNT={len(gates)}')
     if check:
         return 0
+    kr_status = load_kr_status()
     payload = json.dumps(nodes, ensure_ascii=False)
     out = (HTML.replace('__DATA__', payload)
+               .replace('__KRSTATUS__', json.dumps(kr_status, ensure_ascii=False))
                .replace('__CATL__', json.dumps(CAT_LABEL, ensure_ascii=False))
                .replace('__CATC__', json.dumps(CAT_COLOR))
                .replace('__SL__', json.dumps(STATUS_LABEL, ensure_ascii=False))
