@@ -1,6 +1,6 @@
 meta:
   schema_version: 1
-  generated: '2026-11-21'
+  generated: '2026-11-22'
   authority: ROADMAP_GRAPH.md
   semantic_mirror: CAPABILITY_LADDER.yaml
   human_view: ROADMAP.md
@@ -214,36 +214,40 @@ items:
   organ: perception
   root_why: 早期器官：把trace压成FSM做局部失败预测(AUROC 0.94)，是事件/失败前置预警的感知器官
 - id: M3
-  title: 反模式匹配的目标锚定 + 确定性状态机（M3 重定位）
+  title: 反模式匹配目标锚定（M3 重定位；观察线已落地）
   tier: 2
   deps:
   - GWT_FEP
   risk: med
   autonomous: false
   status: backlog
-  requires_new_instrument: 需新建 test_bdi_slots.mjs；2026-11-22复核：原说法错误——运行版从未定义 intent_drift；已给⑤关键词交集漂移检测补 intent_drift trace 埋点(测试4/4)
+  requires_new_instrument: 观察线已落地 s6_pattern_guard.mjs + pattern_lock trace；原test_bdi_slots需求已撤销(LLM锚点证伪)
   verify:
-  - kind: file_exists
-    path: tools/test_bdi_slots.mjs
   - kind: test_pass
-    cmd: node tools/test_bdi_slots.mjs
+    cmd: D:/Brain/dsh-data/dsh-runtimes/dsh-primary-runtime/dependencies/node/bin/node.exe tools/test_s6_pattern_guard.mjs
+    min: 6
+  - kind: test_pass
+    cmd: D:/Brain/dsh-data/dsh-runtimes/dsh-primary-runtime/dependencies/node/bin/node.exe tools/test_pattern_lock_wire.mjs
+    min: 4
+  - kind: test_pass
+    cmd: D:/Brain/dsh-data/dsh-runtimes/dsh-primary-runtime/dependencies/node/bin/node.exe tools/test_intent_drift_trace.mjs
     min: 5
   - kind: trace_count
     source: _trace.jsonl
-    kind_name: mind_state
+    kind_name: pattern_lock
     sid_filter: exclude_tests
     min: 1
-    note: 2026-11-22复核：mind_state 真实字段只有 loops/turn/controlTotal，无槽字段；⑥BDI展示是恒假死代码已删；意图承载归P0存档
+    note: 观察线已落地(只写trace)；原test_bdi_slots不存在+mind_state假绿判据已移除
   unlock: &id002
   - M9
   - L1
-  human_note: 改 index.mjs 的 bdi 状态结构，需人工确认（非白名单细粒度 target）
-  what: 把原"意图BDI三槽"重定位为：①反模式匹配的目标锚定——针对长上下文中agent倾向模仿历史行为模式而漂移（Apollo Research arXiv:2505.02709 实证：state complexity消融 negligible，主因是pattern-matching）；②RGE式混合架构（arXiv:2608.17718）——LLM只在会话起点/用户改口时抽取一次结构化 (角色,目标,证据/约束)，信任状态更新/投影/干预决策全用确定性代码，零成本规则只做守门与时机判定（StepShield arXiv:2601.22136 教训：高召回但时机随机=没用）。
+  human_note: 2026-11-22全流程复核+原型：价值复核证三槽冗余(P0已覆盖)；论文调研证state complexity非漂移主因(Goal Drift消融)、RGE混合架构可行；LLM抽锚点实测15-16s且6/6锚点是initial原文子串→零增量、不值得；反模式匹配观察线已落地(s6_pattern_guard.mjs，pattern_lock trace，只写trace不steer)，⑤漂移trace加时机字段(StepShield教训)。核心目标锚定未做(需人工确认改bdi)，保持backlog。
+  what: 反模式匹配目标锚定(重定位)：①观察线已落地——工具分布固化>=0.6且距目标重述>=6步，只写trace不steer，依据Goal Drift论文state complexity消融证伪"状态存更多"；②LLM抽锚点(RGE式)已证伪——15-16s/次且6/6锚点是P0 initial子串、零增量，不做；③⑤漂移trace加时机字段(StepShield:时机随机=没用)。
   why: 原假设"意图漂移检测无状态可依→做三槽存状态"被论文否定：Goal Drift 论文 state complexity ablation 结论 "increasing state complexity cannot explain the observed goal drift"；零LLM规则抽取小实验证实只能截原话无增量。真正有证据的杠杆是打破长上下文模式匹配 + 强目标重述(P0存档已在做) + 动作层gate。
-  benefit_to_self: 长任务压缩后仍记得用户最初要什么，不会因为 context 缩短而跑偏
+  benefit_to_self: 反模式匹配观察线在漂移早期给出可观测信号，避免长任务无声跑偏
   caveats:
   - 改 index.mjs 的 bdi 状态结构，不在白名单细粒度 target 内 → 人工确认
-  - 复用现有 mind_state kind 埋点，别新造 kind
+  - 观察线用独立pattern_lock kind；⑤漂移trace加时机字段；不再复用mind_state(假绿判据已移除)
   - 用户意图多轮冲突时以最新指令为准（ADR-0014 不质疑式干预）
   - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection:
@@ -251,10 +255,10 @@ items:
   - 有没有把用户临时指令误当长期意图的情况？
   abort_if: bdi 结构改动导致现有 control_turn/FEP 断言回归
   instrumentation_needed:
-  - tools/test_bdi_slots.mjs（新建）；复用 mind_state kind
+  - tools/test_s6_pattern_guard.mjs + test_pattern_lock_wire.mjs + test_intent_drift_trace.mjs(均已落地)
   benefit: 中高
   cost: 中
-  advice: 排队
+  advice: 观察线已落地(pattern_lock trace)，核心目标锚定因零增量+需人工确认暂不做；待真实trace观察命中率
   rank: 99
   rank_derived: true
   unlocks: *id002
@@ -269,7 +273,7 @@ items:
   root_stage: assembly
   organ: perception
   root_why: 构建脑早期的意图BDI三槽,是当时造的器官;虽现归evolution_path但谱系属组装期
-  review: docs/M3_VALUE_REVIEW_20261122.md（价值复核）+ docs/CLASSIFIER_ECOSYSTEM_RESEARCH_20261122.md（社区/论文依据：state complexity被否定、RGE混合架构、StepShield时机教训）
+  review: docs/M3_VALUE_REVIEW_20261122.md + docs/CLASSIFIER_ECOSYSTEM_RESEARCH_20261122.md + docs/M3_ANCHOR_COST_BENEFIT_20261122.md + docs/M3_PATTERN_GUARD_LANDING_20261122.md
 - id: M9
   title: 意图分类器
   tier: 2
@@ -468,7 +472,7 @@ items:
   organ: action
   root_why: 格式修复器降级方案：只做格式重写不判断对错，属写后兜底的行动器官优化
 - id: S6_model
-  title: S6 模型层升级（分类器已启用）
+  title: S6 模型层升级（守门+片段筛选已启用）
   tier: 3
   deps:
   - S6_rule
@@ -479,12 +483,18 @@ items:
   - kind: test_pass
     cmd: D:/Brain/dsh-data/dsh-runtimes/dsh-primary-runtime/dependencies/node/bin/node.exe tools/test_classifier_decision_wire.mjs
     min: 1
+  - kind: test_pass
+    cmd: D:/Brain/dsh-data/dsh-runtimes/dsh-primary-runtime/dependencies/node/bin/node.exe tools/test_s6_signal_gate.mjs
+    min: 18
+  - kind: test_pass
+    cmd: D:/Brain/dsh-data/dsh-runtimes/dsh-primary-runtime/dependencies/node/bin/node.exe tools/test_classifier_fragment_filter.py
+    min: 8
   - kind: manual
-    reason: 观察线证据足(大样本93.3%/0.3%/99.6%)+决策线真实会话验证通过(命中→中性提示1次+模型行为正确)+集成测试4/4+筛选10/10+门禁71/71
+    reason: 大样本93.3%/2.3%FPR+真实会话三轮验证+生态调研确认定位；门禁77/77
   unlock: &id006 []
-  human_note: 决策线已接并真实会话验证(session-02528cd5)：命中→中性安全提示1次(去重后)，模型正确把注入文本当数据未执行；三轮验证修异步回调太晚/双份提示/运行版不同步；只提醒不拦截，观察真实误报后再决定是否收紧。
-  what: S6 从纯规则层叠加 ONNX 分类器 Tier-2（Horizon-Labs ModernBERT INT8，E核）
-  why: 规则层抓 2/4 攻击模式；分类器实测 28/30、语义级；已部署随 dsh 启停，只写 trace 不 steer
+  human_note: 决策线已接+真实会话三轮验证；高信号守门(s6_signal_gate.mjs 18/18)+片段级筛选(preprocess 老10/10+新8/8)已落地；坏处账：延迟税短文本+2.4%/长文本长跑+35%，误报提示可忽略，前缀白名单绕过已由片段筛选补上；生态调研(PromptGuard/Nasr2026/OWASP)确认分类器只做纵深一层、信任边界在动作层。门禁77/77，只写trace+中性提示不拦截。
+  what: S6 规则层+ONNX分类器Tier-2+高信号守门+片段级筛选+pre-step同步门控决策线
+  why: 规则层2/4→分类器语义级28/30；已加高信号守门(送检率降)+片段筛选(堵前缀白名单)+pre-step同步门控(提示早于生成8s)
   benefit_to_self: 注入检测从关键词匹配升级到语义级，减少漏报
   caveats:
   - 分类器已部署(dsh-classifier-autostart插件+服务)，随dsh启停，绑E核12-15，实测102ms
@@ -496,7 +506,7 @@ items:
   abort_if: 86M gated不可得且基准表现差(默认阈值1%),已放弃该方向;改用Horizon
   benefit: 中高
   cost: 中
-  advice: ⏸ 已部署待启用：开关 injectionClassifierEnabled=false；开启只写trace不改行为
+  advice: ✅ 已启用：高信号守门+片段级筛选+决策线中性提示；只写trace不拦截，信任边界在动作层
   rank: 8
   rank_derived: false
   unlocks: *id006

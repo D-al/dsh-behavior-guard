@@ -558,24 +558,28 @@ items:
   autonomous: false
   status: backlog
   verify:
-  - kind: file_exists
-    path: tools/test_bdi_slots.mjs
   - kind: test_pass
-    cmd: node tools/test_bdi_slots.mjs
+    cmd: D:/Brain/dsh-data/dsh-runtimes/dsh-primary-runtime/dependencies/node/bin/node.exe tools/test_s6_pattern_guard.mjs
+    min: 6
+  - kind: test_pass
+    cmd: D:/Brain/dsh-data/dsh-runtimes/dsh-primary-runtime/dependencies/node/bin/node.exe tools/test_pattern_lock_wire.mjs
+    min: 4
+  - kind: test_pass
+    cmd: D:/Brain/dsh-data/dsh-runtimes/dsh-primary-runtime/dependencies/node/bin/node.exe tools/test_intent_drift_trace.mjs
     min: 5
   - kind: trace_count
     source: _trace.jsonl
-    kind_name: mind_state
+    kind_name: pattern_lock
     sid_filter: exclude_tests
     min: 1
-    note: 2026-11-22复核：mind_state 真实字段只有 loops/turn/controlTotal，无槽字段；⑥BDI展示是恒假死代码已删；意图承载归P0存档
-  title: 反模式匹配的目标锚定 + 确定性状态机（M3 重定位）
-  what: 把原"意图BDI三槽"重定位为：①反模式匹配的目标锚定——针对长上下文中agent倾向模仿历史行为模式而漂移（Apollo Research arXiv:2505.02709 实证：state complexity消融 negligible，主因是pattern-matching）；②RGE式混合架构（arXiv:2608.17718）——LLM只在会话起点/用户改口时抽取一次结构化 (角色,目标,证据/约束)，信任状态更新/投影/干预决策全用确定性代码，零成本规则只做守门与时机判定（StepShield arXiv:2601.22136 教训：高召回但时机随机=没用）。
-  why: 原假设"意图漂移检测无状态可依→做三槽存状态"被论文否定：Goal Drift 论文 state complexity ablation 结论 "increasing state complexity cannot explain the observed goal drift"；零LLM规则抽取小实验证实只能截原话无增量。真正有证据的杠杆是打破长上下文模式匹配 + 强目标重述(P0存档已在做) + 动作层gate。
-  benefit_to_self: 长任务压缩后仍记得用户最初要什么，不会因为 context 缩短而跑偏
+    note: 观察线已落地(只写trace)；原test_bdi_slots不存在+mind_state假绿判据已移除
+  title: 反模式匹配目标锚定（M3 重定位；观察线已落地）
+  what: 反模式匹配目标锚定(重定位)：①观察线已落地——工具分布固化>=0.6且距目标重述>=6步，只写trace不steer，依据Goal Drift论文state complexity消融证伪"状态存更多"；②LLM抽锚点(RGE式)已证伪——15-16s/次且6/6锚点是P0 initial子串、零增量，不做；③⑤漂移trace加时机字段(StepShield:时机随机=没用)。
+  why: 原假设被论文否定(Goal Drift state complexity消融：状态复杂度非漂移主因)；LLM抽锚点实测15-16s且6/6锚点是P0 initial原文子串=零增量；真正有证据的杠杆=反模式匹配观察线(已落地)+强目标重述(P0已在做)+动作层gate。
+  benefit_to_self: 反模式匹配观察线在漂移早期给出可观测信号，避免长任务无声跑偏
   caveats:
   - 改 index.mjs 的 bdi 状态结构，不在白名单细粒度 target 内 → 人工确认
-  - 复用现有 mind_state kind 埋点，别新造 kind
+  - 观察线用独立pattern_lock kind；⑤漂移trace加时机字段；不再复用mind_state(假绿判据已移除)
   - 用户意图多轮冲突时以最新指令为准（ADR-0014 不质疑式干预）
   - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection:
@@ -583,13 +587,13 @@ items:
   - 有没有把用户临时指令误当长期意图的情况？
   abort_if: bdi 结构改动导致现有 control_turn/FEP 断言回归
   instrumentation_needed:
-  - tools/test_bdi_slots.mjs（新建）；复用 mind_state kind
+  - tools/test_s6_pattern_guard.mjs + test_pattern_lock_wire.mjs + test_intent_drift_trace.mjs(均已落地)
   unlocks:
   - M9
   - L1
   cost: 中
   category: mind
-  review: docs/M3_VALUE_REVIEW_20261122.md（价值复核）+ docs/CLASSIFIER_ECOSYSTEM_RESEARCH_20261122.md（社区/论文依据：state complexity被否定、RGE混合架构、StepShield时机教训）
+  review: docs/M3_VALUE_REVIEW_20261122.md + docs/CLASSIFIER_ECOSYSTEM_RESEARCH_20261122.md + docs/M3_ANCHOR_COST_BENEFIT_20261122.md + docs/M3_PATTERN_GUARD_LANDING_20261122.md
 - id: M9
   tier: 2
   deps:
@@ -715,17 +719,23 @@ items:
   - kind: test_pass
     cmd: D:/Brain/dsh-data/dsh-runtimes/dsh-primary-runtime/dependencies/node/bin/node.exe tools/test_classifier_decision_wire.mjs
     min: 1
+  - kind: test_pass
+    cmd: D:/Brain/dsh-data/dsh-runtimes/dsh-primary-runtime/dependencies/node/bin/node.exe tools/test_s6_signal_gate.mjs
+    min: 18
+  - kind: test_pass
+    cmd: D:/Brain/dsh-data/dsh-runtimes/dsh-primary-runtime/dependencies/node/bin/node.exe tools/test_classifier_fragment_filter.py
+    min: 8
   - kind: manual
-    reason: 观察线证据足(大样本93.3%/0.3%/99.6%)+决策线真实会话验证通过(命中→中性提示1次+模型行为正确)+集成测试4/4+筛选10/10+门禁71/71
-  title: S6 模型层升级（分类器已启用）
-  what: S6 从纯规则层叠加 ONNX 分类器 Tier-2（Horizon-Labs ModernBERT INT8，E核）
-  why: 规则层抓 2/4 攻击模式；分类器实测 28/30、语义级；已部署随 dsh 启停，只写 trace 不 steer
+    reason: 大样本93.3%/2.3%FPR+真实会话三轮验证+生态调研确认定位；门禁77/77
+  title: S6 模型层升级（守门+片段筛选已启用）
+  what: S6 规则层+ONNX分类器Tier-2+高信号守门+片段级筛选+pre-step同步门控决策线
+  why: 规则层2/4→分类器语义级28/30；守门降送检率+片段筛选堵白名单绕过+同步门控提示早于生成8s
   benefit_to_self: 注入检测从关键词匹配升级到语义级，减少漏报
   caveats:
-  - 分类器已部署(dsh-classifier-autostart插件+服务)，随dsh启停，绑E核12-15，实测102ms
+  - 时机修复：fire-and-forget改pre-step同步门控，提示早于模型生成8.2s(session-639df0d6)
   - 实测@0.9=93.3%召回/2.3%FPR/80%Precision;真机离线776条FPR3.09%，前置过滤错误/乱码后有效0.64%
-  - 长文本(>512token)跳过分类器，靠结构隔离(滑窗28-49秒且开头注入漏检)
-  - 当前只写trace+info日志，不steer不拦截（2026-11-22已启用，刻意保持零行为干扰）
+  - 延迟税：短文本0.268s(+2.4%)/长文本长跑3.85s(+35%)；高信号守门只送指令性文本
+  - 生态调研：分类器只做纵深一层，OWASP/PromptGuard主张信任边界放动作层；当前只写trace+中性提示不拦截
   - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection: []
   abort_if: 86M gated不可得且基准表现差(默认阈值1%),已放弃该方向;改用Horizon

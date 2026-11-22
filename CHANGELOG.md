@@ -1,3 +1,17 @@
+## [2.27.13] - 2026-11-22（科技树同步：S6 守门/M3 观察线）
+
+- CAPABILITY_LADDER.yaml + ROADMAP_GRAPH.md 双源同步，TECH_TREE.html 重生成(105卡/7锚点)。
+- S6_model：title/what 改为"守门+片段筛选已启用"；verify 加 s6_signal_gate(18/18)+
+  classifier_fragment_filter(8/8)；advice 从"待启用"改"已启用"；human_note/caveats 补
+  坏处账(延迟税2.4%~35%)、生态调研(信任边界在动作层)、pre-step同步门控。
+- M3：title 改"反模式匹配目标锚定(观察线已落地)"；verify 去掉假绿判据
+  (test_bdi_slots不存在+mind_state无槽字段)，换成 pattern_guard 6/6 + wire 4/4 +
+  drift_trace 5/5 + trace_count(pattern_lock)；what/human_note/advice 反映
+  LLM锚点证伪(15-16s/零增量)+观察线已落地，保持 backlog。
+- generated 日期 2026-11-21→2026-11-22；门禁77/77。
+- 踩坑：脚本批量改YAML两次缩进错(子项6空格)致safe_load失败，git checkout回滚后
+  改用Edit精确字符串替换；GRAPH的卡只有机器字段，human_note/advice在LADDER，不要跨文件套模板。
+
 ## [2.27.12] - 2026-11-22（M3反模式匹配落地 + 漂移时机字段）
 
 - 用户"改成反模式匹配检测器，漂移trace加时机字段"：tools/s6_pattern_guard.mjs
