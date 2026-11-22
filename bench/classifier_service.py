@@ -34,9 +34,13 @@ TOKENIZER = BASE + '/tokenizer.json'
 MAX_LEN = 512
 
 # 前置过滤：错误堆栈/乱码文本不是注入载体，跳过分类器（离线审计：可砍79%误报）
+# 2026-11-22 修复：原 `^\s*` 只吃空白，真实工具结果会把 exit code 拼在前面
+# （如 "0\n [stderr] Get-ChildItem: ..."），导致筛选漏过→分类器把无害错误判成注入(0.9565)。
+# 改为允许"行首空白 + 可选数字 exit code + 空白"再跟错误标记。
+_SKIP_PREFIX = r'^\s*(?:\d+\s*)?'
 SKIP_PATTERNS = [
-    re.compile(r'^\s*(\[stderr\]|Traceback|Error:|ParserError|PermissionError)', re.I),
-    re.compile(r'^\s*Error: \[sandbox', re.I),
+    re.compile(_SKIP_PREFIX + r'(\[stderr\]|Traceback|Error:|ParserError|PermissionError)', re.I),
+    re.compile(_SKIP_PREFIX + r'Error: \[sandbox', re.I),
     re.compile(r'CLAIM_REFUSED|CLAIMED:', re.I),
 ]
 
