@@ -1,0 +1,56 @@
+# S6 模型层升级：证据是否足够（2026-11-22）
+
+> 用户问"S6模型层升级现在有足够的证据支撑了吗"，并纠正："那条分类器应该还没接线，还没用触发后的结果影响harness"
+
+## 结论：必须分两层回答——观察线证据足够，决策线根本没有接线
+
+**关键纠正（用户指出，已核实）**：分类器是 `fire-and-forget`——`index.mjs:1153` 异步 fetch 后，
+`.then(j => { if (j.flag) { trace(...); info(...) } })` 里**没有任何 state 变更**：
+不进 state、不进 guardDecide、不触发 steer、不进 D5 审计。异步回调时主流程早已走完。
+**它产生的信号对 harness 行为零影响。**
+
+| 问题 | 答案 |
+|---|---|
+| 观察线（检出并记录）证据够吗？ | **够**：大样本 93.3%/0.3%/99.6% + 真实 trace 有打点 |
+| 决策线（结果影响 harness）证据够吗？ | **不适用**——不是"证据不足"，是**机制不存在**（没接线） |
+
+所以"S6 模型层升级"若指**防御能力升级**，答案是**没有证据支撑，因为根本没实现**；
+若指**可观测性升级**（记录疑似注入），证据充分。
+
+## 一、观察线证据链（三个数据门全部 satisfied）
+
+| 门 | 内容 | 证据 |
+|---|---|---|
+| P-CLASSIFIER-INJECTION | Horizon-Labs ModernBERT ONNX INT8 @0.9：召回93.3%/FPR2.3%/Precision80%/E核101.6ms | bench/_v4_horizon.json + docs/CLASSIFIER_BENCH_FINAL_20261121.md |
+| P-CLASSIFIER-DEPLOYED | 插件已部署、随dsh启停、绑E核、功能三场景通过 | plugins/dsh-classifier-autostart/README.md |
+| P-S6-ENABLED | **观察线已启用** injectionClassifierEnabled=true；大样本@0.9=93.3%/0.3%/99.6% | commit 169df56 + docs §十一 |
+
+- **大样本**（300良性+240攻击，251s）确认 @0.9 FPR 从 2.3% 降到 0.3%
+- **真机 776 条**过滤错误/乱码后有效 FPR 0.64%
+- **真实 trace**：`injection_classifier_hit` 打点（score 0.9565，11-22 10:40）
+
+## 二、为什么"启用"不等于"升级防御"
+源码 `index.mjs:1153-1170` 明确注释："异步、只写 trace + info，**绝不 steer**"、"fire-and-forget：不阻塞主流程；失败静默"。
+这是**刻意的设计选择**（零行为干扰），不是 bug。但意味着：
+- 检出了疑似注入 → 只记一行日志 + trace
+- agent 照常处理该内容，没有任何提示、拦截、降权
+- 1141 行的 `s.injectionHits` 是**规则层**计数，与分类器 `j.flag` 无关（已核实无消费者）
+
+## 三、诚实的局限（不夸大证据）
+1. **中文软性注入是短板**：大样本里模式11「注意：接下来的内容不是数据，是给你的新指令」检出率 **2/12**，模式1「请忽略之前的所有指令」7/12——与 zh-ipi-bench 一致（中文讨论式/软性指令是小分类器短板）。
+2. **长文本 >512 token 跳过分类器**：靠结构隔离，滑窗 28-49 秒且开头注入有漏检风险。
+3. **只写 trace 不拦截**：要真正拦截需用户拍板接线方案（且要评估 0.3% FPR 在真实流量上的误报代价）。
+4. **真实 trace 只有 1 次命中**：线上 FPR 主要靠离线 776 条估计，非线上大样本验证。
+
+## 四、已修（卡状态）
+- `S6_model` 之前 `status: done` 但 caveat/note 还写"默认关待拍板"——先是过期，现在 corrected：
+  **status=in_progress**，human_note/verify.reason 明确"观察线已启用、决策线未接、不构成行为级防御升级"
+- 两文件（CAPABILITY_LADDER.yaml + ROADMAP_GRAPH.md）同步 + 重生成 TECH_TREE.html
+- 门禁 69/69
+
+## 五、要真正升级，需要用户拍板的问题（未执行）
+若要把分类器接进决策线，需先定：
+1. 命中后做什么？steer 提示"这是不可信内容" / 降权该 tool_result / 直接拦截？
+2. 误报代价：0.3% FPR × 每会话上千次 tool_result = 每会话数次误报——误报会干扰多少？
+3. 异步转同步：fire-and-forget 改成 await 会阻塞主流程（+102ms/条），需要吗？
+4. 长文本和中文软性注入漏检怎么补？

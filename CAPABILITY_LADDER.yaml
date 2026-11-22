@@ -473,13 +473,13 @@ items:
   deps:
   - S6_rule
   risk: high
-  autonomous: false
-  status: manual-blocked
+  autonomous: true
+  status: in_progress
   verify:
   - kind: manual
-    reason: 分类器已部署验证(93.3%/2.3%/102ms)，但默认关闭；是否启用为主防线需用户决策+观察误报
+    reason: 观察线证据足够(大样本@0.9=93.3%/0.3%/99.6%+真实trace打点)，但决策线未接线——j.flag无消费者，不构成行为级防御升级
   unlock: &id006 []
-  human_note: 分类器已上线待启用(默认关)；开启需用户拍板 injectionClassifierEnabled=true
+  human_note: 观察线已启用(commit 169df56，只写trace+info)；决策线未接——j.flag 不进state/guardDecide/steer，fire-and-forget异步回调，对harness行为零影响。要真正升级防御需用户拍板接线方案。
   what: S6 从纯规则层叠加 ONNX 分类器 Tier-2（Horizon-Labs ModernBERT INT8，E核）
   why: 规则层抓 2/4 攻击模式；分类器实测 28/30、语义级；已部署随 dsh 启停，只写 trace 不 steer
   benefit_to_self: 注入检测从关键词匹配升级到语义级，减少漏报

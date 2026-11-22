@@ -708,11 +708,11 @@ items:
   deps:
   - S6_rule
   risk: high
-  autonomous: false
-  status: manual-blocked
+  autonomous: true
+  status: in_progress
   verify:
   - kind: manual
-    reason: 分类器已部署验证(93.3%/2.3%/102ms)且随dsh启停；但默认关、只写trace，是否启用为主防线需用户拍板
+    reason: 观察线证据足够(大样本@0.9=93.3%/0.3%/99.6%+真实trace打点)，但决策线未接线——j.flag无消费者，不构成行为级防御升级
   title: S6 模型层升级（分类器已启用）
   what: S6 从纯规则层叠加 ONNX 分类器 Tier-2（Horizon-Labs ModernBERT INT8，E核）
   why: 规则层抓 2/4 攻击模式；分类器实测 28/30、语义级；已部署随 dsh 启停，只写 trace 不 steer
@@ -721,7 +721,7 @@ items:
   - 分类器已部署(dsh-classifier-autostart插件+服务)，随dsh启停，绑E核12-15，实测102ms
   - 实测@0.9=93.3%召回/2.3%FPR/80%Precision;真机离线776条FPR3.09%，前置过滤错误/乱码后有效0.64%
   - 长文本(>512token)跳过分类器，靠结构隔离(滑窗28-49秒且开头注入漏检)
-  - 当前只写trace+info日志，不steer不拦截；是否启用为主防线需用户拍板
+  - 当前只写trace+info日志，不steer不拦截（2026-11-22已启用，刻意保持零行为干扰）
   - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection: []
   abort_if: 86M gated不可得且基准表现差(默认阈值1%),已放弃该方向;改用Horizon
