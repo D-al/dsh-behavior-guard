@@ -1,5 +1,5 @@
 {
-  "version": "v1.6.0",
+  "version": "v1.6.1",
   "created": "2026-11-22",
   "protected": {
     "tools/run_all.sh": {
@@ -61,36 +61,6 @@
       "source": "KR三态验证器",
       "retire_when": "目标KR重构后不再使用",
       "approval": "变更须经维护者审核+更新本manifest+commit"
-    },
-    "_benchmark_holdout.jsonl": {
-      "sha256": "ABSENT",
-      "source": "KR判据证据源(外部生成,agent不可写)",
-      "retire_when": "对应KR退役",
-      "approval": "须更新manifest并commit"
-    },
-    "_capability_ledger.json": {
-      "sha256": "ABSENT",
-      "source": "KR判据证据源(外部生成,agent不可写)",
-      "retire_when": "对应KR退役",
-      "approval": "须更新manifest并commit"
-    },
-    "_event_replay_results.jsonl": {
-      "sha256": "ABSENT",
-      "source": "KR判据证据源(外部生成,agent不可写)",
-      "retire_when": "对应KR退役",
-      "approval": "须更新manifest并commit"
-    },
-    "_expert_baseline_frozen.json": {
-      "sha256": "ABSENT",
-      "source": "KR判据证据源(外部生成,agent不可写)",
-      "retire_when": "对应KR退役",
-      "approval": "须更新manifest并commit"
-    },
-    "_kill_switch_drill.jsonl": {
-      "sha256": "ABSENT",
-      "source": "KR判据证据源(外部生成,agent不可写)",
-      "retire_when": "对应KR退役",
-      "approval": "须更新manifest并commit"
     }
   },
   "change_conditions": [
@@ -99,5 +69,5 @@
     "有回归测试与回滚版本"
   ],
   "note": "agent只读+可提staging diff;变更默认拒绝,读取默认允许;紧急修复先执行后复审",
-  "version_note": "用户授权:KR证据源纳入保护+goal_verify覆盖KR1-6"
+  "version_note": "goal_verify覆盖KR1-6;证据源改为ADR登记+goal_verify校验(不存在的不能进保护清单)"
 }
