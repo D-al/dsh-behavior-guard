@@ -474,12 +474,15 @@ items:
   - S6_rule
   risk: high
   autonomous: true
-  status: in_progress
+  status: done
   verify:
+  - kind: test_pass
+    cmd: D:/Brain/dsh-data/dsh-runtimes/dsh-primary-runtime/dependencies/node/bin/node.exe tools/test_classifier_decision_wire.mjs
+    min: 1
   - kind: manual
-    reason: 观察线证据足够(大样本@0.9=93.3%/0.3%/99.6%+真实trace打点)，但决策线未接线——j.flag无消费者，不构成行为级防御升级
+    reason: 观察线证据足(大样本93.3%/0.3%/99.6%)+决策线真实会话验证通过(命中→中性提示1次+模型行为正确)+集成测试4/4+筛选10/10+门禁71/71
   unlock: &id006 []
-  human_note: 观察线已启用(commit 169df56，只写trace+info)；决策线未接——j.flag 不进state/guardDecide/steer，fire-and-forget异步回调，对harness行为零影响。要真正升级防御需用户拍板接线方案。
+  human_note: 决策线已接并真实会话验证(session-02528cd5)：命中→中性安全提示1次(去重后)，模型正确把注入文本当数据未执行；三轮验证修异步回调太晚/双份提示/运行版不同步；只提醒不拦截，观察真实误报后再决定是否收紧。
   what: S6 从纯规则层叠加 ONNX 分类器 Tier-2（Horizon-Labs ModernBERT INT8，E核）
   why: 规则层抓 2/4 攻击模式；分类器实测 28/30、语义级；已部署随 dsh 启停，只写 trace 不 steer
   benefit_to_self: 注入检测从关键词匹配升级到语义级，减少漏报

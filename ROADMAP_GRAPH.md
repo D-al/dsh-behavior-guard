@@ -709,10 +709,13 @@ items:
   - S6_rule
   risk: high
   autonomous: true
-  status: in_progress
+  status: done
   verify:
+  - kind: test_pass
+    cmd: D:/Brain/dsh-data/dsh-runtimes/dsh-primary-runtime/dependencies/node/bin/node.exe tools/test_classifier_decision_wire.mjs
+    min: 1
   - kind: manual
-    reason: 观察线证据足够(大样本@0.9=93.3%/0.3%/99.6%+真实trace打点)，但决策线未接线——j.flag无消费者，不构成行为级防御升级
+    reason: 观察线证据足(大样本93.3%/0.3%/99.6%)+决策线真实会话验证通过(命中→中性提示1次+模型行为正确)+集成测试4/4+筛选10/10+门禁71/71
   title: S6 模型层升级（分类器已启用）
   what: S6 从纯规则层叠加 ONNX 分类器 Tier-2（Horizon-Labs ModernBERT INT8，E核）
   why: 规则层抓 2/4 攻击模式；分类器实测 28/30、语义级；已部署随 dsh 启停，只写 trace 不 steer
