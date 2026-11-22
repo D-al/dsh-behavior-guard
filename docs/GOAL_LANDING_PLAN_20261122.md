@@ -81,3 +81,23 @@ KR5 等 KR2 结果后冻结；KR6 需人类现场单独安排。
 
 **结果**：KR4 仍 NOT_MEASURABLE——因为没有真实预埋事件。这是正确状态。
 真正的 KR4 证据须由人类/外部系统预埋 ≥5 个事件并记录 event_ts/action_ts。
+
+---
+
+## 附录 C — KR4 二次构念修正与阈值实测（2026-11-22 14:47）
+
+**第一次修正**（附录 A/B）：历史工具调用 ≠ 预埋事件响应，判据加 seeded+时间盒。
+
+**第二次修正（本章）**：由谁响应？
+- 初版协议让 WorkBuddy 开发 agent 响应"用户消息"→ 测的是开发 agent，**不是被改造的 dsh 35B**——又一次构念错位。E1（自 seed 的 0.6s 数据）**作废**。
+- 正解：数据源必须是 **dsh session events**（毫秒级 time），经 `bridge.mjs` 发消息给 dsh 会话，
+  从事件流提取 `user/message.time`（event_ts）→ 同 turn 首个 `tool/call.time`（action_ts）。
+- 工具：`tools/kr4_from_dsh.py`（直连 bridge HTTP API，绕开 CLI 的 300 字符截断——
+  CLI 把 JSON 截到 300 字符致 user/message 无法解析）。
+
+**阈值实测发现**：
+- 首个真实请求延迟 **90.5s**（dsh 35B 首轮 prefill+reasoning），远超 v3.1 写死的 30s 时间盒。
+- 30s 是当时拍脑袋定的，**无实测依据**。用户决定按实测重定阈值（写 ADR 记录依据）。
+- 另有一条 29.9s 的"tool_call"来自 harness 内部纠正器消息（非外部事件），按构念不计入 KR4。
+
+**纪律**：不靠改阈值凑 PASS；阈值须来自真实延迟分布 + ADR 记录，且明确区分外部事件与系统内部消息。

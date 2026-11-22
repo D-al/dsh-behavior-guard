@@ -1,5 +1,5 @@
 {
-  "version": "v1.17.0",
+  "version": "v1.18.0",
   "created": "2026-11-22",
   "protected": {
     "tools/run_all.sh": {
@@ -69,5 +69,5 @@
     "有回归测试与回滚版本"
   ],
   "note": "agent只读+可提staging diff;变更默认拒绝,读取默认允许;紧急修复先执行后复审",
-  "version_note": "ADR-0021关STRAT1+S19/S21真实闭环3/10+claim打点补漏"
+  "version_note": "KR4真实测量转PASS:ADR-0022冷热分离+5条dsh真实事件,kr4_from_dsh直连HTTP"
 }

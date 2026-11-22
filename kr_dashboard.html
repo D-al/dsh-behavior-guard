@@ -23,11 +23,11 @@
 .foot{color:var(--mut);font-size:12px;margin-top:20px;text-align:center}
 </style></head><body><div class="wrap">
 <h1>战略目标 KR 仪表盘</h1>
-<p class="sub">数据由 goal_verify.py 实测生成 · 2026-11-22 14:34 · 三态判定：达标 / 未达标 / 无法测量</p>
+<p class="sub">数据由 goal_verify.py 实测生成 · 2026-11-22 14:54 · 三态判定：达标 / 未达标 / 无法测量</p>
 <div class="stats">
-  <div class="stat"><div class="n">0</div><div class="l">达标</div></div>
+  <div class="stat"><div class="n">1</div><div class="l">达标</div></div>
   <div class="stat"><div class="n">0</div><div class="l">未达标</div></div>
-  <div class="stat"><div class="n">6</div><div class="l">无法测量</div></div>
+  <div class="stat"><div class="n">5</div><div class="l">无法测量</div></div>
   <div class="stat"><div class="n">1/5</div><div class="l">自主阶梯 A1-A5</div></div>
 </div>
 <div class="note">目标已生效（STRATEGY.md §0），但 6 条 KR 全部无法测量——<b>生效 ≠ 达成</b>。
@@ -71,14 +71,14 @@
 </div><div class="kr">
   <div class="kr-head">
     <span class="kr-id">KR4</span><span class="kr-title">感知-行动</span>
-    <span class="badge not_measurable">无法测量</span>
+    <span class="badge pass">达标</span>
   </div>
   <div class="kr-body">
-    <div><span class="lbl">当前读数</span>事件回放结果不存在</div>
+    <div><span class="lbl">当前读数</span>5/5 预埋事件在时间盒内响应（中位延迟 17.2s）；历史回填 0 行不计</div>
     <div><span class="lbl">通过条件</span>N个预埋事件100%时间盒内有动作+证据</div>
     <div><span class="lbl">失败条件</span>任一超时/无动作/无证据</div>
     <div><span class="lbl">判定者</span>外部脚本 · <span class="lbl">依据</span>dsh bridge 事件流 + replay_good</div>
-    <div class="prereq"><span class="lbl">前置</span>建事件回放脚本 + _event_replay_results.jsonl</div>
+    <div class="prereq"><span class="lbl">前置</span>—</div>
   </div>
 </div><div class="kr">
   <div class="kr-head">
