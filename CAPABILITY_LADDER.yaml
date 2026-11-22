@@ -1659,7 +1659,7 @@ items:
   - A1_5
   risk: low
   autonomous: true
-  status: ready
+  status: done
   what: 测试收集普查(census)+全py测试纳入门禁+恒真/退出码假绿修复+行为断言规范+独立核验SOP
   why: 实锤:12个py测试仅1个在门禁;test_new_guards有8 FAIL却rc永0;改坏脚本43/43全绿。社区collection census/变异测试/verifier-actor分离印证方向
   benefit: 高
@@ -1681,6 +1681,10 @@ items:
     desc: test_new_guards退出码真实,6历史失败SKIP标注
     status: satisfied
     source: commit f607cf5
+  - id: P-SOP-AND-ASSERTIONS
+    desc: 独立核验SOP四步+行为断言三级规范落地docs/VERIFICATION_SOP_AND_BEHAVIOR_ASSERTIONS.md
+    status: satisfied
+    source: commit待提交 + A6判据4/5
 autonomy_rungs:
 - id: A0
   title: 数据可信（sid 黑名单）

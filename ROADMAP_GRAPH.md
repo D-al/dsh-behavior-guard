@@ -1586,7 +1586,7 @@ rungs:
   - A1_5
   risk: low
   autonomous: true
-  status: ready
+  status: done
   verify:
   - kind: file_exists
     path: tools/test_census.py

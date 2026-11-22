@@ -94,3 +94,4 @@
 | [CRITIC_GATE_FEASIBILITY_20261122.md](CRITIC_GATE_FEASIBILITY_20261122.md) | 验证 | Critic卸载到分类器不可行:历史35次Critic全PARSE_FAIL且无产物文本;假数据坑(ms:0);扩展样本召回0/8 |
 | [TOOL_SURFACE_EVIDENCE_20261122.md](TOOL_SURFACE_EVIDENCE_20261122.md) | 证据 | 全量37会话1959调用/17工具;前7占95.7%;低频≠可砍;zstd多帧与bridge cursor坑 |
 | [AUTOCARD_POSTMORTEM_20261122.md](AUTOCARD_POSTMORTEM_20261122.md) | 复盘 | 两轮自动推卡的9个阻碍+5个盲区;门禁覆盖仅8%(12个py测试1个在门禁);8类教训科技树覆盖审计(0全/5部分/3空白);A6加固卡建议 |
+| [VERIFICATION_SOP_AND_BEHAVIOR_ASSERTIONS.md](VERIFICATION_SOP_AND_BEHAVIOR_ASSERTIONS.md) | 规范 | A6判据4/5:独立核验四步(门禁/判据/sha/git真验)+行为断言三级(强调用/弱grep/伪MockState重写)+退出码真实 |
