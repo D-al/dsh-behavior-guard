@@ -1,5 +1,5 @@
 {
-  "version": "v1.27.0",
+  "version": "v1.27.1",
   "created": "2026-11-22",
   "protected": {
     "tools/run_all.sh": {
@@ -51,7 +51,7 @@
       "approval": "变更须经维护者审核+更新本manifest+commit"
     },
     "bench/rulepack/traceability.json": {
-      "sha256": "6c7842b9c333dbd7b5eac8776fabbedf5864c02cd3d70cc238be3057d47995f1",
+      "sha256": "2bf9b945477d091825ba1a11dd8b61562c7023ee3e67b7b259d40334f9adace8",
       "source": "目的追溯显式标注",
       "retire_when": "战略条款失效或机制本身退役",
       "approval": "变更须经维护者审核+更新本manifest+commit"

@@ -16,60 +16,104 @@
   },
   "mechanisms": {
     "tools/run_all.sh": {
-      "strategy_ref": ["R2", "N7"],
+      "strategy_ref": [
+        "R2",
+        "N7"
+      ],
       "why": "门禁本体：判据执行的唯一入口；新增检查必须可追溯到战略条款（N7）"
     },
     "tools/foundation_guard.py": {
-      "strategy_ref": ["R2", "R7", "N7"],
+      "strategy_ref": [
+        "R2",
+        "R7",
+        "N7"
+      ],
       "why": "地基不变量守护：防判据腐化（R2）+ 规则包权力边界（R7）+ 补偿性规则要能退役（N7）"
     },
     "tools/foundation_fingerprint.py": {
-      "strategy_ref": ["R7"],
+      "strategy_ref": [
+        "R7"
+      ],
       "why": "变更驱动指纹：避免巡检空转，保护地基（元治理锁的可观测性）"
     },
     "tools/foundation_check.py": {
-      "strategy_ref": ["R2", "R7"],
+      "strategy_ref": [
+        "R2",
+        "R7"
+      ],
       "why": "按需深度体检：判据有效性的人工触发入口"
     },
     "tools/test_census.py": {
-      "strategy_ref": ["R2"],
+      "strategy_ref": [
+        "R2"
+      ],
       "why": "测试收集普查：防测试没进门门禁的假绿（判据独立性）"
     },
     "tools/check_verify.py": {
-      "strategy_ref": ["R2"],
+      "strategy_ref": [
+        "R2"
+      ],
       "why": "判据逻辑病检测：自引用/恒真/格式/sid污染"
     },
     "tools/rulepack_guard.py": {
-      "strategy_ref": ["R7", "N7"],
+      "strategy_ref": [
+        "R7",
+        "N7"
+      ],
       "why": "规则包版本钉住：agent 不得改评判者（元治理锁）+ 变更走批准新版本"
     },
     "tools/rulepack_propose.py": {
-      "strategy_ref": ["R7"],
+      "strategy_ref": [
+        "R7"
+      ],
       "why": "规则变更提案通道：可提不可生效，审批权在锁外"
     },
     "tools/audit_criteria_health.py": {
-      "strategy_ref": ["R2"],
+      "strategy_ref": [
+        "R2"
+      ],
       "why": "判据执行层体检：解释器/路径/正则/门槛腐化（判据独立性的执行层）"
     },
     "tools/audit_delivery.py": {
-      "strategy_ref": ["R2", "R7"],
+      "strategy_ref": [
+        "R2",
+        "R7"
+      ],
       "why": "账面 done vs 真跑判据交叉审计（存在性/完整性认定）"
     },
     "tools/audit_traceability.py": {
-      "strategy_ref": ["N7"],
+      "strategy_ref": [
+        "N7"
+      ],
       "why": "目的追溯制本体：orphan 检出，让'补偿性规则定期删除'可执行"
     },
     "tools/flow_metrics.py": {
-      "strategy_ref": ["G6", "N7"],
+      "strategy_ref": [
+        "G6",
+        "N7"
+      ],
       "why": "Flow KPI：目标从'门禁数'转向吞吐，防止为指标而加规则"
     },
     "tools/flow_orchestrator.py": {
-      "strategy_ref": ["G3", "G6"],
+      "strategy_ref": [
+        "G3",
+        "G6"
+      ],
       "why": "DBR 决策节拍：目标自生成的调度骨架 + 开放环境适应"
     },
     "tools/meta_decision.py": {
-      "strategy_ref": ["G3", "R1"],
+      "strategy_ref": [
+        "G3",
+        "R1"
+      ],
       "why": "元决策器：停/跳/换/升级，防止无正则自改进跌破基线"
+    },
+    "tools/tool_failure_healer.mjs": {
+      "strategy_ref": [
+        "R2",
+        "N7"
+      ],
+      "why": "S24 执行层工具失败自愈：edit锚点失败18次/路径臆想16次占工具失败63%，提示层S14已证无效（落地后反升），执行层兜底属判据执行链（R2）且补偿性规则可退役（N7）"
     }
   }
 }

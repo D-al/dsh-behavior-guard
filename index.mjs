@@ -28,6 +28,7 @@ import { randomUUID } from 'node:crypto'
 import { writeFileSync, readFileSync, readdirSync, statSync, existsSync, appendFileSync, openSync, readSync, closeSync, renameSync } from 'node:fs'
 import path from 'node:path'
 import { execFile, execFileSync } from 'node:child_process'
+import { extractFailure, healHint, shouldInject } from './tools/tool_failure_healer.mjs'
 import { collectCorrectorInput as _collectCorrectorInput } from './tools/collect_corrector_input.mjs'
 import { buildTrailText as _buildTrailText } from './tools/build_trail_text.mjs'
 
@@ -201,6 +202,7 @@ const DEFAULTS = {
   // 实现：扫 bench/skills/*.md 的 frontmatter，按 initial+latest 的关键词命中注入"技能卡"（名称+摘要+路径），
   // 模型需要细节时自行 read。零 LLM 成本。
   skillsEnabled: true,
+  toolFailureHealEnabled: true,  // S24 执行层工具失败自愈
   skillsDir: `${BENCH_DIR}/skills`,
   maxSkillCardsPerSession: 2,
   // ── 危险操作分级（2026-11-18，社区 permission tiering：auto / read-only / confirm）──
@@ -899,6 +901,7 @@ export function apply(ctx, config) {
         s.turn = event.data?.turn ?? s.turn + 1
         s.turnStartedAt = Date.now()
         s.toolCalls = 0
+        s.healInjectedThisTurn = 0  // S24 每轮重置(会话累计不清)
         s.writeCalls = 0
         s.continuations = 0
         s.last = undefined
@@ -993,6 +996,11 @@ export function apply(ctx, config) {
         return
       }
       if (event.type === 'tool/call') {
+        // S24：记录 callId→工具名，供 tool/result 自愈钩子关联（不提前return，保留原有toolCalls计数）
+        if (cfg.toolFailureHealEnabled) {
+          const d0 = event.data || {}
+          if (d0.callId && d0.name) { s.toolNamesById = s.toolNamesById || new Map(); s.toolNamesById.set(d0.callId, d0.name) }
+        }
         // turn-guard：工具调用计数 + writeTools 计数（L2/L3 判定依据）
         // S22: disable tool steer — detect & inject hint, do NOT block
         // Uses session-level s.disabledWarned (initialized in stateOf), not module global
@@ -1103,6 +1111,18 @@ export function apply(ctx, config) {
         return
       }
       if (event.type === 'tool/result') {
+        // S24 执行层失败自愈：只认结构化 isError/data.error，绝不扫结果正文
+        if (cfg.toolFailureHealEnabled) {
+          try {
+            const f = extractFailure(event, s.toolNamesById)
+            if (f && healHint(f)) {
+              s.pendingHeal = f
+              s.healInjectedThisTurn = s.healInjectedThisTurn || 0
+              s.healInjectedTotal = s.healInjectedTotal || 0
+              trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'tool_failure', tool: f.tool, code: f.code, step: s.step })
+            }
+          } catch { /* 失败钩子绝不阻断主流程 */ }
+        }
         const c = s.trail.filter((x) => x.kind === 'call').pop()
         const txt = blocksText(event.data?.message?.content)
         // ── S6 工具结果注入检测（规则层"周围神经"，零 LLM）──
@@ -2017,6 +2037,26 @@ function formatExecutorResult(pkg, exec) {
             return { ...decision, messages }
           }
         }
+      }
+
+      // ── S24 执行层工具失败自愈（在技能卡之前——技能卡会提前return）──
+      if (cfg.toolFailureHealEnabled && s.pendingHeal) {
+        try {
+          if (shouldInject(s.pendingHeal, s)) {
+            const hint = healHint(s.pendingHeal, {})
+            if (hint) {
+              s.healInjectedThisTurn = (s.healInjectedThisTurn || 0) + 1
+              s.healInjectedTotal = (s.healInjectedTotal || 0) + 1
+              trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'tool_failure_heal', code: s.pendingHeal.code, step: s.step })
+              const msg = createMessage(hint, 'tool-failure-healer', s)
+              const messages = Array.isArray(decision?.messages) ? [...decision.messages, msg] : [msg]
+              s.pendingHeal = null  // 已注入，不重复
+              return { ...decision, messages }
+            }
+          } else {
+            s.pendingHeal = null  // 超预算，丢弃
+          }
+        } catch { /* 自愈失败不影响主流程 */ }
       }
 
       // ── Skills 技能卡（按任务关键词命中一次，零 LLM）──

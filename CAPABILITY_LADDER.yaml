@@ -1944,6 +1944,49 @@ items:
   root_stage: tuning
   organ: foundation
   root_why: 前缀KV稳定性守护：9000tok冷1.77s vs热0.03s，是推理性能地基的调优卡
+- id: S24
+  title: 执行层工具失败自愈（edit锚点/路径兜底）
+  tier: 1
+  deps:
+  - S14
+  risk: low
+  autonomous: true
+  status: backlog
+  what: 在 harness 的 session/event 监听里加 tool/result 分支：捕获 isError 工具失败，pre-step 自动注入修正提示
+    （FS_EDIT_NOT_FOUND→重读目标区+回灌字节差异；FS_NOT_FOUND→列相近文件suggest；SUBPROCESS_SPAWN_NOT_FOUND→提示可用命令）。
+    与S14(提示层协议)分工：S14教模型怎么做，S24在执行层兜底——模型违反协议时不再无提示硬重试。
+  why: 工具失败画像实测54次失败/2000+调用(2.6%,升至4.8%)；文件系统类63%(edit锚点18+路径16)。关键反转证据：S14(11-20落地提示层协议)后11-21/22的edit锚点失败反从2涨到8/天——提示层规则已证无效,缺执行层兜底。S14协议在AGENTS.md文字层,index.mjs零实现,模型违反时无任何兜底。
+  benefit_to_self: 把"模型记不记得协议"变成"环境保证兜底"——环境级可验证，不依赖模型元认知（项目铁律：不能依赖模型的元认知）。
+  caveats:
+  - 只注入修正提示，不改dsh工具本身（不能改dsh源码）
+  - 每轮最多注入1次、每会话上限4次，避免提示风暴（复用现有injection预算）
+  - 失败钩子必须只认isError/data.error结构化字段，绝不扫结果文本（219次误报教训）
+  - 路径suggest只在FS_NOT_FOUND时给相近文件，不替模型猜路径执行
+  abort_if: session/event监听拿不到tool/result的isError字段（已在index.mjs:882确认可拿到）
+  benefit: 高
+  cost: 中低
+  advice: 先在session/event加tool/result→state标记，再在pre-step注入；用单测模拟错误事件断言注入内容，最后真实会话A/B测失败率。
+  unlocks: []
+  verify:
+  - kind: file_exists
+    path: tools/test_tool_failure_healer.mjs
+  - kind: test_pass
+    cmd: D:/Brain/dsh-data/dsh-runtimes/dsh-primary-runtime/dependencies/node/bin/node.exe --check tools/tool_failure_healer.mjs
+    min: 1
+  - kind: test_pass
+    cmd: D:/Brain/dsh-data/dsh-runtimes/dsh-primary-runtime/dependencies/node/bin/node.exe tools/test_tool_failure_healer.mjs
+    min: 1
+  rank_hint: normal
+  strategy_flags:
+    violates_non_goal: null
+    touches_metagovernance: false
+    serves_success_dim: null
+  category: infra
+  kr: null
+  kr_why: 工具失败自愈属读写基建可靠性，不直接产出KR证据（与S11/S13/S14同族）
+  root_stage: optimization
+  organ: action
+  root_why: 编辑协议的执行层兜底，降读写复现负担的行动加固（与S14同organ不同层）
 - id: A6
   title: 验收可信度加固（测试收集普查 + 退出码真实）
   tier: 1
