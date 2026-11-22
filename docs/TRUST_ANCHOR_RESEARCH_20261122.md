@@ -307,3 +307,39 @@ safeguard.sh recursive-self-improvement-claims；autotrust.ai/AutoTrust-RSI.pdf�
 ### 一句话
 **这是从"agent 既当运动员又当裁判"到"三权分立的工程系统"的转型——
 权力结构在概念上已经确立，剩下的是把边界从设计文档变成权限边界。**
+
+---
+
+## 十一、三权分立落地：规则包版本钉住（2026-11-22 10:50 实现）
+
+### 已实现（commit 见下）
+1. **`bench/rulepack/manifest.json`** — 8 个评判文件的 digest + version + retire_when +三变更条件。
+   **权威版从 git HEAD 读**（`git show HEAD:`），改工作区 manifest 无效——必须 commit 才生效，留痕。
+2. **`tools/rulepack_guard.py`** — 校验当前文件 digest vs git 里的 pin；漂移 = FAIL + 修复命令。
+   `--json` 供 agent 解析。
+3. **`tools/rulepack_propose.py`** — agent 变更提案通道：生成 staging diff（`bench/rulepack/STAGING/`），
+   **提案本身不生效**；支持 `--list` / `--reject <ID> --reason`。
+4. **INV-7** 接入 foundation_guard（现 7 条不变量）+ run_all 独立检查项（双保险）→ 门禁 58→59。
+5. **AGENTS.md 铁律新增"评判规则包保护"** — 写明 agent 执行权 vs 审计维护权的边界、三变更条件、
+   emergency change 流程、以及诚实边界声明。
+
+### 受控实验（证明机制有效）
+- 偷改 `run_all.sh`（加一行注释）→ rulepack_guard **FAIL rc=1** + 指出 digest 不匹配
+- 恢复 → **PASS rc=0**
+- 改 foundation_guard.py 加 INV-7 → INV-7 自己把自己抓红（6/7 DRIFT DETECTED）→
+  走批准流程 re-pin v1.1.0 后恢复 7/7
+- 提案通道：改文件 → propose → 生成 staging diff → 列表可读；提案不算漂移（设计如此）
+
+### 诚实的边界声明
+当前 agent 与维护者**同为 Windows 标准用户 Ad**（Medium 完整性级别，非管理员），
+**OS ACL 无法隔离同一用户**——所以要独立 verifier 用户才能物理阻止，那需要管理员建用户。
+本机制是"**检测 + 留痕 + 纪律**"：把偷改变成立刻可见的红灯，不是物理阻止。
+若要真权限边界，需带外初始化一个独立 verifier 用户 + TPM CNG 签名计划任务（见 §九）。
+
+### 版本历史
+- v1.0.0（8 文件 pin）→ v1.1.0（加 INV-7 + run_all 双保险 + AGENTS.md 纪律）
+
+### 谁维护（回答用户上一问）
+- 日常：agent 只读 + 可提 staging diff；**无人批准即永不生效**（变更默认拒绝、读取默认允许）
+- 新增检查：走 glob 自动发现，**不用碰规则文件**（实测过）
+- 规则 bug / 过时：由用户审核 staging diff → 更新 manifest → commit → 新版本；旧版可 git 回滚
