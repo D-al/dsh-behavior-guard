@@ -108,3 +108,34 @@ Ohno/Shingo/Liker 精益 VSM/Jidoka/Andon；Google Cloud DORA 2024/25、Forsgren
 Simon《Models of Man》1957 满意化；ISPOR VOI 2020、DECIDE-Lab 2026；
 Boyd《Essence of Winning and Losing》1989/96；Jensen & Meckling 1976 委托代理；
 Goodhart 定律 / Campbell 定律。Amdahl 1967。
+
+---
+
+## 八、TOC 落地（2026-11-22 11:20，用户拍板"按你说的做"）
+
+### 已实现（三个新工具，均零 LLM、独立 CLI）
+1. **`tools/flow_metrics.py`** — 目标重定义：DORA 四指标（Lead Time / 变更频率 / 变更失败率）
+   取代"门禁数/通过率"。实测近 3 天：211 commit、失败率 15.6%、30 张卡中位数 0.06h。
+   ⚠ 诚实标注：Lead Time 从 commit message 的卡片 ID 推断，非精确 claim→done 时间戳，仅趋势用。
+2. **`tools/flow_orchestrator.py`** — DBR 编排：WIP 上限=1（Rope）、决策节拍（Drum）、
+   复用 roadmap_check 的 find_next/claim/verify/apply 零件。
+   受控实验：claim S18 后再领 → REFUSED（WIP 1/1），恢复后 WIP=0 → Rope 真拦住。
+3. **`tools/meta_decision.py`** — A4 元决策器：CONTINUE/REPLAN/SKIP/ESCALATE 四种代码级决策，
+   阈值与现有信号对齐（attempts>=3、no_progress>=6、goal drift、同文件双败）。
+   退出码语义：0/2/3/4。demo 六种信号全过。
+
+### 关键认知修正：A2/A3 不是"没实现"，是"零件有、没串起来"
+- `roadmap_check.py` 已有 find_next（risk/tier/ROI 排序）、cmd_claim（原子领取+战略对齐+
+  attempts>=3→manual-blocked）、cmd_apply（doing+verify全PASS→done+evidence_log+三副本同步）
+- 缺的是"谁触发这条链 + WIP 限流"——这正是 DBR 编排器补的
+
+### 诚实边界（不虚报完成）
+- **A2/A3/A4 卡状态不推进 done**：新工具是独立 CLI，未接进常驻 daemon（A5 仍未启动）
+- 元决策器是"可调用模块"，不是"自动触发的旁路"——接进 index.mjs 主循环是下一步
+- 所以本次是 TOC 第 1-4 步的**骨架**，不是完整自主循环；完整闭合仍需 A5
+- 门禁 59/59 无回归，规则包 v1.1.0 未漂移（新工具不在保护清单，未碰受保护文件）
+
+### 下一步（按 TOC 第5步）
+1. 把 flow_orchestrator --cycle 挂进 LearnWatchDaemon 巩固层（决策心跳）
+2. 把 meta_decision 接进 index.mjs 的 turn-stopping / D5 触发点（旁路裁决）
+3. 约束转移后主动退役旧门禁（防惯性成新瓶颈）
