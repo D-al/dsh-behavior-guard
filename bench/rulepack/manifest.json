@@ -1,5 +1,5 @@
 {
-  "version": "v1.5.0",
+  "version": "v1.6.0",
   "created": "2026-11-22",
   "protected": {
     "tools/run_all.sh": {
@@ -57,10 +57,40 @@
       "approval": "变更须经维护者审核+更新本manifest+commit"
     },
     "tools/goal_verify.py": {
-      "sha256": "9c39eab817a30f9b019b550ab30bb9be5cb1c2adfe942f3cea0f5579fb1b5cbc",
+      "sha256": "3d810004f1e2d98ae2a1839ac467773b504c3ab6f37250dd012b4d6580d937ff",
       "source": "KR三态验证器",
       "retire_when": "目标KR重构后不再使用",
       "approval": "变更须经维护者审核+更新本manifest+commit"
+    },
+    "_benchmark_holdout.jsonl": {
+      "sha256": "ABSENT",
+      "source": "KR判据证据源(外部生成,agent不可写)",
+      "retire_when": "对应KR退役",
+      "approval": "须更新manifest并commit"
+    },
+    "_capability_ledger.json": {
+      "sha256": "ABSENT",
+      "source": "KR判据证据源(外部生成,agent不可写)",
+      "retire_when": "对应KR退役",
+      "approval": "须更新manifest并commit"
+    },
+    "_event_replay_results.jsonl": {
+      "sha256": "ABSENT",
+      "source": "KR判据证据源(外部生成,agent不可写)",
+      "retire_when": "对应KR退役",
+      "approval": "须更新manifest并commit"
+    },
+    "_expert_baseline_frozen.json": {
+      "sha256": "ABSENT",
+      "source": "KR判据证据源(外部生成,agent不可写)",
+      "retire_when": "对应KR退役",
+      "approval": "须更新manifest并commit"
+    },
+    "_kill_switch_drill.jsonl": {
+      "sha256": "ABSENT",
+      "source": "KR判据证据源(外部生成,agent不可写)",
+      "retire_when": "对应KR退役",
+      "approval": "须更新manifest并commit"
     }
   },
   "change_conditions": [
@@ -69,5 +99,5 @@
     "有回归测试与回滚版本"
   ],
   "note": "agent只读+可提staging diff;变更默认拒绝,读取默认允许;紧急修复先执行后复审",
-  "version_note": "用户授权:战略目标v3+KR判据可执行验证器纳入保护"
+  "version_note": "用户授权:KR证据源纳入保护+goal_verify覆盖KR1-6"
 }
