@@ -1149,7 +1149,7 @@ items:
   deps: []
   risk: low
   autonomous: false
-  status: ready
+  status: done
   verify:
   - kind: file_exists
     path: STRATEGY.md
@@ -1173,6 +1173,15 @@ items:
   abort_if: 无法保证模型只读则不做（自我授权比没有战略更糟）
   verify_type: document
   category: governance
+  done_at: '2026-11-22T06:32:06.790138+00:00'
+  evidence_log:
+  - at: '2026-11-22T06:32:06.790138+00:00'
+    commit: b84638e
+    checks:
+    - ADR-0021 用户显式批准关闭陈旧卡
+    - STRATEGY.md存在
+    - consistency_guard STRATEGY校验3hits
+    note: autonomous=false治理卡——人工按ADR写回,未经自动claim/apply
 - id: S18
   title: 自改进正则化（RRSI 纪律）
   tier: 1
@@ -1222,7 +1231,7 @@ items:
   - A1
   risk: low
   autonomous: true
-  status: ready
+  status: done
   verify:
   - kind: file_exists
     path: tools/critbank_calibration.py
@@ -1242,6 +1251,15 @@ items:
   - EvoMemBench：没有单一记忆形式全胜，需匹配任务结构
   abort_if: 若 hindsight 投票不可靠则不入 ŷ 字段
   category: governance
+  claimed_at: '2026-11-22T06:31:52.066356+00:00'
+  claimer: unknown-agent
+  done_at: '2026-11-22T06:32:26.550212+00:00'
+  evidence_log:
+  - at: '2026-11-22T06:32:26.550212+00:00'
+    commit: b84638e
+    checks:
+    - D:\Brain\publish\dsh-behavior-guard\tools\critbank_calibration.py
+    - rc=0 PASS=5
 - id: S20
   title: Critique 编译为结构化 delta（ACE 路线）
   tier: 2
@@ -1278,13 +1296,13 @@ items:
   - A1
   risk: med
   autonomous: true
-  status: ready
+  status: done
   verify:
   - kind: file_exists
     path: tools/verifier_layer.py
   - kind: file_grep
     path: tools/verifier_layer.py
-    regex: 'def build_report|def run_probe|def load_rubrics'
+    regex: def build_report|def run_probe|def load_rubrics
     min: 2
   - kind: test_pass
     cmd: D:/Python/python.exe -B tools/test_verifier_layer.py
@@ -1301,6 +1319,16 @@ items:
   abort_if: 无
   verify_type: structural
   category: governance
+  claimed_at: '2026-11-22T06:32:40.127169+00:00'
+  claimer: unknown-agent
+  done_at: '2026-11-22T06:32:42.576162+00:00'
+  evidence_log:
+  - at: '2026-11-22T06:32:42.576162+00:00'
+    commit: b84638e
+    checks:
+    - D:\Brain\publish\dsh-behavior-guard\tools\verifier_layer.py
+    - 4 hits in tools/verifier_layer.py
+    - rc=0 PASS=5
 - id: S22
   title: 工具面治理工程（清理+描述碰撞）
   tier: 1

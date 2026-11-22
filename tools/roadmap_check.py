@@ -705,6 +705,15 @@ def cmd_claim(data, item_id):
     it['claimed_at'] = datetime.now(timezone.utc).isoformat()
     it['claimer'] = os.environ.get('AGENT_ID', 'unknown-agent')
     save_authoritative(data)
+    # 2026-11-22:claim 必须经过打点(此前 roadmap_check --claim 绕过 flow_orchestrator,
+    # 导致 KR1 闭环缺 claim 阶段)。fail-open 不影响主流程,但明确警告。
+    try:
+        from task_trace import emit
+        if not emit('task_done', card=item_id, phase='claim', verdict='ok',
+                    evidence_ref='roadmap_check --claim (direct)'):
+            print('[TRACE-WARN] claim 打点失败', file=sys.stderr)
+    except Exception as e:
+        print(f'[TRACE-WARN] claim 打点不可用: {e}', file=sys.stderr)
     print(f'CLAIMED: {item_id} by {it["claimer"]}')
     return 0
 

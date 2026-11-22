@@ -1,5 +1,5 @@
 {
-  "version": "v1.16.0",
+  "version": "v1.17.0",
   "created": "2026-11-22",
   "protected": {
     "tools/run_all.sh": {
@@ -69,5 +69,5 @@
     "有回归测试与回滚版本"
   ],
   "note": "agent只读+可提staging diff;变更默认拒绝,读取默认允许;紧急修复先执行后复审",
-  "version_note": "三卡判据补强(S19/M10/S21真实实现+测试)+镜像同步+criteria-sync门禁"
+  "version_note": "ADR-0021关STRAT1+S19/S21真实闭环3/10+claim打点补漏"
 }
