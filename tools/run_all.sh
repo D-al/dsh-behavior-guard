@@ -93,6 +93,8 @@ if command -v "$PYTHON" >/dev/null 2>&1; then
     run_test "rulepack-pinned" "$PYTHON \"$ROOT/tools/rulepack_guard.py\""
     # 判据执行层体检:解释器/路径/正则/门槛腐化(INV-8也含此检查,双保险)
     run_test "criteria-health" "$PYTHON \"$ROOT/tools/audit_criteria_health.py\""
+    # 目的追溯制:每个机制必须追溯到STRATEGY条款,orphan需人工判断
+    run_test "traceability" "$PYTHON \"$ROOT/tools/audit_traceability.py\""
 else
     echo "[skip] python not found"
 fi

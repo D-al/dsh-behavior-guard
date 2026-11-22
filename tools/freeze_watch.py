@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+"""卡死看门狗：检测 llama-server 冻死并重启 dsh（R7 元治理锁/可靠性）。"""
 import json, urllib.request, urllib.parse, subprocess, time, sys, os, datetime
 
 SLOTS = "http://127.0.0.1:8081/slots"

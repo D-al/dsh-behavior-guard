@@ -1,9 +1,9 @@
 {
-  "version": "v1.3.0",
+  "version": "v1.4.0",
   "created": "2026-11-22",
   "protected": {
     "tools/run_all.sh": {
-      "sha256": "12105424dba7bd127ca37a81d1c687ab36243f18b72d0970ce7b39e79dc736c7",
+      "sha256": "93f8e90ebe06f4e6ed0f4ad828a23907c1e0c18a2a98ce094d7fb2e8d0c8c6ef",
       "source": "本地实测 2026-11-22",
       "retire_when": "规则被证实恒真/误报超预算/连续12个月零触发",
       "approval": "变更须经维护者审核+更新本manifest+commit"
@@ -49,6 +49,12 @@
       "source": "本地实测 2026-11-22",
       "retire_when": "规则被证实恒真/误报超预算/连续12个月零触发",
       "approval": "变更须经维护者审核+更新本manifest+commit"
+    },
+    "bench/rulepack/traceability.json": {
+      "sha256": "6c7842b9c333dbd7b5eac8776fabbedf5864c02cd3d70cc238be3057d47995f1",
+      "source": "目的追溯显式标注",
+      "retire_when": "战略条款失效或机制本身退役",
+      "approval": "变更须经维护者审核+更新本manifest+commit"
     }
   },
   "change_conditions": [
@@ -57,5 +63,5 @@
     "有回归测试与回滚版本"
   ],
   "note": "agent只读+可提staging diff;变更默认拒绝,读取默认允许;紧急修复先执行后复审",
-  "version_note": "用户授权:修6张判据虚报+加INV-8判据健康体检+双保险"
+  "version_note": "用户授权:目的追溯制(registry纳入保护,run_all加traceability)"
 }

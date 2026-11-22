@@ -1,0 +1,75 @@
+{
+  "_note": "目的追溯制显式标注：只标核心机制，其余由 audit_traceability.py 从 docstring 推断。STRATEGY.md 是锁外文件，本文件只读引用其条款号。",
+  "version": "v1.0.0",
+  "created": "2026-11-22",
+  "strategy_refs": {
+    "G1": "§2.1 同一性连续性",
+    "G3": "§2.1 目标自生成",
+    "G4": "§2.1 价值校准",
+    "G5": "§2.1 经验进化",
+    "G6": "§2.1 开放环境适应",
+    "R1": "§2.2 自改进OOD增益不得为负",
+    "R2": "§2.2 判据独立性",
+    "R4": "§2.2 工具面≤20",
+    "R7": "§2.2 元治理锁 + §3.6 不自我修改元治理",
+    "N7": "§3.7 不为更聪明加规则，只为可审计/可回滚/权限边界加；补偿性规则定期删除"
+  },
+  "mechanisms": {
+    "tools/run_all.sh": {
+      "strategy_ref": ["R2", "N7"],
+      "why": "门禁本体：判据执行的唯一入口；新增检查必须可追溯到战略条款（N7）"
+    },
+    "tools/foundation_guard.py": {
+      "strategy_ref": ["R2", "R7", "N7"],
+      "why": "地基不变量守护：防判据腐化（R2）+ 规则包权力边界（R7）+ 补偿性规则要能退役（N7）"
+    },
+    "tools/foundation_fingerprint.py": {
+      "strategy_ref": ["R7"],
+      "why": "变更驱动指纹：避免巡检空转，保护地基（元治理锁的可观测性）"
+    },
+    "tools/foundation_check.py": {
+      "strategy_ref": ["R2", "R7"],
+      "why": "按需深度体检：判据有效性的人工触发入口"
+    },
+    "tools/test_census.py": {
+      "strategy_ref": ["R2"],
+      "why": "测试收集普查：防测试没进门门禁的假绿（判据独立性）"
+    },
+    "tools/check_verify.py": {
+      "strategy_ref": ["R2"],
+      "why": "判据逻辑病检测：自引用/恒真/格式/sid污染"
+    },
+    "tools/rulepack_guard.py": {
+      "strategy_ref": ["R7", "N7"],
+      "why": "规则包版本钉住：agent 不得改评判者（元治理锁）+ 变更走批准新版本"
+    },
+    "tools/rulepack_propose.py": {
+      "strategy_ref": ["R7"],
+      "why": "规则变更提案通道：可提不可生效，审批权在锁外"
+    },
+    "tools/audit_criteria_health.py": {
+      "strategy_ref": ["R2"],
+      "why": "判据执行层体检：解释器/路径/正则/门槛腐化（判据独立性的执行层）"
+    },
+    "tools/audit_delivery.py": {
+      "strategy_ref": ["R2", "R7"],
+      "why": "账面 done vs 真跑判据交叉审计（存在性/完整性认定）"
+    },
+    "tools/audit_traceability.py": {
+      "strategy_ref": ["N7"],
+      "why": "目的追溯制本体：orphan 检出，让'补偿性规则定期删除'可执行"
+    },
+    "tools/flow_metrics.py": {
+      "strategy_ref": ["G6", "N7"],
+      "why": "Flow KPI：目标从'门禁数'转向吞吐，防止为指标而加规则"
+    },
+    "tools/flow_orchestrator.py": {
+      "strategy_ref": ["G3", "G6"],
+      "why": "DBR 决策节拍：目标自生成的调度骨架 + 开放环境适应"
+    },
+    "tools/meta_decision.py": {
+      "strategy_ref": ["G3", "R1"],
+      "why": "元决策器：停/跳/换/升级，防止无正则自改进跌破基线"
+    }
+  }
+}
