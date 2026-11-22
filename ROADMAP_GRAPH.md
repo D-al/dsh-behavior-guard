@@ -569,9 +569,9 @@ items:
     sid_filter: exclude_tests
     min: 1
     note: 2026-11-22复核：mind_state 真实字段只有 loops/turn/controlTotal，无槽字段；⑥BDI展示是恒假死代码已删；意图承载归P0存档
-  title: 用户意图 BDI 三槽
-  what: 【待重定位】原三槽方案已被P0压缩存档+⑤漂移检测覆盖；复核后方向改为"意图结构化抽取+drift可观测"——但零LLM规则抽取小实验证实只能截原话无增量，需与M9分类器合并考虑（M9 blocker"8G不可行"因今晚ONNX INT8跑通已部分解除）
-  why: 单槽装不下"用户要什么/信什么/打算怎么做"，压缩后约束丢失，意图漂移检测无状态可依
+  title: 反模式匹配的目标锚定 + 确定性状态机（M3 重定位）
+  what: 把原"意图BDI三槽"重定位为：①反模式匹配的目标锚定——针对长上下文中agent倾向模仿历史行为模式而漂移（Apollo Research arXiv:2505.02709 实证：state complexity消融 negligible，主因是pattern-matching）；②RGE式混合架构（arXiv:2608.17718）——LLM只在会话起点/用户改口时抽取一次结构化 (角色,目标,证据/约束)，信任状态更新/投影/干预决策全用确定性代码，零成本规则只做守门与时机判定（StepShield arXiv:2601.22136 教训：高召回但时机随机=没用）。
+  why: 原假设"意图漂移检测无状态可依→做三槽存状态"被论文否定：Goal Drift 论文 state complexity ablation 结论 "increasing state complexity cannot explain the observed goal drift"；零LLM规则抽取小实验证实只能截原话无增量。真正有证据的杠杆是打破长上下文模式匹配 + 强目标重述(P0存档已在做) + 动作层gate。
   benefit_to_self: 长任务压缩后仍记得用户最初要什么，不会因为 context 缩短而跑偏
   caveats:
   - 改 index.mjs 的 bdi 状态结构，不在白名单细粒度 target 内 → 人工确认
@@ -589,7 +589,7 @@ items:
   - L1
   cost: 中
   category: mind
-  review: docs/M3_VALUE_REVIEW_20261122.md（2026-11-22价值复核：建议重定位，勿直接做三槽）
+  review: docs/M3_VALUE_REVIEW_20261122.md（价值复核）+ docs/CLASSIFIER_ECOSYSTEM_RESEARCH_20261122.md（社区/论文依据：state complexity被否定、RGE混合架构、StepShield时机教训）
 - id: M9
   tier: 2
   deps:
