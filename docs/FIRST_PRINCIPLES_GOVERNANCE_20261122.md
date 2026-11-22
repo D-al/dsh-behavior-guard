@@ -139,3 +139,50 @@ Goodhart 定律 / Campbell 定律。Amdahl 1967。
 1. 把 flow_orchestrator --cycle 挂进 LearnWatchDaemon 巩固层（决策心跳）
 2. 把 meta_decision 接进 index.mjs 的 turn-stopping / D5 触发点（旁路裁决）
 3. 约束转移后主动退役旧门禁（防惯性成新瓶颈）
+
+---
+
+## 九、交付真实性盘点：7 张 done 卡判据不过（2026-11-22 11:30）
+
+> 用户决策："先梳理哪些卡片虚报完成，避免重复造轮子或压根没造却声称完成"。
+> 复用已有 4 个审计工具（audit_verify/check_verify/test_census/roadmap_check），
+> 新增 `tools/audit_delivery.py` 只做交叉编排，不重复造轮子。
+
+### 盘点结果：37 张 done 卡，7 张判据不过
+
+| 卡 | 判据 | 失败证据 | 诊断 |
+|---|---|---|---|
+| **S22** | 2/3 | test_pass rc=1 PASS=0 | **判据命令写错解释器**：用 `D:/Python/python.exe` 跑 `.mjs` 文件！单独 `node tools/test_disabled_tools.mjs` 是 5/5 PASS。功能做了，判据是假的 |
+| **A6** | 2/4 | test_census rc=0 PASS=0 / test_disabled_tools.mjs rc=1 | ① census 输出无 PASS 标记（格式不匹配）② 同样是 Python 跑 .mjs |
+| **A1_7** | 3/4 | trace_count review_verdict=8 < min=10 | 真实 trace 里只有 8 条，门槛设 10——判据过紧或证据流失（此前 A1 时是 286 条）|
+| **watcher_freq3** | 2/3 | file_grep 0 hits in tools/learn_watcher.py | 查的是 tools/ 副本，实际运行版在 bench/——三副本不同步的受害者 |
+| **S1** | 0/1 | gate_result rc=2 | 待查具体 gate |
+| **regression_106** | 0/1 | test_pass rc=1 PASS=4 | 输出有 4 个 PASS 但 rc=1（测试内部有失败），真实失败 |
+| **M5** | 0/1 | manual | manual 判据本就不自动通过，不算真虚报 |
+
+### 另外两个结构性发现
+- **26/37 done 卡无 evidence_log**——判据通过但没有 commit/命令/退出码的收据（A2 的 cmd_apply 会写 evidence_log，但这 26 张是更早的卡，绕过写回直接标 done）
+- **4 张纯弱判据卡**（file_exists/grep）——MUTATION_AUDIT 早警告过，这次量化确认
+
+### 最重要的教训
+**"判据不过"≠"功能没做"**：
+- S22 是**判据写错**（Python 跑 .mjs）——功能是好的，但一直用假判据宣布完成
+- A6 的 census 判据是**输出格式不匹配**（脚本输出 `[CENSUS]` 不是 `PASS`）
+- watcher_freq3 是**查错副本**
+- 只有 regression_106 可能是真失败
+
+**这正验证用户的担心**：不盘点就会"基于错误结论去修没坏的东西"——这是另一种浪费。
+
+### 理论依据（调研确认）
+- **VOI**：盘点的价值 = 错误资源分配概率的降低 × 错误后果；盘点成本远低于重复造轮子成本 → 正价值
+- **审计存在性认定**（existence assertion）：防"压根没造却声称完成"
+- **审计完整性认定**（completeness assertion）：防"已造但不知道→重复造"
+- **认知偏差**：确认偏误 + 沉没成本 + 过度自信 → 系统天然倾向相信"已完成"而不核查
+- **精益 gemba walk**：不能只看账面报表，要到现场看实物
+
+### 下一步
+1. 修 S22/A6 的判据命令解释器错误（.mjs 用 node）
+2. watcher_freq3 改查运行版副本（或双副本都查）
+3. 查 S1/regression_106 的真实失败
+4. A1_7 的 trace_count 门槛按真实分布重定（或恢复流失的证据）
+5. 把 `audit_delivery.py` 纳入 foundation_guard 或定期巡检（变更驱动）
