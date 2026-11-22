@@ -1609,6 +1609,8 @@ items:
   root_stage: optimization
   organ: action
   root_why: 编辑协议升级（短文件整块输出/紧邻重读/最短唯一锚点），降低读写复现负担的行动加固
+  unlocks:
+  - S24
 - id: STRAT1
   title: 战略陈述（模型只读顶层约束）
   tier: 0

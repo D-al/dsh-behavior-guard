@@ -1147,6 +1147,8 @@ items:
     - rc=0 PASS=6
   tier: 1
   category: infra
+  unlocks:
+  - S24
 - id: STRAT1
   title: 战略陈述（模型只读顶层约束）
   tier: 0
