@@ -96,3 +96,4 @@
 | [AUTOCARD_POSTMORTEM_20261122.md](AUTOCARD_POSTMORTEM_20261122.md) | 复盘 | 两轮自动推卡的9个阻碍+5个盲区;门禁覆盖仅8%(12个py测试1个在门禁);8类教训科技树覆盖审计(0全/5部分/3空白);A6加固卡建议 |
 | [VERIFICATION_SOP_AND_BEHAVIOR_ASSERTIONS.md](VERIFICATION_SOP_AND_BEHAVIOR_ASSERTIONS.md) | 规范 | A6判据4/5:独立核验四步(门禁/判据/sha/git真验)+行为断言三级(强调用/弱grep/伪MockState重写)+退出码真实 |
 | [FOUNDATION_GUARD_DESIGN_20261122.md](FOUNDATION_GUARD_DESIGN_20261122.md) | 设计 | 地基自动维护:社区调研(适应度函数/元测试/RRSI/持续验证/error budget)+6条不变量+Foundation Guard编排;58/58;挂LearnWatchDaemon每10min巡检 |
+| [TRUST_ANCHOR_RESEARCH_20261122.md](TRUST_ANCHOR_RESEARCH_20261122.md) | 调研 | 无限回归终止点:理论无终点(明希豪森三难)实践可止损;区块链有害(单方场景BFT解错题);最优=确定性小检查器+git内容寻址+机器外部锚;实测信任基2445行/evaluator tampering风险 |
