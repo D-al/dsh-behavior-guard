@@ -108,3 +108,46 @@ Google 2000 万行（实际 20 亿行）代码库靠 **Tricorder/Rosie/Clipper �
 ⑤ 先理解再删（Chesterton's Fence：成熟系统的复杂度先假定被合理管理）
 
 **核心公式**：Engineering Value ≈ Outcome / Complexity——管理分母，不是一味缩小分母。
+
+---
+
+## 六、目的追溯制落地（2026-11-22 12:15，用户拍板"按你说的做"）
+
+### 实现
+- **`tools/audit_traceability.py`**：扫描 111 个机制，三级追溯
+  - 显式：13 个核心机制标注在 `bench/rulepack/traceability.json`（strategy_ref + why）
+  - 继承：`test_foo.py` 继承 `foo` 的追溯（测试不算独立 orphan）
+  - 推断：其余从 docstring 关键词匹配 STRATEGY 条款（§2.1 G1-G6 / §2.2 R1-R7 / §3 N7）
+- **orphan = 无追溯机制** → 需人工判断"删掉它，哪个战略目标无法达成？"
+- registry 纳入 rulepack 保护（**追溯标注本身也要被钉住**，否则 agent 可给自己加假标注）
+
+### 关键过程（验证"orphan ≠ accidental"）
+首轮检出 12 个 orphan，逐个判断后**全部是 essential，只是关键词表漏了**：
+- agentlab.py → G5 经验进化（压测台）
+- build_b12244.py → 引擎构建（目标前提）
+- build_trail_text / collect_corrector_input → G1 连续性
+- eval_fsm.py → G5（M8 失败预测）
+- freeze_watch.py → R7（看门狗，且**无 docstring=provenance 丢失**，已补）
+- tech_tree.py → 目标可视化
+- test_next_roi.py → G3（锁定 find_next 排序契约）
+
+**没有一个该删**——这实证了：orphan 是"需要人判断"的信号，不是"该删"的判决。
+修的是词表（不是删机制），补的是 docstring（不是删文件）。
+
+### 自证（防"为了变绿而放水"）
+注入 `zzz_orphan_probe.py`（无 docstring/无关键词）→ 检出 1 orphan（rc=1）→ 恢复 → 0 orphan。
+检查器能抓真 orphan，不是靠放词表放水。
+
+### 状态
+- 显式 13 / 继承 8 / 推断 90 / orphan **0**
+- 接入 run_all 第 61 项 → 门禁 **61/61**
+- 规则包 re-pin **v1.4.0**（registry 纳入保护）
+- ⚠ 过程教训：re-pin 后必须**先 commit 再跑门禁**——HEAD 未更新时 rulepack_guard 拒绝新状态（机制正确工作）
+
+### 与用户质疑的闭环
+用户："造车不能用车轮复杂度要求我" →
+- 废弃固定数字上限 ✅
+- 采用目的追溯制：每个机制必须标注服务哪条战略条款 ✅
+- 战略已有数字红线保留（工具面≤20 等）✅
+- ratchet 用 §3.7"补偿性规则定期删除"执行，非全局数量上限 ✅
+- guardDecide 736 行是可维护性问题，单独处理，不混入复杂度预算 ✅
