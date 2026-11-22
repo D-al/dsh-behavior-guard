@@ -98,3 +98,4 @@
 | [FOUNDATION_GUARD_DESIGN_20261122.md](FOUNDATION_GUARD_DESIGN_20261122.md) | 设计 | 地基自动维护:社区调研(适应度函数/元测试/RRSI/持续验证/error budget)+6条不变量+Foundation Guard编排;58/58;挂LearnWatchDaemon每10min巡检 |
 | [TRUST_ANCHOR_RESEARCH_20261122.md](TRUST_ANCHOR_RESEARCH_20261122.md) | 调研 | 无限回归终止点:理论无终点(明希豪森三难)实践可止损;区块链有害(单方场景BFT解错题);最优=确定性小检查器+git内容寻址+机器外部锚;实测信任基2445行/evaluator tampering风险 |
 | [SCIENTIFIC_MEASUREMENT_20261122.md](SCIENTIFIC_MEASUREMENT_20261122.md) | 方法 | 科学基线测量:GQM+构念效度+Wilson CI+样本量功效+Simpson分层;推卡会话budget-3/4独立分层;结论可测0/代理3/未埋点3,当前不具备测基线条件 |
+| [GOAL_STATEMENT_V2_20261122.md](GOAL_STATEMENT_V2_20261122.md) | 提案 | 目标打磨版:六个误解词修正(生命→持续成长的计算体/超越人类→可验证任务逼近专家/对抗自然选择→面对变化保持有效/可演化→权重冻结的累积改进/认识自己→外部能力画像/搜寻策略→边界内选路径);Vision aspirational+四个可达锚点(全部有现成零件)+安全边界+三条防表述回流纪律 |
