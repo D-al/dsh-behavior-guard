@@ -568,9 +568,9 @@ items:
     kind_name: mind_state
     sid_filter: exclude_tests
     min: 1
-    note: BDI 三槽写进现有 mind_state kind，不新造 kind
+    note: 2026-11-22复核：mind_state 真实字段只有 loops/turn/controlTotal，无槽字段；⑥BDI展示是恒假死代码已删；意图承载归P0存档
   title: 用户意图 BDI 三槽
-  what: 把 s.bdi 单槽升级成 belief/desire/intention 三槽，承载用户意图跨压缩不丢
+  what: 【待重定位】原三槽方案已被P0压缩存档+⑤漂移检测覆盖；复核后方向改为"意图结构化抽取+drift可观测"——但零LLM规则抽取小实验证实只能截原话无增量，需与M9分类器合并考虑（M9 blocker"8G不可行"因今晚ONNX INT8跑通已部分解除）
   why: 单槽装不下"用户要什么/信什么/打算怎么做"，压缩后约束丢失，意图漂移检测无状态可依
   benefit_to_self: 长任务压缩后仍记得用户最初要什么，不会因为 context 缩短而跑偏
   caveats:
@@ -589,6 +589,7 @@ items:
   - L1
   cost: 中
   category: mind
+  review: docs/M3_VALUE_REVIEW_20261122.md（2026-11-22价值复核：建议重定位，勿直接做三槽）
 - id: M9
   tier: 2
   deps:

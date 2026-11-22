@@ -2162,19 +2162,22 @@ function formatExecutorResult(pkg, exec) {
           }
           // ── P1-4 意图漂移在线信号（v2.9 合入）──
           // 初始任务 vs 最新指令关键词覆盖率 < 0.25 → 提示"以最新指令为准"（治现场 16 次旧存档锚定）
+          // 2026-11-22 M3复核：补 trace 埋点（原先在线但零可观测）；删 ⑥ BDI 死代码
+          // （s.bdi.goal 与 s.latest.slice(0,250) 同源赋值，条件恒假——真实 trace 0 次注入）
           if (cfg.driftSignalEnabled && s.initial && s.latest && s.latest !== s.initial) {
             try {
               const stop = new Set(['帮我', '请你', '一个', '这个', '一下', '什么', '怎么', '可以', '是否', '给个', '展示'])
               const kws = (t) => new Set((String(t).match(/[\u4e00-\u9fa5]{2,}/g) || []).filter((w) => !stop.has(w)))
               const ik = kws(s.initial), lk = kws(s.latest)
               const overlap = ik.size ? [...ik].filter((w) => lk.has(w)).length / ik.size : 1
-              if (overlap < 0.25) parts.push('⑤ 意图漂移：最新用户指令已偏离初始任务，以【最新指令】为准：' + String(s.latest).slice(0, 90))
+              const drifted = overlap < 0.25
+              trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'intent_drift',
+                step: s.step, overlap: Number(overlap.toFixed(3)), drifted, initialChars: String(s.initial).length, latestChars: String(s.latest).length })
+              if (drifted) parts.push('⑤ 意图漂移：最新用户指令已偏离初始任务，以【最新指令】为准：' + String(s.latest).slice(0, 90))
             } catch { /* ignore */ }
           }
-          // ── P1-6 用户意图 BDI（伙伴状态卡，v2.9 合入）──
-          if (cfg.bdiEnabled && s.bdi?.goal && s.bdi.goal !== String(s.latest).slice(0, 250)) {
-            parts.push('⑥ 用户意图（BDI）：' + String(s.bdi.goal).slice(0, 90) + '（状态卡持续维护，不因上下文压缩丢失）')
-          }
+          // ⑥ 用户意图 BDI 已删（M3 价值复核 2026-11-22）：条件恒假且与 P0 存档重复。
+          // 意图承载由 P0 存档（initial/latest + todo）负责，见 index.mjs:1987。
           // ── M8 FSM_SIGNAL 局部失败预警（SURF-FSM-SIGNAL 白名单：只读 signal + trace 埋点 + prompt 文案）──
           if (cfg.fsmSignalEnabled) {
             try {
