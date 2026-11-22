@@ -1,3 +1,14 @@
+## [2.27.3] - 2026-11-22（Skills 双轨 A/B 实验）
+
+- 用户要求"测试一下，尤其常用工具和不常用工具都试"→ 真实 dsh 35B 会话 A/B：
+  skillsEnabled ON vs OFF × 常用工具场景 + 低频诊断场景，bridge 发真实任务。
+- 新增 `tools/skills_ab_probe.py`（prepare-off/restore/collect）。
+- **结论：机制层确认、效果层样本不足不能定论**。确认：①开关真生效（ON注入2次/OFF注入0次）
+  ②**常用工具场景也误触发注入**（"grep"/"read"命中tool-boundaries关键词）
+  ③低频场景正确命中debug-llama-server ④官方skill工具调用0次（主动路径未验证）。
+- 诚实标注：A 149事件/19调用 vs B 31事件/3调用（B场景2没跑完），单次实验，不能对比谁更快。
+- dsh 按需：实验后 stop + llama清理=0 + 配置恢复。见 docs/SKILLS_AB_RESULT_20261122.md。
+
 ## [2.27.2] - 2026-11-22（官方能力 vs 自研机制审计）
 
 - 用户问"有没有官方参数就够、我们造轮子反而更慢"→ 两条独立调查（引擎层/harness层）+ 一手核实。
