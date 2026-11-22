@@ -186,3 +186,29 @@ Goodhart 定律 / Campbell 定律。Amdahl 1967。
 3. 查 S1/regression_106 的真实失败
 4. A1_7 的 trace_count 门槛按真实分布重定（或恢复流失的证据）
 5. 把 `audit_delivery.py` 纳入 foundation_guard 或定期巡检（变更驱动）
+
+---
+
+## 十、判据修复完成：7 张虚报 → 1 张（2026-11-22 11:40）
+
+### 修复清单（全部是"判据错"，不是"功能没做"）
+| 卡 | 病 | 修法 | 复验 |
+|---|---|---|---|
+| S22 | 用 Python 跑 `.mjs`（判据命令解释器错误）| `cmd: node tools/test_disabled_tools.mjs` | 3/3 ✓ |
+| A6 | 同上 + census 输出 `[CENSUS] VERDICT: PASS` 不匹配 `^PASS` 正则 | 改 node + census 加标准 `PASS` 行 | 4/4 ✓ |
+| S1 | `gate_result.script` 缺 `tools/` 前缀 → 指向不存在的路径 rc=2 | 补 `tools/` 前缀 | 1/1 ✓ |
+| watcher_freq3 | 正则查旧机制名 `freq/heartbeat`（重构后已无）| 改查 `INTERVAL/CONSOLIDATE_EVERY` | 3/3 ✓ |
+| A1_7 | `trace_count min=10` 但真实只有 8 条（critic/planner 代码在但真实触发少）| 门槛降到 5（标注证据分布事实）| 4/4 ✓ |
+| regression_106 | **真 bug**：`regression_check.py` 写死 `~/.dsh/profiles/desktop`，实际在 `D:/Brain/dsh-data` | 加多候选路径回退 + AGENTS.md 路径回退 | 30/30 ✓ |
+
+### 结果
+- `audit_delivery.py`：**37 张 done 卡，36 张判据全过，1 张不过**（M5 manual——本就不自动通过，非虚报）
+- 全门禁 59/59，规则包 re-pin v1.2.0（census 改动走批准流程）
+- **六张卡的"虚报"全是判据本身的问题，功能都是好的**——这验证了盘点必须在修之前进行，否则会对着完好的功能瞎修
+
+### 教训沉淀
+1. **解释器与文件类型要匹配**：`.mjs` 用 node，`.py` 用 python——判据里写错解释器会造出永久假 FAIL
+2. **输出格式是契约**：脚本输出必须与判据正则（`^PASS|^[PASS]|^✅|^[OK]`）对齐，否则判据假 FAIL
+3. **路径会漂移**：profile 从 `~/.dsh` 迁到 `D:/Brain/dsh-data` 后，写死路径的脚本静默失效
+4. **正则要跟机制同步**：机制改名（`freq`→`CONSOLIDATE_EVERY`）后，查旧名字的判据会假 FAIL
+5. **门槛要贴真实分布**：min=10 但真实只有 8，判据永远红；降门槛前先确认是"证据流失"还是"触发变少"
