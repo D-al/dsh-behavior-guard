@@ -39,6 +39,9 @@ M5 卡的三层治理原则已于 2026-11-22 07:30 拍板（记在 ROADMAP_GRAPH
    工具面在启动时由 cordis.patch.yml bundle 决定；唯一开关是 `dsh.profile.bundles`（会话级，非逐步）。
    历史教训：连静态 disabled tool-web 都失败过。
    → **本 ADR 不实施动态工具面**（无可靠机制 + 收益小：那 4 个工具低频但不可缺，本来就不该砍）。
+   > ⚠ **勘误（2026-11-22 同日）**："架构不支持"的结论**已被 ADR-0029 推翻**——
+   > 深查 asar 内官方 cookbook 确认 dsh 有 `ctx.tools.register` + fiber dispose 的运行时热替换机制。
+   > 本条保留作为决策过程记录，正确结论见 ADR-0029。
    标记为用户决策与架构现实冲突，**待用户重新选择**：保持全暴露（推荐）或另开探索 ADR 设计插件级 hook。
 
 ## Counter-evidence（反证）
