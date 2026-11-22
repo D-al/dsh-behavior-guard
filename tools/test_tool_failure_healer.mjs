@@ -42,6 +42,11 @@ t('FS_NOT_FOUND抽路径+给相近文件', () => {
   assert.match(h, /glob 确认/); assert.match(h, /ROADMAP\.md\.bak/)
 })
 
+t('FS_STALE_VERSION真实码能自愈(2026-11-22实测缺口)', () => {
+  const h = healHint({ tool: 'edit', code: 'FS_STALE_VERSION', path: '' })
+  assert.match(h, /先 read 目标文件/); assert.match(h, /最短唯一锚点/)
+})
+
 t('用户取消等不注入', () => {
   for (const code of ['ASK_CANCELLED', 'ABORTED', 'WEB_BLOCKED_URL', 'JOB_CONTROLLER_UNAVAILABLE']) {
     assert.equal(healHint({ tool: 'x', code, path: '' }), null, code)

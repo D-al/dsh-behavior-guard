@@ -38,6 +38,10 @@ export function healHint(failure, ctx = {}) {
   if (!failure) return null
   const { tool, code, path } = failure
   switch (code) {
+    // FS_STALE_VERSION：真实环境对"文件在读之后被改/不存在"返回此码（2026-11-22 实测），
+    // 与锚点失配同类——重读后再试。
+    case 'FS_STALE_VERSION':
+      return '[harness 工具自愈] 上一次 edit 失败（FS_STALE_VERSION：文件在读之后已变化或不存在）。不要原样重试——先 read 目标文件获取当前版本，再用重读到的最短唯一锚点重新 edit。'
     case 'FS_EDIT_NOT_FOUND': {
       let s = '[harness 工具自愈] 上一次 edit 失败（old_string 在文件中找不到）。'
       s += '不要原样重试。按协议：重读目标行±10行，取从第一个非空白字符起的最短唯一锚点，再发一次 edit。'
