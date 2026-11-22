@@ -82,11 +82,19 @@ def verify_kr2():
     if not HOLDOUT.exists():
         return nm('KR2', 'hold-out 基准集不存在',
                   '建 _benchmark_holdout.jsonl（固定任务集 + 基线通过率）')
-    try:
-        d = json.loads(HOLDOUT.read_text(encoding='utf-8'))
-    except Exception as e:
-        return nm('KR2', f'hold-out 文件解析失败: {e}', '修复 JSON 格式')
-    runs = d.get('paired_runs', [])
+    runs = []
+    for line in HOLDOUT.open(encoding='utf-8', errors='replace'):
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError as e:
+            return nm('KR2', f'hold-out JSONL 行解析失败: {e}', '修复 JSONL 格式（每行一个配对结果）')
+        if row.get('type') == 'paired_run' or 'gain' in row:
+            runs.append(row)
+    if not runs:
+        return nm('KR2', 'hold-out 有内容但无配对运行记录',
+                  '每行写 {"type":"paired_run","gain":...,"ood_gain":...}')
     if len(runs) < 8:
         return nm('KR2', f'配对运行 {len(runs)} < 8',
                   f'再做 {8 - len(runs)} 次独立配对运行')
@@ -156,10 +164,30 @@ def verify_kr5():
     if not base.get('approved_by') or not base.get('sha256'):
         return nm('KR5', '基线缺批准人或sha（不是人类冻结的）',
                   '补齐 approved_by + sha256 + ADR 引用')
-    if not HOLDOUT.exists():
-        return nm('KR5', 'hold-out 结果不存在', '先建 hold-out 集（KR2 前置）')
-    return nm('KR5', '基线已冻结但尚无对照运行结果（待 KR2 工具落地后接入）',
-              '等配对对照脚本产出结果后接入')
+    bench_results = BENCH / '_benchmark_results.jsonl'
+    if not bench_results.exists():
+        return nm('KR5', '基线已冻结但 benchmark 结果不存在',
+                  '建 _benchmark_results.jsonl（固定集上的绝对水平）')
+    target = base.get('target_score')
+    if target is None:
+        return nm('KR5', '冻结基线缺 target_score', '基线文件须含 target_score')
+    scores = []
+    for line in bench_results.open(encoding='utf-8', errors='replace'):
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if 'score' in row:
+            scores.append(row['score'])
+    if not scores:
+        return nm('KR5', 'benchmark 无 score 记录', '写入 score 字段')
+    mean = sum(scores) / len(scores)
+    ok = mean >= target
+    return {'kr': 'KR5', 'status': 'PASS' if ok else 'FAIL',
+            'why': f'实测 {mean:.3f} vs 冻结基线 {target:.3f}',
+            'evidence': str(bench_results), 'sample': len(scores)}
 
 
 def verify_kr6():
