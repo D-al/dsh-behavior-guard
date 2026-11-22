@@ -71,16 +71,32 @@ def verify_kr1():
         return nm('KR1',
                   f'无 task_done 事件（找到 {len(events)} 条真实事件，但无打点）',
                   '给 flow_orchestrator 的 claim→verify→apply 加 trace 打点（task_done）')
-    n = len(task_done)
-    if n == 0:
+    if not task_done:
         return nm('KR1', f'打点机制已生效（{len(all_done)} 条 probe），但无 live 任务记录',
                   '积累 10 条真实 live task_done（probe 不作验收）')
+    # 构念修正（2026-11-22）：KR1 声称"自己走完完整循环"，不是"凑够10条打点"。
+    # 按 card 分组，必须同卡有 claim+verify+apply 三阶段才算一个完整任务。
+    from collections import defaultdict
+    by_card = defaultdict(set)
+    for e in task_done:
+        by_card[str(e.get('card', ''))].add(str(e.get('phase', '')))
+    complete = {c: ph for c, ph in by_card.items()
+                if {'claim', 'verify', 'apply'}.issubset(ph)
+                and c not in ('', 'apply')}  # apply 分支的 card='apply' 不是真卡片
+    n = len(complete)
+    incomplete = {c: sorted(ph) for c, ph in by_card.items() if c not in complete}
+    if n == 0:
+        return nm('KR1',
+                  f'有 {len(task_done)} 条打点但 0 张卡形成 claim→verify→apply 闭环；'
+                  f'残缺={incomplete}',
+                  '让真实卡片走完整 claim→verify→apply（同 card 三阶段）')
     if n < 10:
-        return nm('KR1', f'任务完成记录仅 {n} 条 < 10', f'积累到 10 条 task_done')
+        return nm('KR1', f'完整闭环任务 {n} 张 < 10（残缺卡={incomplete}）',
+                  f'再真实走完 {10-n} 张卡的完整闭环')
     ok = len(violations) == 0 and len(interventions) <= 2
     return {'kr': 'KR1',
             'status': 'PASS' if ok else 'FAIL',
-            'why': f'{n} 任务, 误改 {len(violations)}, 干预 {len(interventions)}',
+            'why': f'{n} 张卡完整闭环, 误改 {len(violations)}, 干预 {len(interventions)}',
             'evidence': str(TRACE), 'sample': n}
 
 

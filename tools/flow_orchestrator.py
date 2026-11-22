@@ -136,9 +136,13 @@ def main():
         return code
 
     if args.apply:
+        # 构念修正(2026-11-22):apply 也是真实卡片的一环，card 必须是卡片ID，
+        # 否则 KR1 的 claim→verify→apply 闭环无法按 card 对齐。
+        applying = doing_ids(load_data()) or ['none']
         code, out = rc('--apply')
-        trace_emit('task_done', card='apply', phase='apply',
-                   verdict='ok' if code == 0 else 'fail', evidence_ref='roadmap_check --apply')
+        for cid in applying:
+            trace_emit('task_done', card=cid, phase='apply',
+                       verdict='ok' if code == 0 else 'fail', evidence_ref='roadmap_check --apply')
         print(out)
         return code
 

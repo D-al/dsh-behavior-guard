@@ -1436,7 +1436,7 @@ items:
   - A1
   risk: low
   autonomous: true
-  status: ready
+  status: done
   what: 给 agentlab/projectlab 切 30% hold-out 任务永不用于选卡；一次只改一个可归因机制；先测基线方差设噪声地板（±10%内不算提升）；新增机制须证
     token/时间收益；定期剪枝无收益守卫。
   why: RRSI(arXiv2609.24972)：无正则自改进 OOD 跌破初始基线；增益归因研究 54% 过拟合+14% test-time scaling；我们明知±10%却没当判据。
@@ -1466,6 +1466,14 @@ items:
     serves_success_dim: null
   verify_type: structural
   category: governance
+  claimer: unknown-agent
+  claimed_at: '2026-11-22T05:58:33.080981+00:00'
+  evidence_log:
+  - at: '2026-11-22T05:58:40.244229+00:00'
+    commit: 54a3324
+    checks:
+    - D:\Brain\publish\dsh-behavior-guard\tools\holdout_split.py
+    - 7 hits in tools/roadmap_check.py
 - id: S19
   title: CritBank 校准门禁（CEB 路线）
   tier: 1

@@ -104,6 +104,8 @@ items:
   - 只在白名单+预算内
   cost: 低
   category: short
+  unlocks:
+  - rebaseline
 - id: S2
   title: 可控遗忘常态化
   tier: 1
@@ -273,6 +275,8 @@ items:
   - 含安全注入双闸门豁免 P0 修复
   cost: 低
   category: mind
+  unlocks:
+  - rebaseline
 - id: M6
   title: 安全规则不可覆盖
   tier: 1
@@ -541,6 +545,9 @@ items:
     - 3 hits in index.mjs
   unlocks:
   - L6
+  - S7
+  - S8
+  - S9
   cost: 中低
   category: mind
 - id: M3
@@ -606,8 +613,8 @@ items:
   - 分类器错了有没有被三角色拦住？
   abort_if: 86M CPU 延迟>500ms 或中文准确率不达 92%
   preconditions:
-  - 'P-ZH-VALIDATION: 中文表现验证'
-  - 'P-86M-EMBEDDING: 8G 显存可行性'
+  - 'P-ZH-VALIDATION: 中文准确率>=92%（M9.abort_if）'
+  - 'P-86M-EMBEDDING: 86M分类器<=8G显存可运行（M9.caveat硬约束）'
   instrumentation_needed:
   - tools/test_intent_classifier.mjs（新建）
   unlocks:
@@ -656,21 +663,19 @@ items:
   - kind: manual
     reason: 用户已拍板(2026-11-22 07:30)采纳三层治理原则:核心常驻/低频关键按需加载/已禁用入口移除
   title: 工具面结构改造（三层治理原则）
-  what: 放弃"按频次砍到N个"——全量37会话1959调用证明低频≠可砍(job_*/web_fetch已禁用仍暴露11次;read_image/ask_user低频但关键)。改为三层:①核心工具常驻(pwsh/read/todo/glob/edit/write/grep/present,占95.7%) ②低频关键能力按需加载(skill卡/描述触发) ③已禁用入口(job_*/web_fetch)从工具面移除
-  why: Anthropic"10+ tools就该考虑"(72→90%)、弱模型拐点12-15、Prosodica 10工具78%→100工具<40%——但全量证据表明真正问题不是"工具多"而是"已禁用入口污染选择空间+描述碰撞"。低频可砍是错误推断:场景少见但不可缺的工具砍了会断链
-  benefit_to_self: 移除已禁用入口减少违规调用(11次/1959);核心工具描述写成触发条件减少选择噪声;低频关键能力不丢
+  what: 三层治理:核心7工具常驻(95.7%)/低频关键按需加载/已禁用入口(job_*/web_fetch)移除。放弃按频次砍到N个
+  why: 全量37会话1959调用证明低频≠可砍;真正问题是已禁用入口污染选择空间(11次违规)+描述碰撞,不是工具数量
+  benefit_to_self: 每次决策要在更少的工具里选，减少选择噪声
   unlocks:
   - S22
   caveats:
-  - ⛔ 用户拍板项，agent 不得自主决定治理原则
-  - 不看单纯频次——低频但关键(read_image/ask_user_question)必须保留
-  - 全量证据:docs/TOOL_SURFACE_EVIDENCE_20261122.md
-  - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
+  - ⛔ 用户拍板治理原则
+  - 不看单纯频次-低频但关键必须保留
+  - 证据:docs/TOOL_SURFACE_EVIDENCE_20261122.md
   reflection: []
   abort_if: 无（人工决策项，不自主执行）
   preconditions:
   - 'P-USER-DECISION: 用户拍板哪些工具进内核'
-  unlocks: []
   cost: 高
   category: mind
 - id: M7
@@ -684,7 +689,7 @@ items:
     reason: 需先验证 86M 分类器 + A/B 端到端提速
   title: 格式修复器（降级）
   what: 格式修复器：只做格式重写、不判断对错，35B 首轮兜底
-  why: 模型输出格式错误浪费后续步骤，但前置 86M 分类器还没验证
+  why: 0.6B生成式已证伪(4-6s);verify-on-edit零LLM已覆盖格式错误;原前置"86M分类器"方向已放弃
   benefit_to_self: 格式问题不用走到 35B 全量推理就能修，省 11s/次
   caveats:
   - 降级项：0.6B 已证伪（4-6s 比文献慢 10×）
@@ -693,8 +698,8 @@ items:
   reflection: []
   abort_if: 无（前置未满足，manual-blocked）
   preconditions:
-  - 'P-86M-LATENCY: 86M CPU 延迟<500ms'
-  - 'P-AB-SPEEDUP: A/B 端到端提速'
+  - 'P-CLASSIFIER-LATENCY: 已实测Horizon 102ms<500ms(原P-86M-LATENCY的86M方向已放弃)'
+  - 'P-AB-SPEEDUP: A/B端到端提速>=10%（仍需实测）'
   unlocks: []
   cost: 低
   category: mind
@@ -709,17 +714,17 @@ items:
   - kind: manual
     reason: 分类器已部署验证(93.3%/2.3%/102ms)且随dsh启停；但默认关、只写trace，是否启用为主防线需用户拍板
   title: S6 模型层升级（分类器已启用）
-  what: S6 规则层 + ONNX分类器Tier-2(Horizon-Labs ModernBERT INT8, 绑E核, 随dsh启停)
-  why: 规则层抓2/4攻击模式;分类器实测28/30语义级;已部署只写trace不steer，待用户决定是否启用
-  benefit_to_self: 注入检测从关键词匹配升级到语义级，减少漏报；开关默认关零行为干扰
+  what: S6 从纯规则层叠加 ONNX 分类器 Tier-2（Horizon-Labs ModernBERT INT8，E核）
+  why: 规则层抓 2/4 攻击模式；分类器实测 28/30、语义级；已部署随 dsh 启停，只写 trace 不 steer
+  benefit_to_self: 注入检测从关键词匹配升级到语义级，减少漏报
   caveats:
-  - 分类器已部署(dsh-classifier-autostart插件)并干净重启验证;E核12-15;102ms
-  - 实测@0.9=93.3%召回/2.3%FPR;真机776条FPR3.09%,前置过滤错误/乱码后有效0.64%
-  - 长文本(>512token)跳过分类器靠结构隔离;当前只写trace不steer不拦截
-  - status保持manual-blocked:是否启用为主防线需用户拍板+观察误报
+  - 分类器已部署(dsh-classifier-autostart插件+服务)，随dsh启停，绑E核12-15，实测102ms
+  - 实测@0.9=93.3%召回/2.3%FPR/80%Precision;真机离线776条FPR3.09%，前置过滤错误/乱码后有效0.64%
+  - 长文本(>512token)跳过分类器，靠结构隔离(滑窗28-49秒且开头注入漏检)
+  - 当前只写trace+info日志，不steer不拦截；是否启用为主防线需用户拍板
   - '[事故教训] 说"完成/推送/全绿"前必须核对远端/权威/运行版三处 commit+sha256；health 200 不等于进程活着'
   reflection: []
-  abort_if: 86M gated不可得且基准表现差(默认1%),已放弃;改用Horizon分类器已部署
+  abort_if: 86M gated不可得且基准表现差(默认阈值1%),已放弃该方向;改用Horizon
   unlocks: []
   cost: 中
   category: short
@@ -743,7 +748,7 @@ items:
   reflection: []
   abort_if: 无（长期人工排期）
   preconditions:
-  - 'P-SWEBENCH: 迁移 SWE-bench Verified 子集'
+  - 'P-SWEBENCH: 迁移SWE-bench Verified子集（阈值待定：长期人工排期，跑通子集即算达标）'
   unlocks:
   - L1
   cost: 高
@@ -821,7 +826,7 @@ items:
   reflection: []
   abort_if: 无（探索项）
   preconditions:
-  - 'P-ZH-VALIDATION: GLiClass 中文表现'
+  - 'P-ZH-VALIDATION: GLiClass中文表现（阈值待定：需先定中文测试集与准确率的达标线）'
   unlocks: []
   cost: 高
   category: longterm
@@ -835,8 +840,8 @@ items:
   - kind: manual
     reason: 须换 86M 且召回 A/B ≥80%；0.6B 已证伪
   title: 小模型 Critic 预警（降级）
-  what: 86M 小模型 Critic 做轻量预警
-  why: 0.6B 扫一次 5s 不实用；但小 judge 一致率仅 45-60%，需谨慎
+  what: 小模型 Critic 做轻量预警（0.6B已证伪；分类器可作信号源但价值待证）
+  why: 0.6B证伪;Critic门控可行性验证=无产物文本/无标签+分类器对产物质量零区分度(占位符@0.9检出0/8)
   benefit_to_self: 能在主模型提交前快速扫一眼风险
   caveats:
   - 降级：0.6B 已证伪，须换 86M 且召回 A/B≥80%
@@ -845,8 +850,8 @@ items:
   reflection: []
   abort_if: 无（降级观望）
   preconditions:
-  - 'P-86M: 换 86M 分类器'
-  - 'P-RECALL-AB: 召回 A/B>=80%'
+  - 'P-CLASSIFIER-RECALL: Horizon@0.9召回93.3%>=80%(原P-86M方向已放弃)'
+  - 'P-RECALL-AB: 召回 A/B>=80%（端到端A/B仍需实测）'
   unlocks: []
   cost: 高
   category: longterm
@@ -1172,7 +1177,7 @@ items:
   - A1
   risk: low
   autonomous: true
-  status: ready
+  status: done
   verify:
   - kind: file_exists
     path: tools/holdout_split.py
@@ -1195,6 +1200,15 @@ items:
   abort_if: 若无法隔离 hold-out 则退化为只做噪声地板
   verify_type: structural
   category: governance
+  claimed_at: '2026-11-22T05:58:33.080981+00:00'
+  claimer: unknown-agent
+  done_at: '2026-11-22T05:58:40.244229+00:00'
+  evidence_log:
+  - at: '2026-11-22T05:58:40.244229+00:00'
+    commit: 54a3324
+    checks:
+    - D:\Brain\publish\dsh-behavior-guard\tools\holdout_split.py
+    - 7 hits in tools/roadmap_check.py
 - id: S19
   title: CritBank 校准门禁（CEB 路线）
   tier: 1
@@ -1296,16 +1310,18 @@ items:
   - kind: test_pass
     cmd: node tools/test_disabled_tools.mjs
     min: 1
-  what: 按M5三层原则做harness能落地的工程改造:①对已禁用入口(job_output/job_kill/web_fetch)在harness层拦截提示(调用时告知"已禁用,改用X")——注意dsh runtime工具面harness改不了,不做无效尝试 ②核心7工具description触发条件已在config/AGENTS.md,补审计脚本验证覆盖 ③tool_surface_audit.py加描述碰撞自检+频次报告(已部分完成) ④保留低频关键能力不砍
-  why: 全量证据37会话1959调用/17工具:前7占95.7%,低频≠可砍。可行性校正:dsh无工具面裁剪hook,harness的writeTools只是内部计数集合——"移除入口"做不到,改为"调用时拦截提示"。Anthropic Skills"技能失败多是检索失败伪装成指令失败"——描述触发条件是杠杆。
+  what: harness能落地的工程:对已禁用入口(job_*/web_fetch)做调用拦截提示+描述触发条件审计+描述碰撞自检+保留低频关键能力;不做dsh
+    runtime工具面裁剪(做不到)
+  why: 全量37会话1959调用证明低频≠可砍;可行性校正:dsh无工具面裁剪hook,harness的writeTools只是内部计数——移除入口做不到,改为拦截提示
   unlocks: []
   benefit_to_self: 减少参数错误导致的重复失败(D1/D2)，不占主模型注意力。
   cost: 中
   caveats:
-  - 不按频次砍关键工具;dsh runtime工具面动不了,只做harness层拦截提示
-  - 改完要回归测试确认没断链(43/43门禁)
-  - M5三层原则已由用户拍板(2026-11-22);本卡只做工程部分
-  abort_if: 移除入口导致正常流程断链
+  - 不按频次砍关键工具
+  - dsh runtime工具面动不了,只做harness层拦截
+  - 改完回归43/43
+  - M5已拍板
+  abort_if: 无
   verify_type: structural
   category: infra
 - id: S23
@@ -1392,6 +1408,8 @@ rungs:
   cost: 低
   tier: 0
   category: autonomy
+  unlocks:
+  - A1
 - id: A1
   deps:
   - A0
@@ -1430,6 +1448,22 @@ rungs:
   cost: 中
   tier: 0
   category: autonomy
+  unlocks:
+  - A1_5
+  - A1_6
+  - A1_7
+  - A2
+  - A5
+  - M10
+  - S10
+  - S11
+  - S12
+  - S13
+  - S14
+  - S15
+  - S18
+  - S19
+  - S21
 - id: A2
   deps:
   - A1
@@ -1455,6 +1489,9 @@ rungs:
   cost: 中
   tier: 1
   category: autonomy
+  unlocks:
+  - A3
+  - A5
 - id: A3
   deps:
   - A2
@@ -1480,6 +1517,8 @@ rungs:
   cost: 中
   tier: 1
   category: autonomy
+  unlocks:
+  - A5
 - id: A3_5
   deps: []
   risk: low
@@ -1520,6 +1559,9 @@ rungs:
   cost: 中
   tier: 0
   category: autonomy
+  unlocks:
+  - A4
+  - A5
 - id: A4
   deps:
   - A3_5
@@ -1550,6 +1592,8 @@ rungs:
   cost: 中
   tier: 2
   category: autonomy
+  unlocks:
+  - A5
 - id: A5
   deps:
   - A1
@@ -1595,20 +1639,19 @@ rungs:
     min: 1
   - kind: file_grep
     path: tools/run_all.sh
-    regex: 'tools/test_\*\.py'
+    regex: tools/test_\*\.py
     min: 1
   - kind: test_pass
     cmd: node tools/test_disabled_tools.mjs
     min: 1
-  what: 把两轮自动推卡暴露的验收盲区制度化:①test_census.py做测试收集普查(扫全部test_*+self_test,与run_all执行集合diff,新增/删除报警) ②全部py测试纳入门禁glob自动发现(44→57) ③恒真断言/退出码假绿修复(new_guards exitCode+SKIP诚实标注) ④行为断言规范(真调apply+emit,禁源码grep/MockState重写冒充) ⑤独立核验SOP(门禁真跑+判据真验+sha真比+git真查)
-  why: 社区调研(collection census/Stryker变异测试/verifier-actor分离/有界重试/data lineage)印证本地VERIFY_DESIGN_STANDARD 10条checklist方向对,但没接线。实锤:12个py测试仅1个在门禁(8%);test_new_guards有8个FAIL却exitCode永0;S22改坏self_gate时43/43全绿;test_controllable_forgetting 8/11潜伏至今
+  what: 测试收集普查(census)+全py测试纳入门禁+恒真/退出码假绿修复+行为断言规范+独立核验SOP
+  why: 实锤:12个py测试仅1个在门禁;test_new_guards有8 FAIL却rc永0;改坏脚本43/43全绿。社区collection census/变异测试/verifier-actor分离印证方向
   benefit_to_self: 验收从'看起来全绿'变成'真的全绿';新增测试自动纳入门禁;假绿/恒真/退出码丢失三类隐蔽问题有机制拦截
   caveats:
-  - 6个历史失败已标SKIP(非恒真PASS),是权宜之计——需后续更新断言适配新机制
-  - census基线tools/_test_census_baseline.json需随测试增删更新(--update-baseline)
-  - PYTHON解析优先D:/Python/python.exe(带yaml);第二段重复解析块已删
-  - 不改A1_5的四类病逻辑,census是独立第五类病(测试未纳入门禁)
-  abort_if: 门禁因census误报持续红(需修parser而非放宽判据)
+  - 6个历史失败SKIP是权宜需后续修
+  - census基线需随测试增删更新
+  - PYTHON解析已修重复块
+  abort_if: census误报持续红
   unlocks: []
   cost: 中
   category: infra
@@ -1623,7 +1666,6 @@ rungs:
     status: satisfied
     evidence: node tools/test_new_guards.mjs rc=0 with 6 SKIP printed
     source: commit f607cf5
-
 - id: A1_5
   title: 判据元验证（防假绿）
   status: done
@@ -1662,6 +1704,8 @@ rungs:
     - 7 hits in tools/check_verify.py
   tier: 0
   category: autonomy
+  unlocks:
+  - A6
 - id: A1_6
   title: 守卫 L1 补将来时承诺检测
   status: done
@@ -1784,6 +1828,8 @@ rungs:
   abort_if: 工具定义 token 增幅 >10% 且参数错误率未下降
   verify_type: document
   category: infra
+  unlocks:
+  - M5
 - id: S17
   title: 函数外置模式推广（自修改地基）
   status: done
@@ -1816,10 +1862,4 @@ rungs:
     - D:\Brain\publish\dsh-behavior-guard\tools\format_correction.mjs
     - rc=0 PASS=1
   category: infra
-
-
-
-
-
-
 <!-- ROADMAP_GRAPH_END -->

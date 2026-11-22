@@ -42,6 +42,30 @@ DONE_END = '<!-- HUMAN_DONE_END -->'
 
 RISK_ORDER = {'low': 0, 'med': 1, 'high': 2}
 
+# 2026-11-22 S18/RRSI 纪律：噪声地板（±10% 内不算提升）
+NOISE_FLOOR = 0.10
+
+
+def noise_floor(samples, floor=NOISE_FLOOR):
+    """从重复运行的分数估计噪声地板，判定两个样本均值的差是否超出噪声。
+
+    RRSI 纪律：±10% 内的"提升"不算提升。返回 dict（零 LLM，可单测）。
+    样本 <2 时返回 insufficient=True，不假装能判。
+    """
+    vals = [float(v) for v in samples if v is not None]
+    if len(vals) < 2:
+        return {'insufficient': True, 'n': len(vals), 'verdict': 'N/M',
+                'why': '至少 2 个重复运行样本才能估计噪声'}
+    mean = sum(vals) / len(vals)
+    var = sum((v - mean) ** 2 for v in vals) / (len(vals) - 1)
+    sd = var ** 0.5
+    rel = sd / abs(mean) if mean else 0.0
+    return {'insufficient': False, 'n': len(vals), 'mean': round(mean, 4),
+            'sd': round(sd, 4), 'rel_sd': round(rel, 4),
+            'noise_floor': floor,
+            'verdict': 'NOISY' if rel > floor else 'STABLE',
+            'why': f'相对标准差 {rel:.1%} vs 地板 {floor:.0%}'}
+
 
 def load_ladder():
     """权威源 = ROADMAP_GRAPH.md 里的 HTML 注释块；CAPABILITY_LADDER.yaml 只提供语义字段。"""
@@ -777,8 +801,14 @@ def main():
     ap.add_argument('--verify', metavar='ID', help='验证单条卡片判据')
     ap.add_argument('--status', metavar='ID', help='单条状态详情')
     ap.add_argument('--apply', action='store_true')
+    ap.add_argument('--noise-floor', nargs='+', type=float, metavar='V',
+                    help='估计重复运行分数的噪声地板（S18/RRSI 纪律）')
     ap.add_argument('--refresh', action='store_true', help='从卡片字段重渲染 ROADMAP.md 全部自动块（不改卡片状态）')
     args = ap.parse_args()
+
+    if args.noise_floor:
+        print(json.dumps(noise_floor(args.noise_floor), ensure_ascii=False, indent=2))
+        return 0
     data = load_ladder()
     if args.graph:
         return cmd_graph(data)

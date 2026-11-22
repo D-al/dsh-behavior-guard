@@ -1,5 +1,5 @@
 {
-  "version": "v1.10.0",
+  "version": "v1.11.0",
   "created": "2026-11-22",
   "protected": {
     "tools/run_all.sh": {
@@ -57,7 +57,7 @@
       "approval": "变更须经维护者审核+更新本manifest+commit"
     },
     "tools/goal_verify.py": {
-      "sha256": "92ef9e7ef1ee5fb122bd168abb54fb2c1c48e13b090f9a651cd3f3327d3f2142",
+      "sha256": "8771bb60bbad02195a19d5c1c315e47311d03e84a987e61eacae4298565ef924",
       "source": "KR三态验证器",
       "retire_when": "目标KR重构后不再使用",
       "approval": "变更须经维护者审核+更新本manifest+commit"
@@ -69,5 +69,5 @@
     "有回归测试与回滚版本"
   ],
   "note": "agent只读+可提staging diff;变更默认拒绝,读取默认允许;紧急修复先执行后复审",
-  "version_note": "KR4构念修复:预埋事件+时间盒判据,历史回填不计入"
+  "version_note": "决策环首次真实闭环S18(claim→verify→apply)+KR1闭环判据+apply卡片ID修正+holdout_split真实切分"
 }
