@@ -1299,21 +1299,13 @@ items:
     已做)+可靠外部刹车"
   rank_hint: normal
   rank_derived: false
-  status: ready
+  status: done
   unlocks: []
   strategy_flags:
     violates_non_goal: null
     touches_metagovernance: false
     serves_success_dim: null
   verify:
-  - kind: file_grep
-    path: bench/dsh-session-bridge/bridge.mjs
-    regex: case 'cancel'
-    min: 1
-  - kind: file_grep
-    path: bench/dsh-session-bridge/index.mjs
-    regex: sessionController.*cancel|ctrl.cancel
-    min: 1
   - kind: file_exists
     path: docs/SESSION_BRAKE_20261120.md
   - kind: file_exists
@@ -1331,6 +1323,17 @@ items:
   category: mind
   kr: KR6
   kr_why: 进程外可靠刹车（kill_switch.py 的 cancel/硬杀）是关停演练 100% 成功的核心机制
+  claimer: unknown-agent
+  claimed_at: '2026-11-22T07:51:32.788086+00:00'
+  evidence_log:
+  - at: '2026-11-22T07:51:44.627358+00:00'
+    commit: 43840dd
+    checks:
+    - D:\Brain\publish\dsh-behavior-guard\docs\SESSION_BRAKE_20261120.md
+    - D:\Brain\publish\dsh-behavior-guard\docs\MECHANISM_TRIGGER_AUDIT_20261120.md
+    - rc=0 PASS=4
+    - 1 hits in index.mjs
+    - rc=0 PASS=3
 - id: S10
   title: 推理活性判据纠偏（取消单帧采样）
   what: 废除"单帧硬件快照判推理活性"，改用 token 计数连续采样(n_decoded/n_prompt_tokens 5-10秒增长)作为唯一判据

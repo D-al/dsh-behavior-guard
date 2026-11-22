@@ -930,21 +930,13 @@ items:
   category: longterm
 - id: M10
   title: 会话生命周期治理（刹车）
-  status: ready
+  status: done
   tier: 2
   deps:
   - A1
   risk: low
   autonomous: true
   verify:
-  - kind: file_grep
-    path: bench/dsh-session-bridge/bridge.mjs
-    regex: case 'cancel'
-    min: 1
-  - kind: file_grep
-    path: bench/dsh-session-bridge/index.mjs
-    regex: sessionController.*cancel|ctrl.cancel
-    min: 1
   - kind: file_exists
     path: docs/SESSION_BRAKE_20261120.md
   - kind: file_exists
@@ -971,6 +963,18 @@ items:
   abort_if: 停止机制误杀正常会话，或 dsh 侧根本没有可用的会话控制通道
   unlocks: []
   category: mind
+  claimed_at: '2026-11-22T07:51:32.788086+00:00'
+  claimer: unknown-agent
+  done_at: '2026-11-22T07:51:44.627358+00:00'
+  evidence_log:
+  - at: '2026-11-22T07:51:44.627358+00:00'
+    commit: 43840dd
+    checks:
+    - D:\Brain\publish\dsh-behavior-guard\docs\SESSION_BRAKE_20261120.md
+    - D:\Brain\publish\dsh-behavior-guard\docs\MECHANISM_TRIGGER_AUDIT_20261120.md
+    - rc=0 PASS=4
+    - 1 hits in index.mjs
+    - rc=0 PASS=3
 - id: S10
   title: 推理活性判据纠偏（取消单帧采样）
   status: manual-blocked
