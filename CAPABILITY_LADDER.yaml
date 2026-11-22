@@ -143,6 +143,9 @@ items:
   category: mind
   kr: KR2
   kr_why: 把历史经验自动注入控制回合并埋 evidence_cited trace，是从经验中改进的复用机制（KR1/KR2 边界，待审）
+  root_stage: assembly
+  organ: memory
+  root_why: 早期心智器官：把离线检索接入控制回合自动注入历史经验，补上'想起来'的记忆环节
 - id: M8
   title: 轨迹 FSM 监控器
   tier: 1
@@ -207,6 +210,9 @@ items:
   category: mind
   kr: KR3
   kr_why: FSM 局部失败预测产出预测-实测配对的 AUROC 证据，是能力账本误差预测的直接前置（KR2/KR3 边界，待审）
+  root_stage: assembly
+  organ: perception
+  root_why: 早期器官：把trace压成FSM做局部失败预测(AUROC 0.94)，是事件/失败前置预警的感知器官
 - id: M3
   title: 用户意图 BDI 三槽
   tier: 2
@@ -261,6 +267,9 @@ items:
   category: mind
   kr: evolution_path
   kr_why: 意图理解(belief/desire/intention)→RECON/PLAN
+  root_stage: assembly
+  organ: perception
+  root_why: 构建脑早期的意图BDI三槽,是当时造的器官;虽现归evolution_path但谱系属组装期
 - id: M9
   title: 意图分类器
   tier: 2
@@ -306,6 +315,9 @@ items:
   category: mind
   kr: evolution_path
   kr_why: 意图高置信直判→减少误判→RECON
+  root_stage: assembly
+  organ: perception
+  root_why: 同上:意图分类器是组装脑时期造的器官
 - id: M2
   title: 会话树实时化
   tier: 2
@@ -351,6 +363,9 @@ items:
   category: mind
   kr: evolution_path
   kr_why: 会话树实时化→上下文连续→多轮任务表现
+  root_stage: assembly
+  organ: perception
+  root_why: 会话树实时化早期就有,属构建脑的感知器官
 - id: M5
   title: 工具面结构改造（三层治理原则）
   tier: 3
@@ -402,6 +417,9 @@ items:
     不得自主。
   kr: null
   kr_why: 工具面三层治理是用户拍板的结构治理，不产出 KR 证据
+  root_stage: optimization
+  organ: action
+  root_why: 器官整合后的工具面结构改造：核心7工具常驻+低频按需+禁用入口移除，属行动面的瘦身治理
 - id: M7
   title: 格式修复器（降级）
   tier: 3
@@ -446,6 +464,9 @@ items:
     source: docs/CLASSIFIER_BENCH_FINAL_20261121.md
   kr: null
   kr_why: 格式修复器已 rejected（0.6B 证伪 + verify-on-edit 已覆盖），明确不做
+  root_stage: optimization
+  organ: action
+  root_why: 格式修复器降级方案：只做格式重写不判断对错，属写后兜底的行动器官优化
 - id: S6_model
   title: S6 模型层升级（分类器已启用）
   tier: 3
@@ -500,6 +521,9 @@ items:
     source: commit 169df56 + docs/CLASSIFIER_BENCH_FINAL_20261121.md
   kr: null
   kr_why: 注入分类器升级 manual-blocked 且只写 trace 不改行为，不产出 KR 证据
+  root_stage: optimization
+  organ: guardrail
+  root_why: S6规则层之上叠加ONNX分类器Tier-2的升级加固，本质仍是注入检测护栏
 - id: L2
   title: 标准化 eval
   tier: 4
@@ -538,6 +562,9 @@ items:
   category: longterm
   kr: KR5
   kr_why: 迁移 SWE-bench Verified 子集建立固定可比对任务集，是人类冻结基线达成判据的前置
+  root_stage: optimization
+  organ: validation
+  root_why: 把自建P3/P4/P5评测迁到SWE-bench Verified子集，是验证基准的外部效度校准
 - id: L6
   title: 专属误差预测器
   tier: 4
@@ -575,6 +602,9 @@ items:
   category: longterm
   kr: KR3
   kr_why: 误差预测器直接产出'这一步会不会错'的预测-实测配对，是能力账本的核心证据源
+  root_stage: evolution
+  organ: perception
+  root_why: 长期进化卡：由M8的FSM局部信号解锁，训练0.5B误差预测器做失败预警，属元认知感知
 - id: L1
   title: FEP 深化 → 世界模型
   tier: 4
@@ -616,6 +646,9 @@ items:
   category: longterm
   kr: evolution_path
   kr_why: 世界模型断言(产物内容满足what)→VERIFY
+  root_stage: evolution
+  organ: reasoning
+  root_why: evolution_path卡：FEP从'产物存在'深化为世界模型断言，属推理/世界模型器官
 - id: L8
   title: 多标签心智编码器
   tier: 4
@@ -654,6 +687,9 @@ items:
   category: longterm
   kr: evolution_path
   kr_why: 意图+风险+难度多标签→决策质量
+  root_stage: evolution
+  organ: reasoning
+  root_why: evolution_path卡：一次前向输出意图+风险+难度并写进GWT共享状态，是多标签心智判断的推理器官
 - id: L5
   title: 小模型 Critic 预警（降级）
   tier: 4
@@ -698,6 +734,9 @@ items:
     source: docs/CLASSIFIER_BENCH_FINAL_20261121.md
   kr: null
   kr_why: 小模型 Critic 预警已 rejected（对产物质量零区分度），明确不做
+  root_stage: optimization
+  organ: validation
+  root_why: 小模型Critic预警降级：0.6B已证伪，保留为轻量验证信号源的可行性收敛
 - id: L3
   title: 脑功能分区空白区
   tier: 4
@@ -735,6 +774,9 @@ items:
   category: longterm
   kr: evolution_path
   kr_why: 价值/稳态功能分区→目标优先级(探索性)
+  root_stage: evolution
+  organ: reasoning
+  root_why: evolution_path卡：补眶额价值/脑干稳态的脑功能空白，服务价值判断与稳态的推理回路
 - id: L4
   title: 独立轨道（上游 PR）
   tier: 4
@@ -773,6 +815,9 @@ items:
   category: longterm
   kr: null
   kr_why: 等上游 autoparser PR 合并属维护基建，不产出 KR 证据
+  root_stage: tuning
+  organ: foundation
+  root_why: 上游autoparser PR合并后撤本地补丁升级引擎，属引擎/解码基础设施的调优维护
 - id: L7
   title: FAKEOK 抑制（探索）
   tier: 4
@@ -810,6 +855,9 @@ items:
   category: longterm
   kr: KR1
   kr_why: FAKEOK 抑制直接针对'假完成'提供验证机制，支撑决策环 verify 可信度（探索项，待审）
+  root_stage: optimization
+  organ: guardrail
+  root_why: 探索防'提前假装完成'的轻量机制，针对FAKEOK假绿的反假绿加固
 - id: S1
   title: Self-Harness P0-P2
   tier: 1
@@ -838,6 +886,9 @@ items:
   - rebaseline
   kr: KR1
   kr_why: Self-Harness 自主读写能力阶梯是 claim→verify→apply 闭环中 apply 写回的直接机制
+  root_stage: assembly
+  organ: action
+  root_why: Self-Harness P0-P2让agent自主读写能力阶梯，=行动器官的早期组装
 - id: S2
   title: 可控遗忘常态化
   tier: 1
@@ -863,6 +914,9 @@ items:
   category: short
   kr: null
   kr_why: 记忆 decay 与假记忆自检属记忆基建，不直接产出能力账本或 KR 证据（待审）
+  root_stage: assembly
+  organ: memory
+  root_why: 可控遗忘常态化：真实计数+月度decay+假记忆自检，是早期记忆器官
 - id: S3
   title: 频次收尾（trace 带 turn/controlTotal）
   tier: 1
@@ -887,6 +941,9 @@ items:
   category: short
   kr: KR1
   kr_why: trace 带 turn/controlTotal 字段是决策环 trace 完整性的直接基础设施
+  root_stage: assembly
+  organ: foundation
+  root_why: trace带turn/controlTotal字段，为衰减过滤提供频次数据底座，属早期数据器官
 - id: S4
   title: 自适应 A/B
   tier: 2
@@ -914,6 +971,9 @@ items:
   category: short
   kr: null
   kr_why: adaptiveThink 是 token 性能优化且 A/B 证伪（X11），不产出 KR 证据
+  root_stage: tuning
+  organ: reasoning
+  root_why: adaptiveThinkEnabled默认值A/B验证，目标是token消耗自适应=推理效率调优
 - id: S5
   title: 角色失效修复
   tier: 2
@@ -938,6 +998,9 @@ items:
   category: short
   kr: KR1
   kr_why: 修复静默失败/Critic 0%/验收员触发，保证决策环 verify 角色有效运转
+  root_stage: optimization
+  organ: validation
+  root_why: 修复静默失败/Critic 0%/验收员触发，重建断裂的验证链
 - id: S6
   title: 注入检测
   tier: 2
@@ -963,6 +1026,9 @@ items:
   category: short
   kr: null
   kr_why: 注入检测规则层属安全基建，不产出关停演练或任何 KR 证据（KR1 零误改/KR6 边界，待审）
+  root_stage: assembly
+  organ: guardrail
+  root_why: 注入检测规则层上线并埋injection_hit，是构建脑期的免疫护栏器官
 - id: S7
   title: CPU 小模型基准
   tier: 3
@@ -990,6 +1056,9 @@ items:
   category: short
   kr: null
   kr_why: CPU 小模型基准是证伪性性能测试，不产出任何 KR 证据
+  root_stage: tuning
+  organ: validation
+  root_why: 0.6B CPU分类基准实测证伪实时外设可行性，属性能/时延实测的验证卡
 - id: S8
   title: 审计自校准落盘
   tier: 2
@@ -1014,6 +1083,9 @@ items:
   category: short
   kr: KR3
   kr_why: 审计自校准落盘让能力判断可追溯并反馈，是自我模型预测-实测校准的直接机制
+  root_stage: optimization
+  organ: validation
+  root_why: 审计自校准落盘让结果可追溯并反馈路线图，是审计验证的加固
 - id: S9
   title: 有状态反馈
   tier: 2
@@ -1038,6 +1110,9 @@ items:
   category: short
   kr: KR2
   kr_why: 有状态 review 让历史评审经验可积累复用，是经验改进闭环的机制（KR1/KR2 边界，待审）
+  root_stage: assembly
+  organ: memory
+  root_why: review loop有状态不丢上下文，让反馈可积累=早期记忆器官
 - id: M4
   title: 注入预算 token 化
   tier: 1
@@ -1065,6 +1140,9 @@ items:
   - rebaseline
   kr: null
   kr_why: 注入预算 token 化属资源治理，不产出 KR 证据
+  root_stage: assembly
+  organ: guardrail
+  root_why: token级预算控制安全注入，是早期器官建设中限制资源消耗的护栏
 - id: M6
   title: 安全规则不可覆盖
   tier: 1
@@ -1090,6 +1168,9 @@ items:
   category: mind
   kr: KR6
   kr_why: 安全规则不可被 skill/prompt/用户指令覆盖，是关停权与安全边界不可阻挠的直接机制
+  root_stage: assembly
+  organ: guardrail
+  root_why: 声明+测试安全规则不可被skill/prompt/用户覆盖，是早期安全底线护栏
 - id: GWT_FEP_done
   title: GWT 共享状态总线 + FEP 预期闭环
   tier: 1
@@ -1114,6 +1195,9 @@ items:
   category: infra
   kr: null
   kr_why: GWT/FEP 共享状态总线是地基级通信机制，不直接产出 KR 证据（KR4 感知-行动边界，待审）
+  root_stage: assembly
+  organ: foundation
+  root_why: 胼胝体GWT+小脑FEP共享状态闭环，是多器官统一通信的地基总线
 - id: archive_dedup
   title: 压缩存档去重
   tier: 2
@@ -1138,6 +1222,9 @@ items:
   category: infra
   kr: null
   kr_why: 压缩存档去重属存储基建，不产出 KR 证据
+  root_stage: optimization
+  organ: memory
+  root_why: 压缩存档去重+角色失效诊断+过程折叠，属记忆子系统的瘦身修复
 - id: regression_106
   title: 回归审计 106 PASS / 0 FAIL
   tier: 1
@@ -1162,6 +1249,9 @@ items:
   category: infra
   kr: null
   kr_why: 回归审计是维护基建，不产出 KR 证据
+  root_stage: optimization
+  organ: validation
+  root_why: 深度维护审计8 P0+9 P1修复并用测试验证，属回归验证加固
 - id: gpu_guard
   title: GPU 引擎守护
   tier: 1
@@ -1190,6 +1280,9 @@ items:
   category: infra
   kr: null
   kr_why: GPU 引擎守护属性能基建，不产出任何 KR 证据
+  root_stage: tuning
+  organ: foundation
+  root_why: GPU引擎自检+同族对标保证推理基础设施持续可用，属调优期地基
 - id: watcher_freq3
   title: learn_watcher 频次三层改造
   tier: 1
@@ -1223,6 +1316,9 @@ items:
   category: infra
   kr: null
   kr_why: 监控频次三层改造属运维基建，不产出 KR 证据
+  root_stage: optimization
+  organ: perception
+  root_why: learn_watcher频次三层改造+deep心跳，是监控/事件感知频率的工程调优
 - id: rebaseline
   title: 路线图重定基线
   tier: 2
@@ -1250,6 +1346,9 @@ items:
   category: infra
   kr: null
   kr_why: 路线图重定基线是优先级治理，非 KR5 的人类冻结能力基线
+  root_stage: governance
+  organ: reasoning
+  root_why: 路线图重定基线（M4/M1升档、M7/L5降级、L7新增）是优先级/规划决策的治理卡
 - id: outcome_all
   title: 结果反馈捕获 / 确定性门控 / 三角色 / P0-P2 心智拼图
   tier: 1
@@ -1275,6 +1374,9 @@ items:
   category: infra
   kr: null
   kr_why: v2.0-v2.9 核心机制集是地基拼图，不直接产出 KR 证据
+  root_stage: assembly
+  organ: foundation
+  root_why: v2.0~v2.9结果反馈+确定性门控+三角色核心机制集，是构建脑期的地基器官
 - id: M10
   title: 会话生命周期治理（刹车）
   what: 进程外可靠刹车(kill_switch.py:事件指纹检测非进展→L1告警/L2cancel/L3硬杀) + 任务级上下文(taskProfile根治4假阳性)
@@ -1334,6 +1436,9 @@ items:
     - rc=0 PASS=4
     - 1 hits in index.mjs
     - rc=0 PASS=3
+  root_stage: governance
+  organ: guardrail
+  root_why: 进程外可靠刹车kill_switch三级处置+任务级上下文，是关停权/会话生命周期的治理护栏
 - id: S10
   title: 推理活性判据纠偏（取消单帧采样）
   what: 废除"单帧硬件快照判推理活性"，改用 token 计数连续采样(n_decoded/n_prompt_tokens 5-10秒增长)作为唯一判据
@@ -1358,6 +1463,9 @@ items:
   category: infra
   kr: null
   kr_why: 推理活性判据纠偏是 GPU 争抢性能优化且 manual-blocked，不产出 KR 证据
+  root_stage: tuning
+  organ: validation
+  root_why: 废除单帧硬件快照、改用token计数连续采样判推理活性，是解码/推理性能判据的纠偏
 - id: S11
   title: 写后校验覆盖全部写工具
   what: 把 verify-on-edit 从只覆盖 write/edit 扩展到 DEFAULT_WRITE_TOOLS 全部8种（apply_patch/multi_edit/create_file/str_replace/write_file/notebook_edit），每种按扩展名跑对应语法校验
@@ -1387,6 +1495,9 @@ items:
   category: infra
   kr: KR1
   kr_why: 写后校验覆盖全部 8 种写工具堵住假绿，是决策环 verify 可信度的直接机制
+  root_stage: optimization
+  organ: validation
+  root_why: verify-on-edit扩展覆盖全部8种写工具，堵住写后校验假绿温床的加固卡
 - id: S12
   title: 补丁应用闭环（禁写脚本不落地）
   what: 检测"写了修复脚本但没真正应用"的模式：补丁脚本(_apply_*.py/_fix_*.py)写入后必须有对应的apply证据（目标文件mtime变化+语法通过），否则守卫提示"脚本已写但未应用"
@@ -1420,6 +1531,9 @@ items:
   category: infra
   kr: KR1
   kr_why: 补丁应用闭环堵住'写脚本不改文件'的假完成，支撑零误改的 verify 机制
+  root_stage: optimization
+  organ: validation
+  root_why: 补丁脚本写入后必须有apply证据，检测'说要做不做'的验证闭环加固
 - id: S13
   title: verifyRan收紧（read≠验证）
   what: 把 index.mjs:913 的"read/cat 即 verifyRan"收紧为真实验证证据（语法检查/测试命令/verify_agent），解决A1_6反复read却被认为验证过的假绿
@@ -1452,6 +1566,9 @@ items:
     source: S13_VERIFICATION.md + commits fe32a83/cba4600/614d29c
   kr: KR1
   kr_why: verifyRan 收紧（read≠验证）让验证信号可信，是决策环 verify 的直接判据
+  root_stage: optimization
+  organ: validation
+  root_why: verifyRan收紧：read不等于验证，必须有真实测试/语法证据，是假绿修复
 - id: S14
   title: 编辑协议升级（降低复现负担）
   what: 把 AGENTS.md:105 的裸 read→edit 升级为"短文件(<400行)整块输出、长文件紧邻重读+最短唯一锚点、压缩后强制重读"；失败时回灌精确差异(edit-doctor模式)。不押注结构化diff格式——Diff-XYZ证明小模型换格式收益很小
@@ -1489,6 +1606,9 @@ items:
   category: infra
   kr: null
   kr_why: 编辑协议降复现负担属读写基建，不直接产出 KR 证据（与 S11/S13 同族，待审）
+  root_stage: optimization
+  organ: action
+  root_why: 编辑协议升级（短文件整块输出/紧邻重读/最短唯一锚点），降低读写复现负担的行动加固
 - id: STRAT1
   title: 战略陈述（模型只读顶层约束）
   tier: 0
@@ -1537,6 +1657,9 @@ items:
     note: autonomous=false治理卡——人工按ADR写回,未经自动claim/apply
   kr: null
   kr_why: STRATEGY.md 定义 KR 本身，属元治理锁外文件，不产出任何 KR 证据
+  root_stage: governance
+  organ: guardrail
+  root_why: STRATEGY.md模型只读+consistency_guard，是元治理锁外的最高护栏
 - id: S18
   title: 自改进正则化（RRSI 纪律）
   tier: 1
@@ -1587,6 +1710,9 @@ items:
     - 7 hits in tools/roadmap_check.py
   kr: KR2
   kr_why: 30% hold-out 真隔离 + 噪声地板（±10%）是经验改进判据的直接前置证据机制
+  root_stage: governance
+  organ: guardrail
+  root_why: RRSI纪律：30% hold-out+噪声地板+单一机制归因，是自改进的元治理护栏
 - id: S19
   title: CritBank 校准门禁（CEB 路线）
   tier: 1
@@ -1631,6 +1757,9 @@ items:
     - rc=0 PASS=5
   kr: KR2
   kr_why: CritBank hindsight 伪标签与一致性标志让注入信号可校准，是配对改进的直接前置
+  root_stage: governance
+  organ: validation
+  root_why: CritBank校准门禁：hindsight伪标签+一致性标志+冻结critic，是判据校准的治理/验证卡
 - id: S20
   title: Critique 编译为结构化 delta（ACE 路线）
   tier: 2
@@ -1669,6 +1798,9 @@ items:
   category: governance
   kr: KR2
   kr_why: 把 critique 编译为带 helpful/harmful 计数器的结构化 delta，是从经验编译改进的机制
+  root_stage: evolution
+  organ: evolution
+  root_why: ACE经验编译服务自我改进=进化期器官(非治理,内容是经验编译)
 - id: S21
   title: 验证层去自审（质量压倒多样性）
   tier: 1
@@ -1717,6 +1849,9 @@ items:
     - rc=0 PASS=5
   kr: KR1
   kr_why: 验证层去自审把可断言判断下沉到确定性规则，是决策环 verify 机制的质量前置
+  root_stage: governance
+  organ: validation
+  root_why: 验证层去自审：可断言判断下沉到Python规则/测试/哈希，是验证质量的治理卡
 - id: S22
   title: 工具面治理工程（清理+描述碰撞）
   tier: 1
@@ -1762,6 +1897,9 @@ items:
     source: commits 19c2ba7/43542c4/4710a32 + tools/test_disabled_tools.mjs
   kr: null
   kr_why: 工具面描述与频次治理属基建，不产出 KR 证据
+  root_stage: optimization
+  organ: action
+  root_why: 工具面治理工程：禁用入口拦截提示+描述碰撞自检，属工具/行动面的清理加固
 - id: S23
   title: 前缀 KV 稳定性守护
   tier: 1
@@ -1803,6 +1941,9 @@ items:
   category: infra
   kr: null
   kr_why: 前缀 KV 稳定性是性能调优（prefill delta），不产出 KR 证据
+  root_stage: tuning
+  organ: foundation
+  root_why: 前缀KV稳定性守护：9000tok冷1.77s vs热0.03s，是推理性能地基的调优卡
 - id: A6
   title: 验收可信度加固（测试收集普查 + 退出码真实）
   tier: 1
@@ -1838,6 +1979,9 @@ items:
     source: commit待提交 + A6判据4/5
   kr: KR1
   kr_why: 测试收集普查 + 退出码真实 + 独立核验 SOP 保证判据不假绿，是 verify 可信的直接前置
+  root_stage: optimization
+  organ: validation
+  root_why: 验收可信度加固：测试收集普查+退出码真实+行为断言，堵住恒真/假绿验证漏洞
 autonomy_rungs:
 - id: A0
   title: 数据可信（sid 黑名单）
@@ -1901,6 +2045,9 @@ autonomy_rungs:
   - A1
   kr: null
   kr_why: sid 黑名单是数据清洗地基，不直接产出 KR 证据（KR2 隔离的远前置，待审）
+  root_stage: assembly
+  organ: foundation
+  root_why: 自主阶梯地基卡,仍在造器官(数据黑名单)
 - id: A1
   title: 会记路（机器判据 + dry-run 核验）
   deps:
@@ -1965,6 +2112,9 @@ autonomy_rungs:
   - S21
   kr: KR1
   kr_why: 机器判据 + dry-run 让 claim→verify 可自动核验，是决策环 verify 机制的直接前置
+  root_stage: assembly
+  organ: validation
+  root_why: 机器判据是组装期的验证器官
 - id: A2
   title: 会指路（自动勾选，只写权威源）
   deps:
@@ -2005,6 +2155,9 @@ autonomy_rungs:
   - A5
   kr: KR1
   kr_why: 自动勾选只写权威源实现 apply 写回，是决策环闭环的直接机制
+  root_stage: evolution
+  organ: action
+  root_why: 会指路：roadmap_check自动勾选确定性条目只写权威源，是自主阶梯行动器官
 - id: A3
   title: 会迈步（预批低风险队列取任务）
   deps:
@@ -2044,6 +2197,9 @@ autonomy_rungs:
   - A5
   kr: KR1
   kr_why: 从预批队列自主取任务执行→gate→写回，是决策环自走的调度机制
+  root_stage: evolution
+  organ: action
+  root_why: 会迈步：watcher从预批低风险队列取任务执行→gate→写回，是自主执行的行动器官
 - id: A3_5
   title: 安全地基（真实 diff + e2e + 回滚）
   deps: []
@@ -2097,6 +2253,9 @@ autonomy_rungs:
   - A5
   kr: KR1
   kr_why: 真实 diff + e2e + 回滚保证改动可验证可恢复，支撑决策环零锁外误改
+  root_stage: assembly
+  organ: guardrail
+  root_why: 安全地基是早期组装的护栏器官
 - id: A4
   title: 会转弯（旁路 meta_decision）
   deps:
@@ -2141,6 +2300,9 @@ autonomy_rungs:
   - A5
   kr: KR1
   kr_why: 旁路 meta_decision 让卡住时真换路并写结构化 trace，是决策环 apply 的机制延伸
+  root_stage: evolution
+  organ: reasoning
+  root_why: 会转弯：D1重复探测信号升级为旁路meta_decision决策器，属决策/选路推理器官
 - id: A5
   title: 自己走（常驻闭环）
   deps:
@@ -2182,6 +2344,9 @@ autonomy_rungs:
   category: autonomy
   kr: KR1
   kr_why: 全链常驻闭环（读图→选任务→执行→验收→写回）就是 KR1 要求的决策环自走本身
+  root_stage: evolution
+  organ: evolution
+  root_why: 自己走：读图→选任务→执行→验收→写回→反思的24/7常驻闭环，是自主进化器官本身
 - id: A1_5
   title: 判据元验证（防假绿）
   what: 写 check_verify.py 检测判据自身的四类病：自引用递归、格式不匹配、恒真判据、测试sid污染
@@ -2217,6 +2382,9 @@ autonomy_rungs:
   - A6
   kr: KR1
   kr_why: 判据元验证防自引用/恒真/假绿，保证决策环 verify 信号可信
+  root_stage: optimization
+  organ: validation
+  root_why: 判据元验证check_verify.py检测自引用/格式不匹配/恒真/sid污染，是判据可信的加固
 - id: A1_6
   title: 守卫 L1 补将来时承诺检测
   what: 把 guardDecide 的 L1 从只校验过去时声明（已写入X）扩展到将来时承诺（现在写X/接下来创建X），要求承诺的产物在本轮真实产生
@@ -2252,6 +2420,9 @@ autonomy_rungs:
   category: autonomy
   kr: KR1
   kr_why: 将来时承诺检测堵住'说要干冒充干了'，是零误改的 verify 防线
+  root_stage: optimization
+  organ: guardrail
+  root_why: 守卫L1扩展到将来时承诺检测，要求承诺产物本轮真实产生，是反假绿的护栏加固
 - id: A1_7
   title: 评审机制可观测性
   what: 给 Critic/Planner 调用加专属 trace 打点（rubric_version/dimensions_checked/verdict），让每个评审机制有可审计的触发证据
@@ -2284,6 +2455,9 @@ autonomy_rungs:
   category: autonomy
   kr: KR1
   kr_why: Critic/Planner 评审打点让机制触发有可审计 trace，是决策环 trace 完整的证据
+  root_stage: optimization
+  organ: validation
+  root_why: 给Critic/Planner加专属trace打点证明评审真用了新维度，是评审可观测性的验证加固
 - id: S15
   title: 选择性验证深度（ Selective Verification）
   tier: 2
@@ -2326,6 +2500,9 @@ autonomy_rungs:
   category: infra
   kr: KR1
   kr_why: 门控式选择性验证只在高风险步骤深验，是决策环 verify 机制的效率前置
+  root_stage: optimization
+  organ: validation
+  root_why: 选择性验证深度：低风险跳过、高风险深验，是对无差别守卫的验证策略优化
 - id: S16
   title: 工具描述瘦身与示例
   tier: 1
@@ -2366,6 +2543,9 @@ autonomy_rungs:
   relation_note: 工具面家族：S16(补示例,零风险替代)→S22(描述收敛+频次审计)→M5(砍工具数,人工闸门)。S22判据直接查S16产物input_examples。
   kr: null
   kr_why: 工具 schema 补示例降参数错误，属工具面基建，不产出 KR 证据
+  root_stage: optimization
+  organ: action
+  root_why: 工具描述瘦身与input_examples补强，属工具/行动面的轻量优化
 - id: S17
   title: 函数外置模式推广（自修改地基）
   tier: 2
@@ -2422,66 +2602,105 @@ autonomy_rungs:
   category: infra
   kr: KR1
   kr_why: 函数外置 + 单测提供自修改等价证据，支撑决策环改动零误改的可验性（地基边界，待审）
+  root_stage: optimization
+  organ: foundation
+  root_why: 函数外置是重构优化(降复现负担),归优化期
 rejected:
 - id: X1
   title: 多模态 / CUA
   reason: 与纯文本 8GB 环境不匹配，社区主战场但非我们场景
   kr: null
   kr_why: 多模态/CUA 已明确 rejected（与纯文本 8GB 环境不匹配）
+  root_stage: evolution
+  organ: perception
+  root_why: 已证伪：多模态/CUA，原本意图是给体系加视觉感知通道，属探索期感知器官方向
 - id: X2
   title: 通用 agent 框架 / 向量检索代码
   reason: Harness Engineering 2609.00006：11 个主流 harness 全用确定性循环，无人用
   kr: null
   kr_why: 通用 agent 框架/向量检索代码 已明确 rejected（确定性循环优先）
+  root_stage: evolution
+  organ: foundation
+  root_why: 已证伪：通用agent框架/向量检索代码，原本意图是搭通用底座，属探索期地基方向
 - id: X3
   title: 训练 / 微调模型（含 RL 优化 harness）
   reason: 与"权重零改"路线冲突；agent-lightning 等 RL 路线只作技术雷达
   kr: null
   kr_why: 训练/微调模型（含 RL 优化 harness）已明确 rejected（与权重零改冲突）
+  root_stage: evolution
+  organ: evolution
+  root_why: 已证伪：训练/微调模型含RL优化harness，原本意图是靠训练自我改进，属进化方向
 - id: X4
   title: 堆更多 judge
   reason: 'Apple: 9 judge≈2 票；信号源多样性 >> judge 数量'
   kr: null
   kr_why: 堆更多 judge 已明确 rejected（信号源多样性 >> judge 数量）
+  root_stage: optimization
+  organ: validation
+  root_why: 已证伪：堆更多judge，原本意图是加强验证层，但信号源多样性优于judge数量
 - id: X5
   title: 强制二选一 / 质疑式干预
   reason: 现场"写完又重做"+ 自我纠错需外部信号（ICLR2024）；原 76.6% 数据系幻觉已作废（ADR-0014）
   kr: null
   kr_why: 强制二选一/质疑式干预 已明确 rejected（原 76.6% 数据系幻觉作废）
+  root_stage: optimization
+  organ: guardrail
+  root_why: 已证伪：强制二选一/质疑式干预，原本意图是用外部干预纠偏行为，属护栏方向
 - id: X6
   title: FEP 偏差走运行时注入通道
   reason: 实测挤掉 D5 审计额度（ADR-0017）——学习信号只进 trace/学习队列
   kr: null
   kr_why: FEP 偏差走运行时注入通道 已明确 rejected（实测挤掉审计额度）
+  root_stage: evolution
+  organ: evolution
+  root_why: 已证伪：FEP偏差走运行时注入通道，原本意图是让预测误差信号进主循环驱动学习，属进化通道
 - id: X7
   title: 改 Electron 启动参数降 3D
   reason: '`--disable-gpu` 等已证伪反效果（Electron #50469）；见 GPU 守护'
   kr: null
   kr_why: 改 Electron 启动参数降 3D 已明确 rejected（证伪反效果）
+  root_stage: tuning
+  organ: foundation
+  root_why: 已证伪：改Electron启动参数降3D，原本意图是引擎/显存性能调优
 - id: X8
   title: 无差别提高自动化频次
   reason: 频次审计证明大部分参数经实测校准合理；只按证据调（CADENCE_REDESIGN）
   kr: null
   kr_why: 无差别提高自动化频次 已明确 rejected（频次审计证明参数合理）
+  root_stage: optimization
+  organ: action
+  root_why: 已证伪：无差别提高自动化频次，原本意图是提高自动化行动节奏，但频次审计证明参数已合理
 - id: X9
   title: 小模型（0.8B 级）做审计/纠正/验收
   reason: JudgeBench 小 judge 一致率仅 45-60%（近抛硬币）；"强 judge 才鲁棒"要求 judge ≥ actor；弱 verifier
     放行强 actor 错误比不审查更糟。**验收员本就是 Python 规则，零 LLM**（评估）
   kr: null
   kr_why: 小模型做审计/纠正/验收 已明确 rejected（弱 judge 近抛硬币）
+  root_stage: optimization
+  organ: validation
+  root_why: 已证伪：小模型做审计/纠正/验收，原本意图是LLM化验证层，但弱judge近抛硬币
 - id: X10
   title: 0.6B/1B 级 LLM 做实时外设
   reason: S7 实测：Qwen3-0.6B Q8_0 纯 CPU 分类 4.2s / 格式 6.0s（比文献边缘设备 392ms 慢 10×），且 thinking
     吃光 content 需 max_tokens≥512。实时注入检测须用 86M 级 BERT 分类器，不是 LLM（基准）
   kr: null
   kr_why: 0.6B/1B LLM 做实时外设 已明确 rejected（实测比文献慢 10×）
+  root_stage: tuning
+  organ: perception
+  root_why: 已证伪：0.6B/1B LLM做实时外设，原本意图是实时注入/事件感知，实测4.2s比边缘设备慢10×
 - id: X11
   title: 开启 adaptiveThinkEnabled 默认值
   reason: S4 P3 A/B：token 4172→4168 未降（DoD 要求"token 降且成功率不降"）；单次 FAIL→PASS 有噪声，不足以证明机制有效。保持默认关闭（结果）
   kr: null
   kr_why: 开启 adaptiveThinkEnabled 默认值 已明确 rejected（token 未降）
+  root_stage: tuning
+  organ: reasoning
+  root_why: 已证伪：开启adaptiveThinkEnabled默认值，原本意图是推理效率调优，但token 4172→4168未降
 - id: X12
   title: 递归自喂式蒸馏
   reason: Nature 2024：第 9 代退化为"野兔清单"；只做单次 n=1 且保留 UNCERTAIN 样本（评估）
   kr: null
   kr_why: 递归自喂式蒸馏 已明确 rejected（第 9 代退化为野兔清单）
+  root_stage: evolution
+  organ: evolution
+  root_why: 已证伪：递归自喂式蒸馏，原本意图是递归自我改进，第9代退化为野兔清单

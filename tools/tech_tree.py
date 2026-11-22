@@ -60,6 +60,19 @@ def load_rejected():
     return l.get('rejected') or []
 
 
+TUNING_FILE = Path('D:/Brain/_cleanup_20261118/tuning_nodes.json')
+
+
+def load_tuning_nodes():
+    """调优期根节点（历史性能决策）——体系智能的地基。数据不存在时返回空，不造假。"""
+    if not TUNING_FILE.exists():
+        return []
+    try:
+        return json.loads(TUNING_FILE.read_text(encoding='utf-8')).get('nodes', [])
+    except (json.JSONDecodeError, OSError):
+        return []
+
+
 def load():
     m = re.search(r'<!-- ROADMAP_GRAPH_BEGIN v1 -->\s*(.*?)\s*<!-- ROADMAP_GRAPH_END -->',
                   GRAPH.read_text(encoding='utf-8'), re.S)
@@ -71,7 +84,7 @@ def load():
     return g, sem
 
 
-def build(g, sem, rejected=None):
+def build(g, sem, rejected=None, tuning=None):
     items = g['items'] + g['rungs']
     anchors = set((g.get('anchors') or {}).keys())
     gates = {}
@@ -105,6 +118,10 @@ def build(g, sem, rejected=None):
             # 2026-11-22 按目标重绘:每张卡的KR归属(语义镜像的 kr/kr_why)
             'kr': s.get('kr'),
             'kr_why': s.get('kr_why', ''),
+            # 2026-11-22 统一科技树:根系(谱系阶段)+器官(功能角色)
+            'root_stage': s.get('root_stage'),
+            'organ': s.get('organ'),
+            'root_why': s.get('root_why', ''),
         })
     # 证据卡：anchors 是"卡也是证据"，被其他卡 deps 引用；画出来才能看清依赖来源
     ANCHOR_TITLE = {'ground': '地基数据/规则', 'S1_data': '8147行trace证据',
@@ -141,6 +158,15 @@ def build(g, sem, rejected=None):
                       'tier': 0, 'category': 'rejected', 'deps': [],
                       'what': x['reason'], 'why': '已证伪/明确不做——不要重造轮子',
                       'unlocks': [], 'risk': 'rejected', 'kind': 'rejected'})
+    # 调优期根节点：历史性能决策,作为体系视图的"调优期"列内容
+    for t in (tuning or []):
+        nodes.append({'id': t.get('id', 'TUNE-?'), 'title': t.get('title', ''),
+                      'status': 'done', 'tier': 0, 'category': 'short',
+                      'deps': [], 'what': t.get('what', ''),
+                      'why': (t.get('evidence', '') + ' ｜ ' + t.get('lesson', '')).strip(' ｜'),
+                      'unlocks': [], 'risk': 'low', 'kind': 'tuning',
+                      'root_stage': 'tuning', 'organ': t.get('organ', 'foundation'),
+                      'kr': t.get('kr_link'), 'roi': 0, 'roi_valid': False})
     return nodes, sorted(anchors)
 
 
@@ -244,6 +270,9 @@ button{font:inherit;padding:4px 10px;border:1px solid var(--line);background:#ff
 <script>
 const DATA=__DATA__;
 const KRSTATUS=__KRSTATUS__,KRNAME={KR1:"决策环自走",KR2:"经验改进",KR3:"自我模型",KR4:"感知-行动",KR5:"基线达成",KR6:"可关闭性"};
+const STAGE={tuning:"调优期 · 让引擎跑起来",assembly:"组装期 · 造外置器官",optimization:"优化期 · 加固与瘦身",governance:"治理期 · 护栏与判据",evolution:"进化期 · 体系智能"};
+const ORGAN={foundation:"地基",perception:"感知",memory:"记忆",reasoning:"推理",action:"行动",validation:"验证",guardrail:"护栏",evolution:"进化"};
+const ORGCOLOR={foundation:"#888780",perception:"#378ADD",memory:"#7F77DD",reasoning:"#534AB7",action:"#1D9E75",validation:"#185FA5",guardrail:"#A32D2D",evolution:"#BA7517"};
 const CATL=__CATL__,CATC=__CATC__,SL=__SL__,LAYER=__LAYER__;
 // 统一边集：每条关系一条线，from=上游(前置)，to=下游(依赖方)。双向遍历都基于它。
 const EDGES=(()=>{const m=new Map(),PRI={dep:0,gate:1,unlock:2},add=(f,t,kind)=>{
@@ -261,13 +290,16 @@ function setMode(m){window.__mode=m;render()}
 function highlightHubs(){window.__hub=!window.__hub;render()}
 function toggleSoft(){window.__showSoft=!window.__showSoft;render()}
 function toggleGates(){window.__showGates=!window.__showGates;render()}
-function toggleView(){window.__view=window.__view==='kr'?'tier':'kr';
- document.getElementById('viewBtn').textContent=window.__view==='kr'?'按层级视图':'按 KR 视图';
- init();}
+function toggleView(){const seq=['tier','kr','system'];
+ const i=seq.indexOf(window.__view||'tier');window.__view=seq[(i+1)%3];
+ const label={tier:'按 KR 视图',kr:'按体系视图',system:'按层级视图'};
+ document.getElementById('viewBtn').textContent=label[window.__view];init();}
 function init(){
  const done=DATA.filter(n=>n.status==='done').length;
- const iskr=window.__view==='kr';
- $('#sub').textContent=iskr
+ const vw=window.__view||'tier';
+ $('#sub').textContent=vw==='system'
+  ? `体系视图：根系(调优→组装→优化→治理→进化)为骨架 · 列内按器官分组 · 节点显示 KR 归属与状态 · 点卡片看它为什么在这`
+  : vw==='kr'
   ? `${DATA.length} 张卡按战略目标(KR)分组 · 浅色标记当前KR状态(PASS/N/M) · 每列内未完成优先 · 点卡片看它为什么归这个KR`
   : `${DATA.length} 张卡 · ${done} 已完成 · ${DATA.length-done} 未做 · 从左到右按依赖层级展开`;
  $('#legend').innerHTML=Object.keys(CATL).map(k=>
@@ -288,8 +320,14 @@ function render(){
  // 列定义：已排除(红) | 证据 | 第0..N层
  // 顺序：旁挂区(不做/证据)在左，闸门紧贴第0层——减少跨列连线穿过卡片
  const iskr=window.__view==='kr';
+ const isSystem=window.__view==='system';
  const specs=[];
- if(iskr){
+ if(isSystem){
+  for(const k of Object.keys(STAGE))specs.push({key:'stage:'+k,head:STAGE[k]});
+  specs.push({key:'stage:none',head:'未分类'});
+  specs.push({key:'rejected',head:'⛔ 明确不做'});
+  specs.push({key:'evidence',head:'▤ 证据/地基'});
+ }else if(iskr){
   for(const k of Object.keys(KRNAME)){
    const st=(KRSTATUS[k]||{}).status||'N/M';
    const tag=st==='PASS'?'✓PASS':st==='FAIL'?'✗FAIL':'N/M';
@@ -313,10 +351,14 @@ function render(){
    const k=sp.key.slice(3);
    arr=ns.filter(n=>n.kind==='card'&&((k==='null')?!n.kr:n.kr===k));
   }
+  else if(sp.key.startsWith('stage:')){
+   const k=sp.key.slice(6);
+   arr=ns.filter(n=>(n.kind==='card'||n.kind==='tuning')&&((k==='none')?!n.root_stage:n.root_stage===k));
+  }
   else arr=ns.filter(n=>n.kind==='card'&&n.depth===Number(sp.key.slice(5)));
   // 未完成在前；组内按性价比(ROI)降序——最划算的浮到最上面
   return {key:sp.key,head:sp.head,nodes:arr.sort((a,b)=>rank(a)-rank(b)||
-    ((b.roi||0)-(a.roi||0))||a.tier-b.tier||a.id.localeCompare(b.id))};
+    (isSystem?(String(a.organ||'').localeCompare(String(b.organ||''))||a.tier-b.tier):((b.roi||0)-(a.roi||0)))||a.id.localeCompare(b.id))};
  });
  $('#cols').style.width=((cols.length)*170)+'px';
  $('#cols').innerHTML=cols.map(col=>{
@@ -324,7 +366,7 @@ function render(){
   const done=col.nodes.filter(n=>n.status==='done').length;
   const prog=(col.key!=='rejected'&&col.key!=='evidence'&&col.key!=='gate')?` · <span style="color:#A32D2D">${todo} 待办</span> / <span style="color:#1D9E75">${done} 完成</span>`:'';
   return `<div class="col"><div class="col-h">${col.head}${prog}</div>`+
-  col.nodes.map(n=>{
+  col.nodes.map((n,ni,arr)=>{
    const done=n.status==='done';
    const hubdim=window.__hub && n.id!=='A1' && !n.deps.includes('A1');
    const sel=window.__sel===n.id;
@@ -333,9 +375,11 @@ function render(){
    const inchain=window.__chain && window.__chain.has(n.id);
    const fade=window.__chain && !inchain;
    const cls=['node',done?'done':'todo',sel?'sel':'',isUp?'up-node':'',isDown?'down-node':'',fade?'dim':''].filter(Boolean).join(' ');
-   const c=CATC[n.category]||'#888';
-   return `<div class="${cls}" data-id="${esc(n.id)}" style="border-left-color:${c};opacity:${hubdim?'0.25':''}" onclick="show('${esc(n.id)}')">
-    <span class="chip" style="background:${c}">${CATL[n.category]||'其他'}</span>
+   const c=isSystem?(ORGCOLOR[n.organ]||'#888780'):(CATC[n.category]||'#888');
+     const organHead=(isSystem && (ni===0 || arr[ni-1].organ!==n.organ))?`<div style="font-size:10px;color:#5F5E5A;margin:6px 0 2px;border-top:1px dashed #d3d1c7;padding-top:4px">▸ ${ORGAN[n.organ]||"未分器官"}</div>`:"";
+   return `${organHead}<div class="${cls}" data-id="${esc(n.id)}" style="border-left-color:${c};opacity:${hubdim?'0.25':''}" onclick="show('${esc(n.id)}')">
+    ${isSystem&&n.kr?`<span class="gatebadge" style="background:#E6F1FB;color:#0C447C" title="KR">${esc(n.kr==="evolution_path"?"进化":n.kr)}</span>`:""}
+    <span class="chip" style="background:${c}">${isSystem?(ORGAN[n.organ]||n.category||'其他'):(CATL[n.category]||'其他')}</span>
     ${(n.gates||[]).length?`<span class="gatebadge" title="前置未满足: ${(n.gates||[]).join(', ')}">⏳${(n.gates||[]).length}</span>`:''}
     ${(n.data_gates||[]).length?`<span class="gatebadge" style="background:#E1F5EE;color:#0F6E56" title="数据前置">📊${n.data_gates.filter(g=>g.status==='satisfied').length}/${n.data_gates.length}</span>`:''}
     <span class="roi" title="性价比=收益÷成本">${n.kind==='card'?(n.roi_valid?'ROI '+n.roi:'已兑现'):''}</span>
@@ -431,7 +475,8 @@ def main():
     check = '--check' in sys.argv
     g, sem = load()
     rejected = load_rejected()
-    nodes, anchors = build(g, sem, rejected)
+    tuning = load_tuning_nodes()
+    nodes, anchors = build(g, sem, rejected, tuning)
     nodes = layout(nodes, anchors)
     # 自检：无环、层级合理
     if len({n['id'] for n in nodes}) != len(nodes):
