@@ -82,3 +82,40 @@
 - arXiv:2609.24972 / github.com/google-research/rrsi（自改进正则化）
 - tsdetect.org（test smell）、macmyths.com "zero failures and zero tests look the same"
 - 本地：docs/VERIFY_DESIGN_STANDARD、AUTOCARD_POSTMORTEM、lineage/MUTATION_AUDIT、CONSISTENCY_GUARD_DESIGN
+
+---
+
+## 六、方案修正：从"每10分钟轮询"到"变更驱动 + 按需体检 + 每日兜底"（2026-11-22 10:05）
+
+**用户质疑**："长时间不推卡就一直扫硬盘，有没有像杀毒软件那样按需深度体检？"——质疑正确。
+
+**实测**：foundation_guard 单次 2.4 秒，每10分钟=每天5.8分钟纯空转。
+**社区调研修正**：2.4秒/天的兜底成本可忽略，不值得为省它牺牲兜底（Windows Defender 也是
+realtime+nightly+weekly full）。所以不是"零定时"，是**高频轮询 → 分层**。
+
+### 最终三层（对标杀毒软件）
+| 层 | 触发 | 实现 | 空转 |
+|---|---|---|---|
+| **实时防护** | 每次推卡（run_all 第58项）| foundation_guard 全量跑 | 无（本来就要跑门禁）|
+| **变更驱动巡检** | 指纹变化（代码/测试/权威源/运行版内容 hash）| LearnWatchDaemon 巩固层里比对指纹，变了才巡检 | **零**（无变化直接 skip）|
+| **每日兜底** | 指纹没变但距上次≥24h | 同上，年龄判断；成功静默，失败告警 | 每天最多1次×2.4秒 |
+| **按需深检** | 用户主动 | `tools/foundation_check.py`（doctor 风格：6条结果+失败定位+修复命令+--json）| 零（不跑就不耗）|
+
+### 关键实现
+- `tools/foundation_fingerprint.py`：内容 hash（**不用 mtime**——touch/改回原内容不该触发），
+  覆盖 git HEAD + git status + 6个关键文件 + 所有 test_*.mjs/py
+- 指纹基线 `D:/Brain/workspace/bench/_foundation_fingerprint.json` 含 `updated` 时间戳供每日兜底判断
+- FAIL 时**不提交新基线**（下轮继续告警），HEALTHY 才提交
+- foundation_guard 加 `--json`（供 agent 解析）+ 失败项附 `↳ 修复:` 具体命令
+- foundation_check.py 是用户入口（区别于 daemon 内部用的 fingerprint/guard）
+
+### 验证
+- 稳态：连续两次体检，第二次显示"无变化"，daemon changed_rc=1（skip）→ **零空转确认**
+- 变更检出：临时改 test_census.py → 指纹变 → 恢复 → 指纹回基线（内容 hash 正确）
+- 每日兜底：年龄计算验证（81秒 < 86400 → 不触发）
+- 门禁 58/58
+
+### 社区出处（本轮补充）
+fingerprint/cache（Bazel/GitHub Actions cache）、path filters（changed-files detection）、
+pre-commit hooks（husky/lefthook）、杀毒软件 realtime/on-access vs on-demand full scan 分层、
+Windows Defender daily quick + weekly full 兜底模型、error budget 用于质量 drift 告警。

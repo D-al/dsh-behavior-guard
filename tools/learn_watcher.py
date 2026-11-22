@@ -258,12 +258,35 @@ def consolidate(state):
         pass
     run_script('mind_state')
 
-    # 地基守护：FAIL 时写明确告警（不静默），趋势由 _foundation_drift.jsonl 记录
-    gok, gout = run_script('foundation_guard')
-    if not gok:
-        bad_lines = [l for l in gout.splitlines() if '[GUARD] FAIL' in l or 'VERDICT' in l]
-        append_feedback('', '地基漂移告警：' + ' | '.join(bad_lines[:4]), 'foundation_guard')
-        log('[FOUNDATION-DRIFT] ' + ' | '.join(bad_lines[:3]))
+    # 地基守护：变更驱动 + 每日兜底（不空转扫盘）
+    #   - 指纹变了（推卡/改代码）→ 立即巡检
+    #   - 指纹没变 → 距上次巡检≥24h 才跑一次兜底（防环境漂移/外部变化）
+    FPCMD = [PY, 'D:/Brain/publish/dsh-behavior-guard/tools/foundation_fingerprint.py']
+    fp_changed = subprocess.run(FPCMD + ['--changed'], capture_output=True, timeout=60).returncode == 0
+    need_daily = False
+    if not fp_changed:
+        try:
+            import json as _j
+            from datetime import datetime as _dt
+            _st = _j.loads(open('D:/Brain/workspace/bench/_foundation_fingerprint.json',
+                                encoding='utf-8').read())
+            _age = (_dt.now() - _dt.fromisoformat(_st['updated'])).total_seconds()
+            need_daily = _age >= 86400
+        except Exception:
+            need_daily = True  # 无基线 → 跑一次建基线
+    if not fp_changed and not need_daily:
+        log('[FOUNDATION] unchanged & <24h, skip')
+    else:
+        gok, gout = run_script('foundation_guard')
+        if gok:
+            # 巡检通过才提交新基线指纹（FAIL 时保留旧指纹，下轮继续告警）
+            subprocess.run(FPCMD + ['--commit'], capture_output=True, timeout=60)
+            if need_daily:
+                log('[FOUNDATION] daily fallback OK')
+        else:
+            bad_lines = [l for l in gout.splitlines() if '[GUARD] FAIL' in l or '↳ 修复' in l or 'VERDICT' in l]
+            append_feedback('', '地基漂移告警：' + ' | '.join(bad_lines[:6]), 'foundation_guard')
+            log('[FOUNDATION-DRIFT] ' + ' | '.join(bad_lines[:4]))
 
 
 def digest_deep_only(state):

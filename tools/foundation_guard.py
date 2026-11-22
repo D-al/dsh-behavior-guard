@@ -32,12 +32,29 @@ DRIFT_LOG = BENCH / '_foundation_drift.jsonl'
 RUNTIME_INDEX = Path('D:/Brain/dsh-data/profiles/desktop/node_modules/dsh-agent-harness/index.mjs')
 
 results = []
+QUIET = False  # --json 时静音逐条打印
+
+
+FIX_HINTS = {
+    'INV-1': '跑 tools/test_census.py 看 missing 清单，把漏掉的测试加进 run_all.sh',
+    'INV-2': '跑 tools/audit_verify.py --strict，把纯弱判据的卡升级为 test_pass',
+    'INV-3': '把权威源 index.mjs 同步到 node_modules/dsh-agent-harness/（CRLF/LF 统一后 sha 一致）',
+    'INV-4': '跑 tools/tech_tree.py 刷新；跑 audit_implicit_deps.py 补 unlocks 双向回填',
+    'INV-5': '清掉 check(...,true,true)/||true；确认每个 test_*.mjs 的 results 都设了 exitCode',
+    'INV-6': '检查 test_census.py 的 missing 判定和 test_new_guards.mjs 的 process.exitCode 是否被回退',
+}
 
 
 def record(inv, name, ok, detail=''):
-    results.append({'inv': inv, 'name': name, 'ok': bool(ok), 'detail': str(detail)[:200]})
-    print(f"[GUARD] {inv} {'PASS' if ok else 'FAIL'}  {name}"
-          + (f'  — {str(detail)[:120]}' if detail else ''))
+    results.append({'inv': inv, 'name': name, 'ok': bool(ok), 'detail': str(detail)[:200],
+                    'fix': FIX_HINTS.get(inv, '') if not ok else ''})
+    if not QUIET:
+        line = f"[GUARD] {inv} {'PASS' if ok else 'FAIL'}  {name}"
+        if detail:
+            line += f'  — {str(detail)[:120]}'
+        if not ok:
+            line += '\n         ↳ 修复: ' + FIX_HINTS.get(inv, '见 design doc')
+        print(line)
 
 
 def run_script(name, args, cwd=None):
@@ -131,11 +148,15 @@ def write_drift(all_ok):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--sentinel', action='store_true', help='自检模式：注入已知坏改动验证门禁变红')
+    ap.add_argument('--json', action='store_true', help='输出JSON(供agent解析)')
     args = ap.parse_args()
+    global QUIET
+    QUIET = args.json
 
-    print('=========================================')
-    print(' Foundation Guard — 地基不变量巡检')
-    print('=========================================')
+    if not args.json:
+        print('=========================================')
+        print(' Foundation Guard — 地基不变量巡检')
+        print('=========================================')
     inv1_test_coverage()
     inv2_no_weak_criteria()
     inv3_sha_sync()
@@ -145,8 +166,12 @@ def main():
 
     all_ok = all(r['ok'] for r in results)
     passed = sum(1 for r in results if r['ok'])
-    print(f'[GUARD] RESULT: {passed}/{len(results)} invariants PASS')
-    print(f'[GUARD] VERDICT: {"HEALTHY" if all_ok else "DRIFT DETECTED"}')
+    if args.json:
+        print(json.dumps({'all_ok': all_ok, 'pass': passed, 'total': len(results), 'results': results},
+                         ensure_ascii=False))
+    else:
+        print(f'[GUARD] RESULT: {passed}/{len(results)} invariants PASS')
+        print(f'[GUARD] VERDICT: {"HEALTHY" if all_ok else "DRIFT DETECTED"}')
     write_drift(all_ok)
     return 0 if all_ok else 1
 
