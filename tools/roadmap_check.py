@@ -709,6 +709,20 @@ def cmd_claim(data, item_id):
     return 0
 
 
+def _admission_gate(item):
+    """自动 apply 准入门控（复用 autonomy_gate.assess 的规则）。
+
+    返回 (allowed, reasons)。工具不可用时 fail-closed（拒绝自动 apply）。
+    """
+    try:
+        sys.path.insert(0, str(ROOT / 'tools'))
+        from autonomy_gate import assess, load_strong_set
+        r = assess(item, load_strong_set())
+        return r['allowed'], r['reasons']
+    except Exception as e:
+        return False, [f'准入门控不可用，fail-closed: {e}']
+
+
 def cmd_apply(data):
     """只把 doing 且 verify 全 PASS 且非 manual 的项写回 done。"""
     changed = []
@@ -717,6 +731,13 @@ def cmd_apply(data):
             if item.get('status') != 'doing':
                 continue
             results, auto_ok = evaluate(data, item)
+            # 2026-11-22 准入门控硬闸：auto_ok 只判"无manual"，弱判据也会PASS。
+            # 自动 apply 前必须过 autonomy_gate（强判据>=1 + min>=2 + 非元治理等）。
+            # 失败时只报告不写 done——防止批量假绿。
+            gate_allowed, gate_reasons = _admission_gate(item)
+            if not gate_allowed:
+                print(f'APPLY_DENIED: {item["id"]} 准入门控未过: {gate_reasons[:2]}')
+                continue
             if auto_ok and all(ok for ok, _ in results):
                 item['status'] = 'done'
                 item['done_at'] = datetime.now(timezone.utc).isoformat()

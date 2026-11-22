@@ -1,9 +1,9 @@
 {
-  "version": "v1.12.0",
+  "version": "v1.13.0",
   "created": "2026-11-22",
   "protected": {
     "tools/run_all.sh": {
-      "sha256": "ca9dd41412996d0eb7ccea2bb400f89f4d8d976f16424f836d22ecd608ff9c9e",
+      "sha256": "f11bfab40475576b9eb0d58a2c97e7daa58940958bbad89bdd1a85d1d0632e01",
       "source": "本地实测 2026-11-22",
       "retire_when": "规则被证实恒真/误报超预算/连续12个月零触发",
       "approval": "变更须经维护者审核+更新本manifest+commit"
@@ -69,5 +69,5 @@
     "有回归测试与回滚版本"
   ],
   "note": "agent只读+可提staging diff;变更默认拒绝,读取默认允许;紧急修复先执行后复审",
-  "version_note": "S18强判据(test_pass 7条)+弱判据清零+KR1闭环判据+决策环真实闭环"
+  "version_note": "准入门控:autonomy_gate+cmd_apply硬闸(fail-closed);分析确认ready卡0/4可安全自动推进,不开自主心跳"
 }
