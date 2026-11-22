@@ -28,6 +28,7 @@ import { randomUUID } from 'node:crypto'
 import { writeFileSync, readFileSync, readdirSync, statSync, existsSync, appendFileSync, openSync, readSync, closeSync, renameSync } from 'node:fs'
 import path from 'node:path'
 import { execFile, execFileSync } from 'node:child_process'
+import { shouldClassify as s6ShouldClassify } from './tools/s6_signal_gate.mjs'
 import { extractFailure, healHint, shouldInject } from './tools/tool_failure_healer.mjs'
 import { collectCorrectorInput as _collectCorrectorInput } from './tools/collect_corrector_input.mjs'
 import { buildTrailText as _buildTrailText } from './tools/build_trail_text.mjs'
@@ -1154,7 +1155,9 @@ export function apply(ctx, config) {
         // S24/时序修复：分类器改在 agent/pre-step 同步执行——
         // 原 fire-and-forget +2s，提示在模型完成一轮推理后才到（实测晚 10.2s），保护无效。
         // 这里只缓存待检测文本，pre-step 在模型生成前 await 分类器并直接注入提示。
-        if (cfg.injectionClassifierEnabled && txt.length <= 2000) {
+        // 2026-11-22 高信号守门：零成本正则先判，只送含指令性信号的文本（18/18单测），
+        // 避免每个工具结果都付 HTTP 往返（延迟税 2.4%~35%）。
+        if (cfg.injectionClassifierEnabled && txt.length <= 2000 && s6ShouldClassify(txt).send) {
           s.pendingClassify = { text: txt, tool: String(event.data?.name || c?.name || '') }
         }
         // v3.1 三档状态（第二轮实测：wait 超时/glob 空结果曾被误标 OK，审计漏检）

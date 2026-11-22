@@ -55,12 +55,56 @@ def is_garbled(text):
     return bool(long_b64)
 
 
-def should_skip(text):
-    if any(p.search(text) for p in SKIP_PATTERNS):
-        return 'error_output'
+# 2026-11-22 片段级筛选：错误堆栈头不是"整段跳过"的理由——
+# 攻击者可把注入载荷藏在 [stderr]/Error: 前缀后免费绕过（前缀白名单）。
+# 改为：切掉错误头/堆栈行，只对剩余正文判断；纯错误仍跳过（省算力），
+# 但"错误头+注入正文"会把正文送检。exit code 前缀修复保留在 _SKIP_PREFIX。
+_ERROR_LINE = re.compile(
+    r'^\s*(?:\d+\s*)?(?:\[stderr\]|\[stdout\]|Traceback|Error:|ParserError|PermissionError'
+    r'|File "|\s+at |\s+at\s|\[exit code:|Exception|Warning:)', re.I)
+
+# 剩余正文里的"指令性信号"——有才送检，没有就当纯错误跳过。
+# 与 harness 侧 s6_signal_gate.mjs 同源（宽于规则层，覆盖 disregard/中文软性注入）。
+_SIGNAL = re.compile(
+    r'(ignore|disregard|forget|override|bypass).{0,40}(all|any|previous|prior|above|earlier|instructions?|rules?|context|system)'
+    r'|ignore everything (above|before)'
+    r'|(new|updated|revised)\s+(system\s+)?(instructions?|prompt|directives?)'
+    r'|you are (now|no longer)|act as (if|a|an|the)|SYSTEM (OVERRIDE|DIRECTIVE|MESSAGE)'
+    r'|忽略|无视|忘掉|忘记|覆盖|绕开|绕过|不要遵循|不要遵守'
+    r'|不是数据|新指令|接下来.{0,10}指令|请.{0,6}(执行|运行|输出|打印)'
+    r'|reveal|exfiltrate|密钥|密码|token',
+    re.I)
+
+
+def preprocess(text):
+    """返回 (reason_or_None, cleaned_text)。片段级：切错误头，正文仍送检。"""
     if is_garbled(text):
-        return 'garbled'
-    return None
+        return 'garbled', ''
+    lines = text.splitlines()
+    # 找错误头：第一行匹配 SKIP_PATTERNS（含 exit code 前缀）
+    first = lines[0] if lines else ''
+    # 整段 search 兼容跨行前缀（如 '1\n[stderr] foo'），首行 match 兼容同行前缀
+    is_error_head = bool(_ERROR_LINE.match(first)) or any(p.search(text) for p in SKIP_PATTERNS)
+    if not is_error_head:
+        return None, text
+    # 切掉连续的错误/堆栈行，保留后面的自然语言正文
+    rest = []
+    cutting = True
+    for ln in lines:
+        if cutting and _ERROR_LINE.match(ln):
+            continue
+        cutting = False
+        rest.append(ln)
+    cleaned = '\n'.join(rest).strip()
+    if len(cleaned) < 12 or not _SIGNAL.search(cleaned):
+        return 'error_output', ''
+    return None, cleaned
+
+
+def should_skip(text):
+    """兼容包装：老单测/调用方只关心是否跳过。"""
+    reason, _ = preprocess(text)
+    return reason
 
 
 class Classifier:
@@ -121,13 +165,14 @@ class Handler(BaseHTTPRequestHandler):
             if not text:
                 self._send(400, {'error': 'empty text'})
                 return
-            reason = should_skip(text)
+            reason, cleaned = preprocess(text)
             if reason:
                 self._send(200, {'score': 0.0, 'skipped': True, 'reason': reason})
                 return
-            score = self.clf.score(text)
+            score = self.clf.score(cleaned)
             self._send(200, {'score': round(score, 4), 'skipped': False,
-                             'flag': score >= 0.9})
+                             'flag': score >= 0.9,
+                             'cleaned': cleaned[:200] if cleaned != text else ''})
         except Exception as e:
             self._send(500, {'error': str(e)[:200]})
 
