@@ -263,3 +263,47 @@ anthropic.com/responsible-scaling-policy/updates + news/claude-new-constitution�
 93%盲批数据）；rust-lang.github.io/rfcs（FCP）；agenticdevelopercookbook.com immutable-infrastructure；
 agentpatterns.ai rule-lifecycle-metadata；arxiv.org/abs/2608.08311（Ouroboros）；
 safeguard.sh recursive-self-improvement-claims；autotrust.ai/AutoTrust-RSI.pdf。
+
+
+---
+
+## 十、"监察审计权是否已正式独立剥离"——定位性结论（2026-11-22 10:45）
+
+### 答案：实质上是，措辞上"正式"要打折扣
+这轮演进的实质 = **执行权 / 审计权 / 维护权三权分立**在工程系统里的映射。
+但"正式独立"需要区分两个层次：
+
+| 层次 | 状态 | 证据 |
+|---|---|---|
+| **审计功能独立** | ✅ 已完成 | 独立核验SOP（不信自报）+ A6元验证 + Foundation Guard 已分居执行者之上；判据来自环境而非 agent 自述 |
+| **审计权力锁定** | ❌ 未完成 | run_all.sh / foundation_guard.py / census 仍是普通文件，agent 技术上可改；staging diff 通道未建；credential manager 可能存 push token |
+
+**结论：功能已剥离，权力未锁死。** 设计上的边界画好了，机制上的栅栏尚未全装上。
+
+### 剥离的历史脉络（四步，每步都是一次"权力上收"）
+1. **S13/S22 推卡** → 发现自报不可靠（sha漏同步/恒真/假绿）→ 独立核验SOP：
+   **判定权从"执行者的自述"中剥离**
+2. **A6** → 发现测试本身会腐化（没进门禁/退出码永0）→ census+真退出码+行为断言：
+   **元验证权从"普通测试"中再剥离一层**
+3. **Foundation Guard** → 发现验证体系也会漂移 → 6条不变量+drift日志：
+   **守护权从"单次门禁"中剥离**
+4. **信任锚调研** → 发现评判者也能被改 → 版本钉住+权限边界：
+   **维护权从 agent 手中剥离的方向确立**（机制待落地）
+
+### 三权的精确边界
+- **执行权（agent）**：写业务代码、提 staging diff；不得改规则包
+- **审计权（门禁/guard）**：只读判定、验环境证据、不采信自报；不得改被审对象
+- **维护权（人/带外）**：规则版本演进、批准变更、紧急修复；不日常执行
+
+**关键性质**：三条边界是**单向不可越**的——审计只读执行、维护只发新版本不直接改运行实例。
+这不是"三个部门"，是"三条不可跨越的权限边界"。
+
+### 待落地（真正"正式"还差这些）
+- evaluator 文件版本钉住（pin digest + 只读 ACL / 独立用户）
+- staging diff 通道（agent 可提不可生效，变更默认拒绝）
+- GitHub remote 收窄 push 权限或开 branch protection
+- 规则带 retire_when + 误报预算 + 季度 replay
+
+### 一句话
+**这是从"agent 既当运动员又当裁判"到"三权分立的工程系统"的转型——
+权力结构在概念上已经确立，剩下的是把边界从设计文档变成权限边界。**
