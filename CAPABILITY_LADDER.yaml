@@ -1576,7 +1576,7 @@ items:
   - M5
   risk: low
   autonomous: true
-  status: ready
+  status: done
   what: harness能落地的工程:对已禁用入口(job_*/web_fetch)做调用拦截提示+描述触发条件审计+描述碰撞自检+保留低频关键能力;不做dsh
     runtime工具面裁剪(做不到)
   why: 全量37会话1959调用证明低频≠可砍;可行性校正:dsh无工具面裁剪hook,harness的writeTools只是内部计数——移除入口做不到,改为拦截提示
@@ -1607,6 +1607,12 @@ items:
   verify_type: structural
   category: infra
   relation_note: 工具面家族：与S16(M5轻量替代)和M5(人工闸门版)同一问题分层；本卡=描述/频次治理(不砍数量)。
+  data_gates:
+  - id: P-S22-INTERCEPT
+    desc: 禁用工具拦截:harness层DISABLED_TOOLS(job_output/job_kill/web_fetch)+替代建议+session级去重;真行为测试test_disabled_tools.mjs
+      5/5;self_harness_gate 20/20;全门禁44/44;权威源运行版sha一致
+    status: satisfied
+    source: commits 19c2ba7/43542c4/4710a32 + tools/test_disabled_tools.mjs
 - id: S23
   title: 前缀 KV 稳定性守护
   tier: 1

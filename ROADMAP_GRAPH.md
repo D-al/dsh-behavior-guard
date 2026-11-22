@@ -1283,7 +1283,7 @@ items:
   - M5
   risk: low
   autonomous: true
-  status: ready
+  status: done
   verify:
   - kind: file_exists
     path: tools/tool_surface_audit.py
