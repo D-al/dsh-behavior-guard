@@ -1951,7 +1951,7 @@ items:
   - S14
   risk: low
   autonomous: true
-  status: backlog
+  status: in_progress
   what: 在 harness 的 session/event 监听里加 tool/result 分支：捕获 isError 工具失败，pre-step 自动注入修正提示
     （FS_EDIT_NOT_FOUND→重读目标区+回灌字节差异；FS_NOT_FOUND→列相近文件suggest；SUBPROCESS_SPAWN_NOT_FOUND→提示可用命令）。
     与S14(提示层协议)分工：S14教模型怎么做，S24在执行层兜底——模型违反协议时不再无提示硬重试。
