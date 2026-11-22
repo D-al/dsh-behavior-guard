@@ -659,6 +659,8 @@ items:
   what: 放弃"按频次砍到N个"——全量37会话1959调用证明低频≠可砍(job_*/web_fetch已禁用仍暴露11次;read_image/ask_user低频但关键)。改为三层:①核心工具常驻(pwsh/read/todo/glob/edit/write/grep/present,占95.7%) ②低频关键能力按需加载(skill卡/描述触发) ③已禁用入口(job_*/web_fetch)从工具面移除
   why: Anthropic"10+ tools就该考虑"(72→90%)、弱模型拐点12-15、Prosodica 10工具78%→100工具<40%——但全量证据表明真正问题不是"工具多"而是"已禁用入口污染选择空间+描述碰撞"。低频可砍是错误推断:场景少见但不可缺的工具砍了会断链
   benefit_to_self: 移除已禁用入口减少违规调用(11次/1959);核心工具描述写成触发条件减少选择噪声;低频关键能力不丢
+  unlocks:
+  - S22
   caveats:
   - ⛔ 用户拍板项，agent 不得自主决定治理原则
   - 不看单纯频次——低频但关键(read_image/ask_user_question)必须保留
@@ -1291,9 +1293,8 @@ items:
     path: config/AGENTS.md
     regex: input_examples
     min: 1
-  - kind: file_grep
-    path: index.mjs
-    regex: disabledTools|已禁用.*工具|blockedTool
+  - kind: test_pass
+    cmd: D:/Python/python.exe -B tools/test_disabled_tools.mjs
     min: 1
   what: 按M5三层原则做harness能落地的工程改造:①对已禁用入口(job_output/job_kill/web_fetch)在harness层拦截提示(调用时告知"已禁用,改用X")——注意dsh runtime工具面harness改不了,不做无效尝试 ②核心7工具description触发条件已在config/AGENTS.md,补审计脚本验证覆盖 ③tool_surface_audit.py加描述碰撞自检+频次报告(已部分完成) ④保留低频关键能力不砍
   why: 全量证据37会话1959调用/17工具:前7占95.7%,低频≠可砍。可行性校正:dsh无工具面裁剪hook,harness的writeTools只是内部计数集合——"移除入口"做不到,改为"调用时拦截提示"。Anthropic Skills"技能失败多是检索失败伪装成指令失败"——描述触发条件是杠杆。

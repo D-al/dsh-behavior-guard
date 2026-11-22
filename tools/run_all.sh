@@ -20,20 +20,16 @@ if ! command -v node >/dev/null 2>&1; then
     done
 fi
 
+# PYTHON 解析：优先 D:/Python/python.exe（装有 PyYAML 等依赖）
+# 不能先信 python3——WindowsApps shim 或别的 Python 可能没有 yaml，导致测试假 FAIL
 PYTHON="${PYTHON:-}"
-if ! command -v python3 >/dev/null 2>&1 || ! python3 --version >/dev/null 2>&1; then
-    if [ -f "/d/Python/python.exe" ]; then
-        PYTHON="/d/Python/python.exe"
-    elif command -v python3 >/dev/null 2>&1; then
-        PYTHON="python3"
-    elif command -v python >/dev/null 2>&1; then
-        PYTHON="python"
-    else
-        PYTHON=""
-    fi
-elif command -v python3 >/dev/null 2>&1; then
+if [ -n "$PYTHON" ]; then
+    :  # 外部显式指定，尊重
+elif [ -f "/d/Python/python.exe" ]; then
+    PYTHON="/d/Python/python.exe"
+elif command -v python3 >/dev/null 2>&1 && python3 -c "import yaml" >/dev/null 2>&1; then
     PYTHON="python3"
-elif command -v python >/dev/null 2>&1; then
+elif command -v python >/dev/null 2>&1 && python -c "import yaml" >/dev/null 2>&1; then
     PYTHON="python"
 else
     PYTHON=""
@@ -69,14 +65,8 @@ else
     echo "[skip] node not found in PATH"
 fi
 
-# Check 2: Python config_check.py — try python3 first, fallback to python
-if command -v python3 >/dev/null 2>&1; then
-    PYTHON="python3"
-elif command -v python >/dev/null 2>&1; then
-    PYTHON="python"
-else
-    PYTHON=""
-fi
+# Check 2: Python tests (PYTHON resolved once at top — do NOT reassign here;
+#          a prior duplicate block silently overrode it to a yaml-less python3)
 if command -v "$PYTHON" >/dev/null 2>&1; then
     run_test "config-check" "$PYTHON \"$ROOT/tools/config_check.py\""
     # 引用-决策对应守卫（2026-11-20 用户架构级要求）：决策引用幻觉证据即 FAIL
@@ -88,6 +78,15 @@ if command -v "$PYTHON" >/dev/null 2>&1; then
     run_test "tool-frequency" "$PYTHON \"$ROOT/tools/tool_audit.py\" --json"
     run_test "gate-evidence" "$PYTHON \"$ROOT/tools/audit_gate_evidence.py\" --strict"
     run_test "self-harness-gate" "$PYTHON \"$ROOT/tools/self_harness_gate.py\" --self-test"
+    # A6 判据2：全部 test_*.py 纳入门禁（此前仅1/12，改坏也全绿）
+    for t in "$ROOT"/tools/test_*.py; do
+        fname=$(basename "$t")
+        case "$fname" in
+            test_strategy_alignment.py) continue ;;  # 上面已显式跑
+        esac
+        run_test "py-$fname" "$PYTHON \"$t\""
+    done
+    run_test "test-census" "$PYTHON \"$ROOT/tools/test_census.py\""
 else
     echo "[skip] python not found"
 fi
