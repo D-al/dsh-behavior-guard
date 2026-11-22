@@ -29,6 +29,7 @@ import { writeFileSync, readFileSync, readdirSync, statSync, existsSync, appendF
 import path from 'node:path'
 import { execFile, execFileSync } from 'node:child_process'
 import { shouldClassify as s6ShouldClassify } from './tools/s6_signal_gate.mjs'
+import { detectPatternLock as s6PatternLock } from './tools/s6_pattern_guard.mjs'
 import { extractFailure, healHint, shouldInject } from './tools/tool_failure_healer.mjs'
 import { collectCorrectorInput as _collectCorrectorInput } from './tools/collect_corrector_input.mjs'
 import { buildTrailText as _buildTrailText } from './tools/build_trail_text.mjs'
@@ -126,6 +127,7 @@ const DEFAULTS = {
   injectionClassifierPort: 9899,
   injectionClassifierThreshold: 0.9,
   injectionClassifierSteerEnabled: true,  // S24/决策线：命中后注入中性安全提示（与规则层同源，ADR-0014 措辞）
+  patternLockTraceEnabled: true,           // M3重定位：反模式匹配观察线（只写trace不steer，零LLM）
   // 共享每轮注入预算（audit 注入 + D4 steer 合计，防叠加刷屏）
   sharedMaxPerTurn: 3,
   // D4 present-gate（verify-gated completion）：present 声明交付时，本轮若无独立验收痕迹
@@ -875,7 +877,10 @@ export function apply(ctx, config) {
         verifyEvidence: 0,
         // S22: per-session disabled-tool warning dedup (not module-global)
         disabledWarned: new Set(),
-        bdi: { goal: '', belief: '', preference: '', updatedAt: 0 } }
+        bdi: { goal: '', belief: '', preference: '', updatedAt: 0 },
+        // M3反模式匹配：工具名滑窗 + 上次目标重述步数（零LLM观察线）
+        toolWindow: [], goalRestatedStep: 0, lastPatternLockStep: -99,
+        lastIntentDriftStep: -99 }  // M3: 漂移时机（StepShield: 时机随机=没用）
       states.set(id, s)
     }
     // S3：让 trace 自动带当前 state 的 turn/controlTotal（频次审计可区分跨轮/跨会话）
@@ -948,6 +953,7 @@ export function apply(ctx, config) {
           s.latest = t.slice(0, 1000)
           if (cfg.frameEnabled) s.frame.goal = t.slice(0, 300)
           if (cfg.bdiEnabled) { s.bdi.goal = t.slice(0, 250); s.bdi.updatedAt = Date.now() }
+          s.goalRestatedStep = s.step  // M3反模式匹配：目标重述时机锚点
           // 阶段边界：显式切卡指令 → 下一 turn 注入分隔符（确定性，不靠模型自省）
           if (cfg.phaseBoundaryEnabled && s.turn > 1 &&  // 首轮(turn=1)没有"上一张卡"，不注入
               /(下一张卡|继续推进|下一个任务|继续做|新任务)/.test(t) &&
@@ -1074,6 +1080,9 @@ export function apply(ctx, config) {
           }
         }
         s.trail.push({ kind: 'call', name: String(event.data?.name ?? ''), args: fullArgs.slice(0, 200), fullArgs, step: event.data?.step, ts: Date.now() })
+        // M3反模式匹配：滑窗记录工具名（只存名字，零成本）
+        s.toolWindow.push(String(event.data?.name ?? ''))
+        if (s.toolWindow.length > 24) s.toolWindow.shift()
         // ② FEP：写操作前登记"预期"——前向模型断言这一步应产出什么（纯规则，零 LLM）
         if (cfg.fepEnabled) {
           const cname = String(event.data?.name ?? '')
@@ -1948,6 +1957,19 @@ function formatExecutorResult(pkg, exec) {
         } catch { /* 分类器不可用：静默跳过 */ }
       }
 
+      // ── M3 反模式匹配观察线（零LLM，只写trace）──
+      // 论文依据：Goal Drift state complexity消融证明状态复杂度不是漂移主因，
+      // pattern-matching 才是。检测"工具分布固化 + 距目标重述够远"，与 D1(同工具失败)不重叠。
+      if (cfg.patternLockTraceEnabled && s.toolWindow?.length >= 12) {
+        const pl = s6PatternLock(s.toolWindow, s.step - (s.goalRestatedStep || 0))
+        if (pl.hit && s.step - (s.lastPatternLockStep ?? -99) >= 6) {
+          s.lastPatternLockStep = s.step  // 冷却，防每步刷屏
+          trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'pattern_lock',
+            step: s.step, dominant: pl.dominant, repetition: pl.repetition,
+            stepsSinceGoal: pl.stepsSinceGoal, window: pl.n })
+        }
+      }
+
       s.step += 1
 
       // ── S8 审计自校准结算（每步执行，不再等下一次审计门控）──
@@ -2175,7 +2197,13 @@ function formatExecutorResult(pkg, exec) {
               const overlap = ik.size ? [...ik].filter((w) => lk.has(w)).length / ik.size : 1
               const drifted = overlap < 0.25
               trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'intent_drift',
-                step: s.step, overlap: Number(overlap.toFixed(3)), drifted, initialChars: String(s.initial).length, latestChars: String(s.latest).length })
+                step: s.step, overlap: Number(overlap.toFixed(3)), drifted,
+                initialChars: String(s.initial).length, latestChars: String(s.latest).length,
+                // M3 时机字段（StepShield arXiv:2601.22136：高召回但时机随机=没用）
+                stepsSinceLastDrift: s.step - (s.lastIntentDriftStep ?? -99),
+                stepsSinceGoal: s.step - (s.goalRestatedStep || 0),
+                controlCount: s.controlCount || 0 })
+              if (drifted) s.lastIntentDriftStep = s.step
               if (drifted) parts.push('⑤ 意图漂移：最新用户指令已偏离初始任务，以【最新指令】为准：' + String(s.latest).slice(0, 90))
             } catch { /* ignore */ }
           }

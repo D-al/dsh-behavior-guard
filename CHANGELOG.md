@@ -1,3 +1,13 @@
+## [2.27.12] - 2026-11-22（M3反模式匹配落地 + 漂移时机字段）
+
+- 用户"改成反模式匹配检测器，漂移trace加时机字段"：tools/s6_pattern_guard.mjs
+  (工具分布固化>=0.6 + 距目标重述>=6步时机门槛，零LLM纯数组统计)，接入pre-step，
+  trace kind=pattern_lock，只写trace不steer，含6步冷却。
+- 与D1不重叠(D1要同工具失败>=2次)；intent_drift trace新增stepsSinceLastDrift/
+  stepsSinceGoal/controlCount(StepShield:时机才有用)。
+- 测试: pattern_guard 6/6 + wire 4/4 + drift_trace 5/5；门禁77/77。
+- 运行版index.mjs+新模块sha一致(门禁盲区教训)。见 docs/M3_PATTERN_GUARD_LANDING_20261122.md。
+
 ## [2.27.11] - 2026-11-22（S6 守门/片段筛选 + M3 原型验证）
 
 - S6 坏处修正（用户："除了服务定时重启和steer默认关之外其他按你的意思做"）：

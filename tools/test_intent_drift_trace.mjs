@@ -53,6 +53,10 @@ const drifts = lines.map(l => { try { return JSON.parse(l) } catch { return null
 check('⑤ 漂移检测有 intent_drift trace 埋点', drifts.length > 0)
 check('trace 带 overlap/drifted 字段', drifts.length > 0 &&
   typeof drifts[0].overlap === 'number' && typeof drifts[0].drifted === 'boolean')
+check('trace 带时机字段(StepShield: 时机才有用)', drifts.length > 0 &&
+  typeof drifts[0].stepsSinceLastDrift === 'number' &&
+  typeof drifts[0].stepsSinceGoal === 'number' &&
+  typeof drifts[0].controlCount === 'number')
 const anyDrifted = drifts.some(r => r.drifted)
 check('换话题后能检出 drifted=true', anyDrifted)
 
