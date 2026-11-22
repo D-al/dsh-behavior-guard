@@ -212,3 +212,51 @@ Goodhart 定律 / Campbell 定律。Amdahl 1967。
 3. **路径会漂移**：profile 从 `~/.dsh` 迁到 `D:/Brain/dsh-data` 后，写死路径的脚本静默失效
 4. **正则要跟机制同步**：机制改名（`freq`→`CONSOLIDATE_EVERY`）后，查旧名字的判据会假 FAIL
 5. **门槛要贴真实分布**：min=10 但真实只有 8，判据永远红；降门槛前先确认是"证据流失"还是"触发变少"
+
+---
+
+## 十一、判据执行层体检 + 自动学习的边界（2026-11-22 11:50）
+
+### 用户问
+"刚刚那种事故的检查是否应该给审计配上？审计是否可以自动学习？（有无依据？）"
+
+### 调研结论：应该配静态检查；自动学习只在前沿条件下成立
+- **元审计（audit of auditor）有成熟标准**：ISA 220 / ISQC 1 要求审计质量复核；
+  软件侧 mutation testing、test smell detection 成熟。
+- **静态可检的 4 类"零误报、收益最高"**：解释器与文件类型不匹配、
+  路径指向不存在文件、正则命中 0（旧机制名）、门槛脱离真实分布——**正是我们那六类事故**。
+- **自动学习（specification mining / Daikon 不变量发现）**：研究成熟但落地成本高；
+  LLM 从 diff 生成 lint rule **可靠性不足**（会生成 tautology）。
+  真正在用的自改进审计系统极少，且有 **Goodhart 风险**：学到的规则会把错误固化或膨胀。
+- **理论依据**：Audit of auditor（监督者也要被监督）+ Goodhart/Campbell（规则会被游戏化，
+  所以规则生成不能全自动）+ Ashby（审计器多样性要跟得上被审系统）+ 冻结/漂移张力。
+
+### 实现：`tools/audit_criteria_health.py`（静态体检，零 LLM）
+检测 4 类执行层腐化：
+1. `.mjs/.js` 被 Python 执行 → 报"应用 node"
+2. 判据 path/script 指向不存在文件（json_field 走 BENCH，与 roadmap_check 一致）
+3. file_grep 正则命中 0 / 含旧机制名
+4. trace_count min 脱离真实分布
+
+**关键设计：只体检查 done/doing 卡**——backlog/ready 的判据引用未来文件是预期的。
+（第一版没过滤，误报 15 处；加状态过滤后收敛到 1 处，再修 json_field 路径误报后 0 处。）
+
+**自证**：注入已知腐化（A6 的 node 改回 Python 跑 .mjs）→ 体检器抓到 S22 → 恢复 → 0 隐患。
+这是"审计的审计"该有的样子：检查器自己也要被验证。
+
+### 接入
+- INV-8 进 foundation_guard（现 8 条不变量）
+- run_all 加 `criteria-health` 双保险 → 门禁 59→60
+- 规则包 re-pin v1.3.0（用户授权的版本升级）
+
+### 对"自动学习"的决策
+**不引入自动学习**，理由：
+1. 静态规则已覆盖本次全部 6 类事故（不需要学习）
+2. LLM 生成规则可靠性不足 + Goodhart 风险（规则膨胀/固化错误）
+3. 单人项目：事故驱动手工加规则（每次 postmortem → 一条检测规则）成本收益最优
+4. 若未来真的要学：只学"候选规则"由人批准（同版本钉住的权力边界逻辑）
+
+### 出处（本轮）
+ISA 220 / ISQC 1（审计质量复核）；mutation testing / test smell detection；
+Daikon 不变量发现；specification mining；SRE "every incident becomes a test"；
+Goodhart/Campbell；Ashby 必要多样性。
