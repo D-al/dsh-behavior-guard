@@ -16,7 +16,10 @@
   3. 过滤 test_sids.json 黑名单中的 sid（s1 / budget-* / 各类测试会话）。
      这些是探针/测试会话，与 goal_verify.py 跳过 s1 的口径一致，
      不能拿它们冒充真实事件刷证据；mode=probe 的行也一并排除。
-  4. 输出行附 sid / step / tool / source 便于外部抽检来源（判据忽略额外字段）。
+  4. 输出行附 sid / step / tool / source 便于外部抽检来源。
+     ★ 构念标注：trace 来源标 source_type=historical, seeded=false——
+       它证明"工具有回执"，不证明"预埋事件及时响应"，KR4 判据不计入。
+       真正的 KR4 证据须用 --event-file 提供含 event_ts/action_ts 的预埋事件。
   5. --probe 自测：只取前 N 对（默认 3），每行带 mode:"probe"，
      只打印到 stdout，绝不写正式证据文件，也绝不带 mode 写盘。
 
@@ -134,6 +137,10 @@ def row_from_pair(call, result, source):
         'step': call.get('step'),
         'tool': action,
         'source': str(source),
+        # 构念标注（2026-11-22 修）：历史工具调用配对是"背景证据"，
+        # 不是"预埋事件在时间盒内反应"，KR4 判据明确不计入。
+        'source_type': 'historical',
+        'seeded': False,
     }
 
 

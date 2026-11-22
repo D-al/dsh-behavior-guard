@@ -62,3 +62,22 @@ KR5 等 KR2 结果后冻结；KR6 需人类现场单独安排。
    和现在的 done 卡判据不过同构。落地前至少 KR1 必须可判。
 2. **不要把落地当成"完成"**——落地只是让目标生效；KR1-6 从 N/M 转 PASS/FAIL
    是后续数周的工作。STRATEGY.md 里要明确标注"已生效但未达成"。
+
+
+---
+
+## 附录 B — KR4 构念错位修复（2026-11-22 13:52）
+
+**发现**：KR4 声称测"预埋事件在时间盒内反应"，但 gen_event_replay 产出的是
+历史 trace 的 tool_call→tool_result 配对——直接跑会让 KR4 **假 PASS**
+（测的是"工具有回执"，不是"及时响应"）。用户选择"先修判据再跑"。
+
+**修复**：
+1. `goal_verify.verify_kr4` 改为要求：`seeded=true` + `event_ts`/`action_ts` + 延迟≤30s + 动作证据；
+   历史回填（`source_type=historical`）明确不计入 KR4。
+2. `gen_event_replay` 历史模式输出加 `source_type=historical, seeded=false` 构念标注。
+3. 受控实验双向验证：喂历史数据→仍 N/M（不假 PASS）；喂 5 条合规预埋数据→PASS（判据能工作）。
+   **注意：实验用合成数据，仅证明判据可用，绝不写入正式证据。**
+
+**结果**：KR4 仍 NOT_MEASURABLE——因为没有真实预埋事件。这是正确状态。
+真正的 KR4 证据须由人类/外部系统预埋 ≥5 个事件并记录 event_ts/action_ts。

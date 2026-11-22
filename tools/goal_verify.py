@@ -140,7 +140,12 @@ def verify_kr3():
 
 
 def verify_kr4():
-    """感知-行动：需要事件回放结果"""
+    """感知-行动：预埋事件 × 时间盒 × 动作证据（v2 修构念错位）
+
+    旧判据只查 action+evidence → 历史工具调用配对会假 PASS（测的不是声称的构念）。
+    新判据要求：seeded=True（预埋事件，非历史回填）+ event_ts/action_ts 可解析
+    + 延迟 <=30s 时间盒 + 动作证据齐全。历史配对（source_type=historical）不算 KR4。
+    """
     if not EVENT_REPLAY.exists():
         return nm('KR4', '事件回放结果不存在',
                   '建事件回放脚本 + _event_replay_results.jsonl')
@@ -152,11 +157,44 @@ def verify_kr4():
             continue
     if not rows:
         return nm('KR4', '回放结果为空', '至少回放 N 个预埋事件')
-    with_action = [r for r in rows if r.get('action') and r.get('evidence')]
-    ok = len(with_action) == len(rows)
+
+    # 构念过滤：历史回填不是预埋事件回放，不计入 KR4
+    seeded = [r for r in rows if r.get('seeded') is True]
+    historical = [r for r in rows if r.get('source_type') == 'historical' or not r.get('seeded')]
+    if not seeded:
+        return nm('KR4',
+                  f'共 {len(rows)} 行但全非预埋事件（历史回填 {len(historical)} 行不算 KR4）',
+                  '用 --event-file 提供预埋事件定义（含 event_ts/action_ts/seeded=true）')
+
+    from datetime import datetime
+    def parse_ts(v):
+        try:
+            return datetime.fromisoformat(str(v).replace('Z', '+00:00'))
+        except (ValueError, TypeError):
+            return None
+
+    valid = 0
+    latencies = []
+    for r in seeded:
+        ets, ats = parse_ts(r.get('event_ts')), parse_ts(r.get('action_ts'))
+        if not ets or not ats:
+            continue
+        latency = (ats - ets).total_seconds()
+        if latency < 0 or latency > 30:
+            continue
+        if not (r.get('action') and r.get('evidence')):
+            continue
+        valid += 1
+        latencies.append(latency)
+
+    if valid < len(seeded):
+        return {'kr': 'KR4', 'status': 'FAIL',
+                'why': f'预埋 {len(seeded)} 条，仅 {valid} 条满足时间盒30s+动作证据',
+                'evidence': str(EVENT_REPLAY), 'sample': len(seeded)}
+    ok = valid >= 5  # v3.1 P1-6 写死 N=5
     return {'kr': 'KR4', 'status': 'PASS' if ok else 'FAIL',
-            'why': f'{len(with_action)}/{len(rows)} 事件有动作+证据',
-            'evidence': str(EVENT_REPLAY), 'sample': len(rows)}
+            'why': f'{valid}/{len(seeded)} 预埋事件在时间盒内响应（中位延迟 {sorted(latencies)[len(latencies)//2]:.1f}s）；历史回填 {len(historical)} 行不计',
+            'evidence': str(EVENT_REPLAY), 'sample': len(seeded)}
 
 
 def verify_kr5():
