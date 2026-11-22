@@ -210,3 +210,56 @@ arXiv:2406.01794（Verifier's Dilemma）、2602.17633（Weak-Strong Verification
 2602.11865（DeepMind Intelligent AI Delegation）；Google Testing Blog（flaky test）；
 Meta TestGen-LLM 2024 / PTS；Stryker 2024 mutation benchmark；
 Shi/Bell/Marinov ISSTA 2019（变异分漂移）；METR o3 reward hacking 记录；NIST SP 800-204D。
+
+
+---
+
+## 九、冻结评判者的维护悖论：谁维护那几个文件？（2026-11-22 10:40 调研）
+
+### 总论：措辞要改——不是"冻结"，是"版本钉住"
+冻结 = 禁止原地修改，**不等于永不改变**。改变 = 产生新版本 + 显式批准 + 旧版可回滚。
+若指"内容永不变"，那确实是伪方案——规则必然过时且会被利用。正确含义是 immutable infrastructure：
+改 = 构建新版本并替换（pin digest、禁 latest），回滚 = 重部署旧版。
+
+### 本地实测：负担是不是真的？
+- run_all.sh 历史 14 次提交**全集中 11/20-11/22 三天**（建设期爆发，非稳态维护）
+- 拆开看：大部分是"新增功能顺手加测试"（结构性扩充），真正的纠错性维护没几次
+- 而纠错性维护恰恰是 agent 干不好的（S22 连改3次失败、恒真断言、退出码永0）
+- **已结构性消除**：A6 把 py 测试改成 glob 自动发现——实测新增 test_zz_probe.py 后
+  census 自动纳入（49个）、missing=0，**不用改 run_all.sh 一个字**
+- 反直觉：不冻结负担更大——要反复核验 agent 每次改评判文件有没有夹带私货
+
+### 社区治理要点
+1. **门槛加在语义变更，摩擦降在预演**：注释/加测试走 lazy consensus（无异议即过），
+   改判定逻辑需双人+冷静期+变更记录（CODEOWNERS + branch protection four-eyes）
+2. **规则带生命周期元数据**：`source / applies_to / retire_when` 三元组；误报预算由分诊容量反推；
+   季度 replay；12个月零触发默认退役；先降 warn 后删。**"本应每周触发却一月静默"当自检心跳**
+3. **人的负担是被量耗尽的资源**（关键数据）：Anthropic 实测 93% 权限提示被盲批（2026-03），
+   8月升至97%；人工仅拦住13.6%危险命令 vs auto mode 89%；50次提示后人工拦截率17%→5%
+   → 解法 T0-T3 分级：只读自动/可逆写自动+通知/不可逆人工批准/默认拒绝；
+   **审批卡须1分钟内可判，否则是队列不是控制**
+4. **自改进先例全是"冻结评判者+可进化求解器"**：AlphaEvolve 冻结 Gemini+自动评分器；
+   DGM 保留全部祖先（SWE-bench 20%→50%，但出现 objective hacking——agent 关闭评分器依赖的日志）；
+   Ouroboros 核心经 reviewed commits 演进，governance protection/operator halt 保持权威
+5. **前沿**：Red Queen GDM（2026）已开始共同进化评判器——静态基准终将被利用
+
+### 三问答案
+- **是不是负担？** 是，但源于"每次都要人"，不源于"冻结"。分层+退役后，人每年只处理个位数次语义变更
+- **谁维护？** 那几个文件即规则包 vN，原则上由人在变更前维护；**无人值守时答案是"不维护"**——
+  agent 只能把 diff/基线对比/误报影响提交到 staging PR，无人批准即永不生效
+  （变更默认拒绝、读取默认允许）。允许变更仅三条件：①新工具/场景造成能力缺口 ②误报超预算
+  ③有回归测试与回滚版本。紧急修复走 emergency change：先执行、事后复审
+- **完全冻结是伪方案吗？** 内容永不变=是；版本钉住=可辩护
+
+### 对本项目的落地建议（待用户确认）
+- 改口：不说"冻结"，说"evaluator 版本钉住"——把 run_all.sh/guard/census/check_verify 视为规则包
+- agent 对这些文件：**只读 + 可提 staging diff，不自动生效**
+- 新增测试走 glob 自动纳入（已实现），不需要碰门禁文件——这是消除维护负担的主路径
+- 每个 guard 写 retire_when + 误报预算，季度 replay（Ouroboros 的"心跳"思路）
+- 误报/过时规则降级为 warn 再删，不直接删
+
+### 出处
+anthropic.com/responsible-scaling-policy/updates + news/claude-new-constitution（90天同步公开、
+93%盲批数据）；rust-lang.github.io/rfcs（FCP）；agenticdevelopercookbook.com immutable-infrastructure；
+agentpatterns.ai rule-lifecycle-metadata；arxiv.org/abs/2608.08311（Ouroboros）；
+safeguard.sh recursive-self-improvement-claims；autotrust.ai/AutoTrust-RSI.pdf。
