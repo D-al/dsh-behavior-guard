@@ -2042,6 +2042,8 @@ autonomy_rungs:
     touches_metagovernance: false
     serves_success_dim: null
   category: autonomy
+  unlocks:
+  - A6
 - id: A1_6
   title: 守卫 L1 补将来时承诺检测
   what: 把 guardDecide 的 L1 从只校验过去时声明（已写入X）扩展到将来时承诺（现在写X/接下来创建X），要求承诺的产物在本轮真实产生
