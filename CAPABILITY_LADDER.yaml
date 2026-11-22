@@ -1652,6 +1652,35 @@ items:
     - D:\Brain\publish\dsh-behavior-guard\tools\prefix_stability_probe.py
     - rc=0 PASS=3
   category: infra
+- id: A6
+  title: 验收可信度加固（测试收集普查 + 退出码真实）
+  tier: 1
+  deps:
+  - A1_5
+  risk: low
+  autonomous: true
+  status: ready
+  what: 测试收集普查(census)+全py测试纳入门禁+恒真/退出码假绿修复+行为断言规范+独立核验SOP
+  why: 实锤:12个py测试仅1个在门禁;test_new_guards有8 FAIL却rc永0;改坏脚本43/43全绿。社区collection census/变异测试/verifier-actor分离印证方向
+  benefit: 高
+  cost: 中
+  advice: ✅ 已落地判据1-3,门禁44→57;待补判据4/5文档
+  caveats:
+  - 6个历史失败SKIP是权宜需后续修
+  - census基线需随测试增删更新
+  - PYTHON解析已修重复块
+  abort_if: census误报持续红
+  rank_hint: normal
+  category: infra
+  data_gates:
+  - id: P-CENSUS-COVERAGE
+    desc: 48测试全纳入门禁,missing=0,门禁57/57
+    status: satisfied
+    source: commit f607cf5
+  - id: P-EXITCODE-HONEST
+    desc: test_new_guards退出码真实,6历史失败SKIP标注
+    status: satisfied
+    source: commit f607cf5
 autonomy_rungs:
 - id: A0
   title: 数据可信（sid 黑名单）
