@@ -95,7 +95,7 @@ def load_trigger_descriptions():
 
 def surface_report(paths, as_json=False):
     """S22 门面审计主逻辑：频次统计 + 零调用/低频候选 + 描述碰撞。"""
-    total, per_sess, schema = _audit_raw(paths)
+    total, per_sess, schema, dup_count = _audit_raw(paths)  # tool_audit.audit 已返回4值(含去重量)
     n = sum(total.values())
     if not n:
         print("没有 tool/call 事件，无法审计")
