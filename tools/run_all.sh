@@ -87,6 +87,8 @@ if command -v "$PYTHON" >/dev/null 2>&1; then
         run_test "py-$fname" "$PYTHON \"$t\""
     done
     run_test "test-census" "$PYTHON \"$ROOT/tools/test_census.py\""
+    # A6/FG：地基不变量巡检（编排6条硬约束,零LLM,几秒）——地基漂移则整门禁红
+    run_test "foundation-guard" "$PYTHON \"$ROOT/tools/foundation_guard.py\""
 else
     echo "[skip] python not found"
 fi
