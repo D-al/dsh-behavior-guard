@@ -46,6 +46,16 @@ def load_data():
     return rmod.load_ladder()
 
 
+def trace_emit(kind, card='', phase='', verdict='', evidence_ref=''):
+    """决策环打点（KR1 证据源）——失败不影响主流程"""
+    try:
+        from task_trace import emit
+        return emit(kind, card=card, phase=phase, verdict=verdict,
+                    evidence_ref=evidence_ref, mode='live')
+    except Exception:
+        return False
+
+
 def doing_ids(data):
     return [i['id'] for g in ('items', 'rungs') for i in data[g] if i.get('status') == 'doing']
 
@@ -113,16 +123,22 @@ def main():
             return 1
         print(f'[ORCH] Drum 拍板: {card}')
         code, out2 = rc('--claim', card)
+        trace_emit('task_done', card=card, phase='claim',
+                   verdict='ok' if code == 0 else 'fail', evidence_ref='roadmap_check --claim')
         print(out2)
         return code
 
     if args.verify:
         code, out = rc('--verify', args.verify)
+        trace_emit('task_done', card=args.verify, phase='verify',
+                   verdict='ok' if code == 0 else 'fail', evidence_ref='roadmap_check --verify')
         print(out)
         return code
 
     if args.apply:
         code, out = rc('--apply')
+        trace_emit('task_done', card='apply', phase='apply',
+                   verdict='ok' if code == 0 else 'fail', evidence_ref='roadmap_check --apply')
         print(out)
         return code
 

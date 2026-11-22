@@ -60,14 +60,21 @@ def verify_kr1():
             continue
         events.append(r)
     # 需要的事件类型
-    task_done = [e for e in events if e.get('kind') in ('task_done', 'apply', 'writeback')]
-    interventions = [e for e in events if e.get('kind') in ('human_intervention', 'escalate')]
-    violations = [e for e in events if e.get('kind') in ('rule_violation', 'locked_file_tamper')]
-    if not task_done:
+    all_done = [e for e in events if e.get('kind') in ('task_done', 'apply', 'writeback')]
+    # probe 数据不作正式验收（防造假），但证明打点机制已生效
+    task_done = [e for e in all_done if e.get('mode') != 'probe']
+    interventions = [e for e in events if e.get('kind') in ('human_intervention', 'escalate')
+                     and e.get('mode') != 'probe']
+    violations = [e for e in events if e.get('kind') in ('rule_violation', 'locked_file_tamper')
+                  and e.get('mode') != 'probe']
+    if not all_done:
         return nm('KR1',
-                  f'无 task_done/apply/writeback 事件（找到 {len(events)} 条真实事件，但无任务完成记录）',
+                  f'无 task_done 事件（找到 {len(events)} 条真实事件，但无打点）',
                   '给 flow_orchestrator 的 claim→verify→apply 加 trace 打点（task_done）')
     n = len(task_done)
+    if n == 0:
+        return nm('KR1', f'打点机制已生效（{len(all_done)} 条 probe），但无 live 任务记录',
+                  '积累 10 条真实 live task_done（probe 不作验收）')
     if n < 10:
         return nm('KR1', f'任务完成记录仅 {n} 条 < 10', f'积累到 10 条 task_done')
     ok = len(violations) == 0 and len(interventions) <= 2

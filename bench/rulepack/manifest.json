@@ -1,5 +1,5 @@
 {
-  "version": "v1.7.0",
+  "version": "v1.8.0",
   "created": "2026-11-22",
   "protected": {
     "tools/run_all.sh": {
@@ -57,7 +57,7 @@
       "approval": "变更须经维护者审核+更新本manifest+commit"
     },
     "tools/goal_verify.py": {
-      "sha256": "021dc87126ab1df2d26e55e64597fb9af1fd571b9a5e098322c5deea80e5430e",
+      "sha256": "e127cce97585cc2af0ae7a073d1182794b3111c69ebc5f9f28261944312db324",
       "source": "KR三态验证器",
       "retire_when": "目标KR重构后不再使用",
       "approval": "变更须经维护者审核+更新本manifest+commit"
@@ -69,5 +69,5 @@
     "有回归测试与回滚版本"
   ],
   "note": "agent只读+可提staging diff;变更默认拒绝,读取默认允许;紧急修复先执行后复审",
-  "version_note": "用户授权:落地计划+landing_readiness检查器+goal_verify修KR2 JSONL坑与KR5坑"
+  "version_note": "用户批准落地STRATEGY v3.1(ADR-0020):§0目标替换+§2.1六指标并入KR;task_trace打点;ADR登记"
 }

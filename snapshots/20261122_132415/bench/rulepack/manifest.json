@@ -1,0 +1,73 @@
+{
+  "version": "v1.7.0",
+  "created": "2026-11-22",
+  "protected": {
+    "tools/run_all.sh": {
+      "sha256": "93f8e90ebe06f4e6ed0f4ad828a23907c1e0c18a2a98ce094d7fb2e8d0c8c6ef",
+      "source": "本地实测 2026-11-22",
+      "retire_when": "规则被证实恒真/误报超预算/连续12个月零触发",
+      "approval": "变更须经维护者审核+更新本manifest+commit"
+    },
+    "tools/foundation_guard.py": {
+      "sha256": "b1b63373a951005da60cbe025eda9f3285317bb1190ab6ce1b441c4a7de62384",
+      "source": "本地实测 2026-11-22",
+      "retire_when": "规则被证实恒真/误报超预算/连续12个月零触发",
+      "approval": "变更须经维护者审核+更新本manifest+commit"
+    },
+    "tools/foundation_fingerprint.py": {
+      "sha256": "bb9a8c7e48b183fd4e5879d067bc2a325a6c169f9f34d9ed34587b2b702a7735",
+      "source": "本地实测 2026-11-22",
+      "retire_when": "规则被证实恒真/误报超预算/连续12个月零触发",
+      "approval": "变更须经维护者审核+更新本manifest+commit"
+    },
+    "tools/foundation_check.py": {
+      "sha256": "5ac2a396c7beba1dadba7158cea253c75ae59aab15329d55f599f0f63a369765",
+      "source": "本地实测 2026-11-22",
+      "retire_when": "规则被证实恒真/误报超预算/连续12个月零触发",
+      "approval": "变更须经维护者审核+更新本manifest+commit"
+    },
+    "tools/test_census.py": {
+      "sha256": "34ad6102177f30c5cd2d018cb8facff43d3852539ab66313d0dc72c2ebc5876c",
+      "source": "本地实测 2026-11-22",
+      "retire_when": "规则被证实恒真/误报超预算/连续12个月零触发",
+      "approval": "变更须经维护者审核+更新本manifest+commit"
+    },
+    "tools/check_verify.py": {
+      "sha256": "d13e23cb4db1cd6f9af7c014948e63622e5838d0b5b7ed513ab3b30a32e5d874",
+      "source": "本地实测 2026-11-22",
+      "retire_when": "规则被证实恒真/误报超预算/连续12个月零触发",
+      "approval": "变更须经维护者审核+更新本manifest+commit"
+    },
+    "tools/rulepack_guard.py": {
+      "sha256": "e3470338aac3c0dc5795d303821a44f7a1a99e6a0af4f6f48847cd42e60832eb",
+      "source": "本地实测 2026-11-22",
+      "retire_when": "规则被证实恒真/误报超预算/连续12个月零触发",
+      "approval": "变更须经维护者审核+更新本manifest+commit"
+    },
+    "tools/rulepack_propose.py": {
+      "sha256": "dc730efb6eb9b4ad50484154935da6be73455d539c4b78d32bb0736756899daa",
+      "source": "本地实测 2026-11-22",
+      "retire_when": "规则被证实恒真/误报超预算/连续12个月零触发",
+      "approval": "变更须经维护者审核+更新本manifest+commit"
+    },
+    "bench/rulepack/traceability.json": {
+      "sha256": "6c7842b9c333dbd7b5eac8776fabbedf5864c02cd3d70cc238be3057d47995f1",
+      "source": "目的追溯显式标注",
+      "retire_when": "战略条款失效或机制本身退役",
+      "approval": "变更须经维护者审核+更新本manifest+commit"
+    },
+    "tools/goal_verify.py": {
+      "sha256": "021dc87126ab1df2d26e55e64597fb9af1fd571b9a5e098322c5deea80e5430e",
+      "source": "KR三态验证器",
+      "retire_when": "目标KR重构后不再使用",
+      "approval": "变更须经维护者审核+更新本manifest+commit"
+    }
+  },
+  "change_conditions": [
+    "新工具/场景造成能力缺口",
+    "误报超预算",
+    "有回归测试与回滚版本"
+  ],
+  "note": "agent只读+可提staging diff;变更默认拒绝,读取默认允许;紧急修复先执行后复审",
+  "version_note": "用户授权:落地计划+landing_readiness检查器+goal_verify修KR2 JSONL坑与KR5坑"
+}

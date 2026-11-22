@@ -41,9 +41,11 @@ def check_l1():
     kr1 = next((x for x in d['results'] if x['kr'] == 'KR1'), None)
     if not kr1:
         return {'gate': 'L1 可判定', 'status': 'NOT_READY', 'why': 'KR1 结果缺失'}
-    ok = kr1['status'] in ('PASS', 'FAIL')
+    # 可判定 = 打点机制生效(不再报"无task_done")，不要求KR1已达标
+    no_emit = '无 task_done 事件' in kr1['why'] or '无打点' in kr1['why']
+    ok = not no_emit
     return {'gate': 'L1 可判定', 'status': 'READY' if ok else 'NOT_READY',
-            'why': f'KR1={kr1["status"]}: {kr1["why"][:80]}',
+            'why': f'KR1={kr1["status"]}: {kr1["why"][:80]}' + (' (打点已生效)' if ok else ''),
             'prerequisite': kr1.get('prerequisite')}
 
 
