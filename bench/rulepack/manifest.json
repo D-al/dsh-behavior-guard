@@ -1,5 +1,5 @@
 {
-  "version": "v1.20.0",
+  "version": "v1.21.0",
   "created": "2026-11-22",
   "protected": {
     "tools/run_all.sh": {
@@ -69,5 +69,5 @@
     "有回归测试与回滚版本"
   ],
   "note": "agent只读+可提staging diff;变更默认拒绝,读取默认允许;紧急修复先执行后复审",
-  "version_note": "科技树按目标重绘:73卡KR映射+KR视图(KR状态实时读goal_verify),保留tier视图"
+  "version_note": "ADR-0023双轴战略:体系智能(进化轴)+6KR(护栏轴),KR5交汇,6卡归evolution_path"
 }

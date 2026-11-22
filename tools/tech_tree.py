@@ -295,6 +295,7 @@ function render(){
    const tag=st==='PASS'?'✓PASS':st==='FAIL'?'✗FAIL':'N/M';
    specs.push({key:'kr:'+k,head:KRNAME[k]+' · '+tag+' ('+k+')'});
   }
+  specs.push({key:'kr:evolution_path',head:'体系智能 · 进化路径 (ADR-0023)'});
   specs.push({key:'kr:null',head:'地基/其他 · 不直接支撑KR'});
   specs.push({key:'rejected',head:'⛔ 明确不做'});
   specs.push({key:'evidence',head:'▤ 证据/地基'});

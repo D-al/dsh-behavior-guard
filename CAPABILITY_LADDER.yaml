@@ -259,8 +259,8 @@ items:
     touches_metagovernance: false
     serves_success_dim: null
   category: mind
-  kr: null
-  kr_why: BDI 意图三槽是用户意图状态建模，不产出能力账本或任何 KR 的证据链
+  kr: evolution_path
+  kr_why: 意图理解(belief/desire/intention)→RECON/PLAN
 - id: M9
   title: 意图分类器
   tier: 2
@@ -304,8 +304,8 @@ items:
     touches_metagovernance: false
     serves_success_dim: null
   category: mind
-  kr: null
-  kr_why: 意图分类器 manual-blocked 且受 8G 显存硬约束，不产出任何 KR 证据
+  kr: evolution_path
+  kr_why: 意图高置信直判→减少误判→RECON
 - id: M2
   title: 会话树实时化
   tier: 2
@@ -349,8 +349,8 @@ items:
     touches_metagovernance: false
     serves_success_dim: null
   category: mind
-  kr: null
-  kr_why: 会话树实时化属感知-行动类，但 KR4 已靠 kr4_from_dsh.py 独立 PASS，该卡未进入 KR4 证据链（待审）
+  kr: evolution_path
+  kr_why: 会话树实时化→上下文连续→多轮任务表现
 - id: M5
   title: 工具面结构改造（三层治理原则）
   tier: 3
@@ -614,8 +614,8 @@ items:
     touches_metagovernance: false
     serves_success_dim: null
   category: longterm
-  kr: null
-  kr_why: FEP 深化到世界模型属长期探索的产物断言精度，不产出能力账本或 KR 证据
+  kr: evolution_path
+  kr_why: 世界模型断言(产物内容满足what)→VERIFY
 - id: L8
   title: 多标签心智编码器
   tier: 4
@@ -652,8 +652,8 @@ items:
     touches_metagovernance: false
     serves_success_dim: null
   category: longterm
-  kr: null
-  kr_why: 多标签心智编码器属探索项且中文/8G 可行性未证，不产出 KR 证据
+  kr: evolution_path
+  kr_why: 意图+风险+难度多标签→决策质量
 - id: L5
   title: 小模型 Critic 预警（降级）
   tier: 4
@@ -733,8 +733,8 @@ items:
     touches_metagovernance: false
     serves_success_dim: null
   category: longterm
-  kr: null
-  kr_why: 脑功能分区空白区 manual-blocked 且观望，不产出 KR 证据
+  kr: evolution_path
+  kr_why: 价值/稳态功能分区→目标优先级(探索性)
 - id: L4
   title: 独立轨道（上游 PR）
   tier: 4
