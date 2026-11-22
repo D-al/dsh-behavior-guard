@@ -1,5 +1,5 @@
 {
-  "version": "v1.24.0",
+  "version": "v1.25.0",
   "created": "2026-11-22",
   "protected": {
     "tools/run_all.sh": {

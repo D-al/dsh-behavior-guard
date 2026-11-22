@@ -134,11 +134,19 @@ def stop(args):
             subprocess.run(['node', str(bridge), 'cancel', sid],
                            capture_output=True, timeout=30)
             print(f'  cancel 会话 {sid[:24]}')
-    # 再停进程（dsh 停后 llama-server 由它自己/router 管理）
-    r = ps('Get-Process -Name "DeepSeek Harness" -ErrorAction SilentlyContinue | '
+    # 再停 dsh 主进程
+    ps('Get-Process -Name "DeepSeek Harness" -ErrorAction SilentlyContinue | '
+       'Stop-Process -Force -ErrorAction SilentlyContinue')
+    # 2026-11-22 修复：dsh 死后它拉起的 llama-server(router+实例)会成孤儿残留，
+    # 实测残留 2 个占 ~21GB 提交内存（内存 53%→20%）。必须连带清理。
+    llama = ps('Get-CimInstance Win32_Process -Filter "name=\'llama-server.exe\'" | '
+               'Select-Object -ExpandProperty ProcessId')
+    llama_pids = [int(x) for x in llama.stdout.split() if x.strip().isdigit()]
+    if llama_pids:
+        ps('Get-Process -Name llama-server -ErrorAction SilentlyContinue | '
            'Stop-Process -Force -ErrorAction SilentlyContinue')
-    log('stop', f'pids={pids} cancelled={len(sess)} force={args.force}')
-    print(f'STOPPED: 原 pids={pids}, 已 cancel {len(sess)} 个活跃会话')
+    log('stop', f'pids={pids} llama_pids={llama_pids} cancelled={len(sess)} force={args.force}')
+    print(f'STOPPED: 原 pids={pids}, llama清理={llama_pids}, 已 cancel {len(sess)} 个活跃会话')
     print('注: descriptor 会陈旧——用 status 核对真实进程，不要用 bridge health 判活')
     return 0
 
