@@ -1664,6 +1664,39 @@ rungs:
   cost: 高
   tier: 2
   category: autonomy
+- id: S24
+  title: 执行层工具失败自愈（edit锚点/路径兜底）
+  tier: 1
+  deps:
+  - S14
+  risk: low
+  autonomous: true
+  status: done
+  verify:
+  - kind: file_exists
+    path: tools/test_tool_failure_healer.mjs
+  - kind: test_pass
+    cmd: D:/Brain/dsh-data/dsh-runtimes/dsh-primary-runtime/dependencies/node/bin/node.exe tools/test_tool_failure_healer.mjs
+    min: 1
+  - kind: test_pass
+    cmd: D:/Brain/dsh-data/dsh-runtimes/dsh-primary-runtime/dependencies/node/bin/node.exe tools/test_tool_failure_heal_integration.mjs
+    min: 1
+  what: 在 harness 的 session/event 监听里捕获 isError 工具失败，pre-step 自动注入修正提示（FS_STALE_VERSION/FS_EDIT_NOT_FOUND→重读+最短锚点；FS_NOT_FOUND→相近文件suggest）。与S14提示层协议分工，执行层兜底。
+  why: 工具失败画像54次/2000+调用，文件系统类63%；关键反转=S14(11-20提示层协议)落地后edit锚点失败反从2涨到8/天→提示层已证无效，缺执行层兜底。
+  unlocks: []
+  benefit_to_self: 把"模型记不记得协议"变成"环境保证兜底"，不依赖模型元认知。
+  cost: 中低
+  caveats:
+  - 只注入修正提示不改dsh工具本身
+  - 每轮<=1次每会话<=4次避免提示风暴
+  - 失败判据只认isError/data.error结构化字段，绝不扫结果文本（219误报教训）
+  abort_if: session/event拿不到tool/result的isError字段（已确认可拿到）
+  claimed_at: '2026-11-22T19:50:00+08:00'
+  claimer: unknown-agent
+  evidence_log:
+  - at: '2026-11-22T19:50:00+08:00'
+    checks:
+    - 单测9/9 + 集成测试4/4（真实FS_STALE_VERSION事件结构→接线确定性验证）
 - id: A6
   title: 验收可信度加固（测试收集普查 + 退出码真实）
   tier: 1
