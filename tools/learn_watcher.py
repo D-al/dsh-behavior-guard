@@ -78,6 +78,8 @@ SCRIPTS = {
     'episodic_index': [PY, os.path.join(BENCH, 'episodic_search.py'), '--index'],
     'intent_drift': [PY, os.path.join(BENCH, 'intent_drift.py')],
     'mind_state': [PY, os.path.join(BENCH, 'mind_state.py'), '--json'],
+    # 地基守护：每10分钟巡检6条地基不变量，零LLM几秒
+    'foundation_guard': [PY, 'D:/Brain/publish/dsh-behavior-guard/tools/foundation_guard.py'],
 }
 
 
@@ -255,6 +257,13 @@ def consolidate(state):
     except Exception:
         pass
     run_script('mind_state')
+
+    # 地基守护：FAIL 时写明确告警（不静默），趋势由 _foundation_drift.jsonl 记录
+    gok, gout = run_script('foundation_guard')
+    if not gok:
+        bad_lines = [l for l in gout.splitlines() if '[GUARD] FAIL' in l or 'VERDICT' in l]
+        append_feedback('', '地基漂移告警：' + ' | '.join(bad_lines[:4]), 'foundation_guard')
+        log('[FOUNDATION-DRIFT] ' + ' | '.join(bad_lines[:3]))
 
 
 def digest_deep_only(state):
