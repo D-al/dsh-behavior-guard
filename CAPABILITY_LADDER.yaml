@@ -1459,6 +1459,9 @@ items:
     path: tools/roadmap_check.py
     regex: noise_floor|NOISE_FLOOR|holdout
     min: 1
+  - kind: test_pass
+    cmd: D:/Python/python.exe -B tools/holdout_split.py --probe
+    min: 1
   rank_hint: normal
   strategy_flags:
     violates_non_goal: null

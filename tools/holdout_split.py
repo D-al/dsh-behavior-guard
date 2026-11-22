@@ -382,7 +382,7 @@ def probe():
     for item in checks:
         name, passed = item[0], item[1]
         detail = item[2] if len(item) > 2 else ''
-        print(f'  [{"PASS" if passed else "FAIL"}] {name} {detail}')
+        print(f'[{"PASS" if passed else "FAIL"}] {name} {detail}')
         if not passed:
             ok = False
     if rejected:

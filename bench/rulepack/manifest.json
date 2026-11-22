@@ -1,5 +1,5 @@
 {
-  "version": "v1.11.0",
+  "version": "v1.12.0",
   "created": "2026-11-22",
   "protected": {
     "tools/run_all.sh": {
@@ -69,5 +69,5 @@
     "有回归测试与回滚版本"
   ],
   "note": "agent只读+可提staging diff;变更默认拒绝,读取默认允许;紧急修复先执行后复审",
-  "version_note": "决策环首次真实闭环S18(claim→verify→apply)+KR1闭环判据+apply卡片ID修正+holdout_split真实切分"
+  "version_note": "S18强判据(test_pass 7条)+弱判据清零+KR1闭环判据+决策环真实闭环"
 }

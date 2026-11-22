@@ -1185,6 +1185,9 @@ items:
     path: tools/roadmap_check.py
     regex: noise_floor|NOISE_FLOOR|holdout
     min: 1
+  - kind: test_pass
+    cmd: D:/Python/python.exe -B tools/holdout_split.py --probe
+    min: 1
   what: 给 agentlab/projectlab 切 30% hold-out 任务永不用于选卡；一次只改一个可归因机制；先测基线方差设噪声地板（±10%内不算提升）；新增机制须证
     token/时间收益；定期剪枝无收益守卫。
   why: RRSI(arXiv2609.24972)：无正则自改进 OOD 跌破初始基线；增益归因研究 54% 过拟合+14% test-time scaling；我们明知±10%却没当判据。
