@@ -70,7 +70,7 @@ def main():
             continue
         want = meta.get('sha256', '')
         got = sha256(p)
-        if want and got != want[:16]:
+        if want and got[:16] != want[:16]:
             drifts.append({'file': rel, 'why': 'digest-mismatch',
                            'want': want[:16], 'got': got[:16]})
 
