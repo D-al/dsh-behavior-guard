@@ -15,6 +15,7 @@ import html
 import subprocess
 import tempfile
 from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 
 import os
@@ -249,7 +250,7 @@ path.link-unlock.hot.dir-down{stroke:#D85A30!important;stroke-dasharray:"4 3"}
 button{font:inherit;padding:4px 10px;border:1px solid var(--line);background:#fff;border-radius:6px;cursor:pointer}
 </style></head><body>
 <header>
-<h1>Agent 能力科技树</h1>
+<h1>Agent 能力科技树 · 统一视图 v2 <span style="font-weight:400;color:#5F5E5A;font-size:11px">__STAMP__ · __NODES__节点</span></h1>
 <div class="sub" id="sub"></div>
 <div class="legend" id="legend"></div>
 <div style="margin-top:8px"><button onclick="setMode('all')">全部</button>
@@ -495,7 +496,9 @@ def main():
                .replace('__CATL__', json.dumps(CAT_LABEL, ensure_ascii=False))
                .replace('__CATC__', json.dumps(CAT_COLOR))
                .replace('__SL__', json.dumps(STATUS_LABEL, ensure_ascii=False))
-               .replace('__LAYER__', json.dumps(LAYER_MEANING, ensure_ascii=False)))
+               .replace('__LAYER__', json.dumps(LAYER_MEANING, ensure_ascii=False))
+               .replace('__STAMP__', datetime.now().strftime('%m-%d %H:%M'))
+               .replace('__NODES__', str(len(nodes))))
     # 可失败性自检：生成后立刻用 node --check 验 JS 语法，防止空白页面（2026-11-21 踩过坑）
     m = re.search(r'<script>(.*?)</script>', out, re.S)
     if not m:
