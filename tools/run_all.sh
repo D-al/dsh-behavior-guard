@@ -97,6 +97,7 @@ if command -v "$PYTHON" >/dev/null 2>&1; then
     run_test "traceability" "$PYTHON \"$ROOT/tools/audit_traceability.py\""
     # 证据生成器诚实性:防生成器造假(probe不污染/缺输入N-M退出)
     run_test "generator-honesty" "$PYTHON \"$ROOT/tools/audit_generator_honesty.py\""
+    run_test "criteria-sync" "$PYTHON \"$ROOT/tools/audit_criteria_sync.py\""
     run_test "autonomy-gate" "$PYTHON \"$ROOT/tools/autonomy_gate.py\" --check-report"
 else
     echo "[skip] python not found"

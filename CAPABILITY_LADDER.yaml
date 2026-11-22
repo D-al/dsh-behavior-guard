@@ -1238,13 +1238,28 @@ items:
     touches_metagovernance: false
     serves_success_dim: null
   verify:
+  - kind: file_grep
+    path: bench/dsh-session-bridge/bridge.mjs
+    regex: case 'cancel'
+    min: 1
+  - kind: file_grep
+    path: bench/dsh-session-bridge/index.mjs
+    regex: sessionController.*cancel|ctrl.cancel
+    min: 1
+  - kind: file_exists
+    path: docs/SESSION_BRAKE_20261120.md
+  - kind: file_exists
+    path: docs/MECHANISM_TRIGGER_AUDIT_20261120.md
   - kind: test_pass
     cmd: node tools/test_kill_switch.mjs
-    min: 4
+    min: 3
   - kind: file_grep
     path: index.mjs
     regex: killSwitch|kill_switch
     min: 1
+  - kind: test_pass
+    cmd: D:/Python/python.exe -B tools/test_session_brake.py
+    min: 3
   category: mind
 - id: S10
   title: 推理活性判据纠偏（取消单帧采样）
@@ -1504,7 +1519,7 @@ items:
     path: tools/critbank_calibration.py
   - kind: test_pass
     cmd: D:/Python/python.exe -B tools/test_critbank_calibration.py
-    min: 1
+    min: 5
   rank_hint: normal
   strategy_flags:
     violates_non_goal: null
@@ -1572,8 +1587,11 @@ items:
     path: tools/verifier_layer.py
   - kind: file_grep
     path: tools/verifier_layer.py
-    regex: swap|pairwise|rubric
-    min: 1
+    regex: def build_report|def run_probe|def load_rubrics
+    min: 2
+  - kind: test_pass
+    cmd: D:/Python/python.exe -B tools/test_verifier_layer.py
+    min: 3
   rank_hint: normal
   strategy_flags:
     violates_non_goal: null

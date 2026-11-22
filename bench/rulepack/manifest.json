@@ -1,9 +1,9 @@
 {
-  "version": "v1.15.0",
+  "version": "v1.16.0",
   "created": "2026-11-22",
   "protected": {
     "tools/run_all.sh": {
-      "sha256": "9ebb282dc754a0e85e310110b5e1ea1451fcbfe5e54e9f6bdc5d53f1e217b5e7",
+      "sha256": "5ffc9807fc74b4f779dac218243a916244c425c04ed269132ddd12b0d56707bd",
       "source": "本地实测 2026-11-22",
       "retire_when": "规则被证实恒真/误报超预算/连续12个月零触发",
       "approval": "变更须经维护者审核+更新本manifest+commit"
@@ -69,5 +69,5 @@
     "有回归测试与回滚版本"
   ],
   "note": "agent只读+可提staging diff;变更默认拒绝,读取默认允许;紧急修复先执行后复审",
-  "version_note": "准入门控:autonomy_gate+cmd_apply硬闸(fail-closed);分析确认ready卡0/4可安全自动推进,不开自主心跳"
+  "version_note": "三卡判据补强(S19/M10/S21真实实现+测试)+镜像同步+criteria-sync门禁"
 }

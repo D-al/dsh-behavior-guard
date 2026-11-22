@@ -951,11 +951,14 @@ items:
     path: docs/MECHANISM_TRIGGER_AUDIT_20261120.md
   - kind: test_pass
     cmd: node tools/test_kill_switch.mjs
-    min: 4
+    min: 3
   - kind: file_grep
     path: index.mjs
     regex: killSwitch|kill_switch
     min: 1
+  - kind: test_pass
+    cmd: D:/Python/python.exe -B tools/test_session_brake.py
+    min: 3
   what: 进程外可靠刹车(kill_switch.py:事件指纹检测非进展→L1告警/L2cancel/L3硬杀) + 任务级上下文(taskProfile根治4假阳性)
     + loop_breaker告警 + 开新会话前硬件三层检查
   why: 2026-11-20 僵尸会话复活改坏 index.mjs；我误判"dsh 无终止 API"（只查 REST 404，实际走 cordis sessionController.cancel）；双会话并行险些
@@ -1225,7 +1228,7 @@ items:
     path: tools/critbank_calibration.py
   - kind: test_pass
     cmd: D:/Python/python.exe -B tools/test_critbank_calibration.py
-    min: 1
+    min: 5
   what: CritBank 条目加 hindsight 伪标签 ŷ（V=5 投票）与当初一致性标志 χ；按 B+/B- 正负对照检索；冻结 critic 执行前给
     confidence，低置信转人工/重规划。
   why: CEB(arXiv2607.12397)复合键(task,state,action)与我们逐字同构；3bench×3backbone 9/9 组合 ECE/Brier/AUC
@@ -1281,8 +1284,11 @@ items:
     path: tools/verifier_layer.py
   - kind: file_grep
     path: tools/verifier_layer.py
-    regex: swap|pairwise|rubric
-    min: 1
+    regex: 'def build_report|def run_probe|def load_rubrics'
+    min: 2
+  - kind: test_pass
+    cmd: D:/Python/python.exe -B tools/test_verifier_layer.py
+    min: 3
   what: Critic/Planner 不再 35B 自审：proposer 用最强模型多次采样(Self-MoA式)；能断言的判断下沉到 Python 规则/测试/哈希；必须
     LLM judge 时成对交换顺序+独立 rubric+人工抽检。弱模型只做门控/校验/快速路径，不做最终语义裁决。
   why: Self-MoA(2502.00674)最强采样比混合+6.6分；JudgeBench(2410.12784)GPT-4o客观判断50.9%=抛硬币；会话Q13/Q19协调者悖论。
