@@ -1,15 +1,15 @@
 {
-  "version": "v1.0.0",
+  "version": "v1.1.0",
   "created": "2026-11-22",
   "protected": {
     "tools/run_all.sh": {
-      "sha256": "a64920ea73395710502e2511c6246345437461098801d02f8c70cebddf6f2b47",
+      "sha256": "b1b5e530dad2dffd6c46969946a627338bfe736b0738e031ecd6cbaad91ddcb1",
       "source": "本地实测 2026-11-22",
       "retire_when": "规则被证实恒真/误报超预算/连续12个月零触发",
       "approval": "变更须经维护者审核+更新本manifest+commit"
     },
     "tools/foundation_guard.py": {
-      "sha256": "4420c9308f8326f98222992b43c1f6b0aa4b2d757325d1163e81580780908b1d",
+      "sha256": "71fc2477b70fa2f095ed781a25e588ca4afb63e84ea7f57d0abf8c02f3864824",
       "source": "本地实测 2026-11-22",
       "retire_when": "规则被证实恒真/误报超预算/连续12个月零触发",
       "approval": "变更须经维护者审核+更新本manifest+commit"
@@ -56,5 +56,6 @@
     "误报超预算",
     "有回归测试与回滚版本"
   ],
-  "note": "agent只读+可提staging diff;变更默认拒绝,读取默认允许;紧急修复先执行后复审"
+  "note": "agent只读+可提staging diff;变更默认拒绝,读取默认允许;紧急修复先执行后复审",
+  "version_note": "加入INV-7(规则包漂移检测)+run_all双保险+AGENTS.md纪律;用户2026-11-22拍板的版本升级"
 }

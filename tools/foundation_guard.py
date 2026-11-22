@@ -42,6 +42,7 @@ FIX_HINTS = {
     'INV-4': '跑 tools/tech_tree.py 刷新；跑 audit_implicit_deps.py 补 unlocks 双向回填',
     'INV-5': '清掉 check(...,true,true)/||true；确认每个 test_*.mjs 的 results 都设了 exitCode',
     'INV-6': '检查 test_census.py 的 missing 判定和 test_new_guards.mjs 的 process.exitCode 是否被回退',
+    'INV-7': '评判规则被偷改: 回滚受保护文件; 若变更已批准则更新 bench/rulepack/manifest.json 并 commit',
 }
 
 
@@ -132,6 +133,16 @@ def inv6_sentinel():
            f'census_detect={can_detect} exitcode_intact={exitcode_intact}')
 
 
+def inv7_rulepack_pinned():
+    """INV-7: 评判规则包未漂移（执行者不得偷改审计者）"""
+    ok, out = run_script('rulepack', [TOOLS / 'rulepack_guard.py'])
+    summary = ''
+    for l in out.splitlines():
+        if l.startswith('[RULEPACK]') and ('FAIL' in l or 'version=' in l):
+            summary = (summary + ' ' + l.replace('[RULEPACK] ', ''))[:160]
+    record('INV-7', '评判规则包未漂移 (版本钉住)', ok, summary or ('漂移' if not ok else 'pinned'))
+
+
 def write_drift(all_ok):
     entry = {
         'ts': datetime.now(timezone.utc).isoformat(),
@@ -163,6 +174,7 @@ def main():
     inv4_meta_consistency()
     inv5_no_tautology()
     inv6_sentinel()
+    inv7_rulepack_pinned()
 
     all_ok = all(r['ok'] for r in results)
     passed = sum(1 for r in results if r['ok'])

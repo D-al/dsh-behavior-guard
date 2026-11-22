@@ -89,6 +89,8 @@ if command -v "$PYTHON" >/dev/null 2>&1; then
     run_test "test-census" "$PYTHON \"$ROOT/tools/test_census.py\""
     # A6/FG：地基不变量巡检（编排6条硬约束,零LLM,几秒）——地基漂移则整门禁红
     run_test "foundation-guard" "$PYTHON \"$ROOT/tools/foundation_guard.py\""
+    # 规则包版本钉住:agent不得偷改评判规则(INV-7也含此检查,这里双保险)
+    run_test "rulepack-pinned" "$PYTHON \"$ROOT/tools/rulepack_guard.py\""
 else
     echo "[skip] python not found"
 fi
