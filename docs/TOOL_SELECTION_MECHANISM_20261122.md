@@ -63,6 +63,32 @@
 | τ-bench (ICLR 2025) | pass^k | Claude3.5 retail pass@1 69.2%→pass^4 46.2% | 论文 |
 
 ⚠ 绝对百分比不可跨来源比较（benchmark/模型/distractor 密度不同）；可复现的只有**形状**：浅缓降（≤25）、中度（~50）、断崖（≥50-75）。
+
+### 4.1 补充实证（子任务2，证据分级 A/B/C）
+**BFCL V4 官方榜（2026-04-12，A级）**：榜首 Claude Opus 4.5 = 77.47；
+35B 级开源：xLAM-2-32b-fc-r（专用工具微调）**54.66**、Qwen3-32B(FC) 48.56、Qwen3-30B-A3B 41.39
+→ 与 frontier 差 22-36 分，但**差距主要在 agentic/multi-turn/memory**（memory 子类最高仅 12/100），
+单轮 AST 已饱和（frontier 高 80s-90s）。专用 post-train 比通用同规模高约 6 分。
+
+**NLT 自然语言选工具（Somma 2026, arXiv:2607.03953, 14模型/8560 trials, A级）——反直觉**：
+自然语言 YES/NO + regex **62.3% vs 结构化 JSON tool call 47.4%（+14.9pp）**，
+关键错误降 93%、token −25.2%；**弱模型受益最大**：Mistral 7B +39.4pp（结构化下 0%）、
+DeepSeek-R1 +24pp、Claude Sonnet4 +43.1pp；**但 Gemini 2.5 Pro 反向 −33.7pp**（结构化更强）。
+→ 对本地量化 35B 值得 A/B 测，但不能照搬（NLT 只验证单轮无参数工具）。
+
+**失败模式分布（颠覆直觉）**：
+- 单看工具 call 层：**参数错误最常见**（MDPI Electronics 2026 本地 0.6-9B：工具选择 93.5-100% 近天花板，
+  但参数填充仅 63.4-83.9%，"wrong args" 是每个模型首要失败）；τ-bench 约 55% 失败来自错误参数
+- 放到完整 agent 任务：**under-trigger/规划错误/多轮一致性才是主导**
+  （ToolTalk：错误规划占 GPT-3.5 失败 53.7%；MCP-Atlas：63.3% 失败是认知类非工具类；
+  τ-bench pass@1 60%→pass^8 25%）→ **BFCL 单轮分数反映不出这些**
+
+**BiasBusters 论文确证（arXiv:2510.00307, ICLR'26, A级）**：7 模型 δmodel 0.249-0.377；
+位置偏差 δpos：DeepSeek-V3.2 **0.504（最高）**、Qwen3-235B **0.168（最低/最不偏）**；
+语义相似度相关性 Qwen r=+0.411(p=0.003)、Gemini r=+0.330(p=0.019)，但 **R²<0.4**（大量行为不可解释）；
+缓解：Qwen3-14B 做 subset selector + 合格子集均匀采样 → δ 0.380→0.094（降 75%）。
+
+
 **厂商 guidance**：OpenAI <20 函数/轮、Anthropic 30-50 开始退化、Gemini 活跃 10-20（均二手转引）。
 
 ## 五、Bias 证据：模型"认为正确"的依据
