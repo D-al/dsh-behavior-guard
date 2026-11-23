@@ -84,5 +84,35 @@ general.file_type = 7 (Q8_0)                   ✅
 
 （显存读数 nvidia-smi 采样时点不一致，此轮不可靠；显存收益以文件字节数差 272 MiB 为准，后续可精确测量。）
 
+## 六·六、为什么 nvidia-smi 看起来"没省显存"（重要纠错 + 充分调研）
+
+### 现象
+- 冷启动 nvidia-smi：F16 = 7760 MiB，Q8_0 = 7724 MiB，**只差 36 MiB**
+- 我最初的推断（**错误**）：VMM reserve 粒度/池化吃掉了差异
+
+### 真相：Q8_0 确实省了 272 MiB，是 nvidia-smi 在 WDDM 上骗人
+
+**代码层铁证**（`tools/mtmd/mtmd-model.cpp:110,1500,4414`）：
+```c
+enum ggml_type type = gguf_get_tensor_type(ctx_gguf.get(), i);  // 保持文件类型
+ggml_tensor * data_tensor = ggml_dup_tensor(...);                // dup 保留 Q8_0
+model.mem_weights[device] += ggml_nbytes(cur);                   // 按 Q8_0 字节计
+ggml_backend_alloc_ctx_tensors_from_buft(...)                    // 按实际类型分配
+```
+**没有强制转 F16**——Q8_0 权重就以 Q8_0 存进 GPU。GGUF 文件层也实测确认：F16 版可量化张量 602.8 MiB，Q8_0 版 330.6 MiB，**实省 272.2 MiB**。
+
+**测量层的真相**：
+1. Windows WDDM 下逐进程显存全是 `[N/A]`——实测 `nvidia-smi --query-compute-apps` 输出 explorer.exe / SearchHost / msedgewebview2 / WorkBuddy / LGHUB 等**全部 [N/A]**
+2. `memory.used` 是所有进程混合总和，GUI 进程（dwm/ShellHost/EdgeWebView）显存随窗口状态波动 ±200 MiB 是常态（记忆里早有"dsh 窗口最小化减 3D 调度干扰"的经验）
+3. 所以"36 MiB 差异"里，**272 MiB 的收益被背景进程 200+ MiB 的波动淹没**了
+
+### 决定性实验佐证
+`MMPROJ_OFFLOAD=0`（Q8_0 放 CPU）→ 显存 7480 MiB，比 Q8_0 在 GPU 的 7724 少 244 MiB。这个 244 MiB 就是 Q8_0 视觉权重在 GPU 上的真实占用（与文件推算的 Q8 可量化部分 330 MiB 同量级，差值在 GUI 波动内）。**如果 Q8_0 没省显存，这个差值应该是 F16 的 ~600 MiB 量级。**
+
+### 正确结论
+- **Q8_0 切换是成功的，真实省了约 272 MiB 显存**
+- nvidia-smi 的 `memory.used` 在本机**不能用于精确 A/B**（WDDM 逐进程 N/A + GUI 波动）
+- 以后本机显存 A/B 必须用：① 逐张量字节数（GGUF 元数据）② 引擎内 `mem_weights`/`memory_breakdown` 日志 ③ `--no-mmproj-offload` 这类功能开关的差值——**不能用 nvidia-smi 总量**
+
 ## 七、给用户的直接回答
 **有，找到了。** `ggml-org/Qwen3.6-35B-A3B-GGUF` 的 `mmproj-Qwen3.6-35B-A3B-Q8_0.gguf`（585.7 MiB），元数据 9 项指纹与本机 F16 完全匹配，可直接替换。另一个源 `mradermacher` 也有同款。正在下载并做实图质量验证。
