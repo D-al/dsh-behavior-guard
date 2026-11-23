@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
-"""工具调用基准：20 题，覆盖 5 类。用于 MTP on/off 的质量 A/B。
-判分：工具名 + 参数（关键字段）是否正确，以及"不该调用时是否乱调"。
+"""工具调用判据基准：21 题，覆盖 5 类。用于 MTP on/off 的质量 A/B 判据。
+判据：工具名 + 参数（关键字段）是否正确，以及"不该调用时是否乱调"。
+对齐 STRATEGY.md R2 判据独立性：工具选择正确率是对 agent 质量的独立 verify，
+不能用 decode t/s 或 PPL 替代（两者对 function-calling 决策失明）。
 """
 import json
 
