@@ -1,0 +1,91 @@
+diff --git a/ggml/src/ggml-cpu/ggml-cpu.c b/ggml/src/ggml-cpu/ggml-cpu.c
+index ba075ff..278b535 100644
+--- a/ggml/src/ggml-cpu/ggml-cpu.c
++++ b/ggml/src/ggml-cpu/ggml-cpu.c
+@@ -1589,6 +1589,21 @@ static void * incr_ptr_aligned(void ** p, size_t size, size_t align) {
+     return ptr;
+ }
+ 
++// LOCAL PATCH 2026-11-23: expert-parallel dispatch for MoE decode.
++// Stock: 8 threads split the output rows of ONE expert, experts are processed serially.
++// This:  each thread takes a different active expert, so the 8 weight reads overlap and
++//        hide DDR latency. Controlled by env GGML_MMID_EXPERT_PARALLEL=1 (default off).
++static bool ggml_mmid_expert_parallel(void) {
++    static int checked = 0;
++    static int enabled = 0;
++    if (!checked) {
++        const char * env = getenv("GGML_MMID_EXPERT_PARALLEL");
++        enabled = (env != NULL && atoi(env) == 1) ? 1 : 0;
++        checked = 1;
++    }
++    return enabled != 0;
++}
++
+ static void ggml_compute_forward_mul_mat_id(
+         const struct ggml_compute_params * params,
+               struct ggml_tensor * dst) {
+@@ -1714,6 +1729,55 @@ static void ggml_compute_forward_mul_mat_id(
+ 
+     ggml_barrier(params->threadpool);
+ 
++    // LOCAL PATCH: expert-parallel path. Build a compact list of active experts (those with
++    // at least one routed row), then assign one thread per expert. Only used when the number
++    // of active experts is <= nth; otherwise fall back to the stock row-parallel path.
++    if (ggml_mmid_expert_parallel() && n_ids <= nth) {
++        // thread 0 builds the active-expert list during the earlier grouping pass
++        // (reuse a small stack array; active experts <= n_ids*n_tokens but we cap at nth)
++        int active_experts[64];
++        int n_active = 0;
++        for (int e = 0; e < n_as && n_active < (int)sizeof(active_experts)/sizeof(int); ++e) {
++            if (matrix_row_counts[e] > 0) {
++                active_experts[n_active++] = e;
++            }
++        }
++        int group = 1;
++        {
++            const char * g = getenv("GGML_MMID_EP_GROUP");
++            if (g != NULL) {
++                int v = atoi(g);
++                if (v == 2 || v == 4) group = v;
++            }
++        }
++        const int n_expert_parallel = nth / group;
++        if (n_active > 0 && n_active <= n_expert_parallel) {
++            const int e_slot = ith / group;   // which active expert this thread group handles
++            const int e_lane = ith % group;   // lane within the group
++            if (e_slot < n_active) {
++                const int cur_a = active_experts[e_slot];
++                const int64_t cne1 = matrix_row_counts[cur_a];
++                if (cne1 > 0) {
++                    // split this expert's output rows across the group's threads
++                    const int64_t nr0 = ne01;
++                    const int64_t dr0 = (nr0 + group - 1) / group;
++                    const int64_t ir0_start = dr0 * e_lane;
++                    const int64_t ir0_end = MIN(ir0_start + dr0, nr0);
++                    // NOTE: no tiled kernel here - it contains its own barrier
++                    const char * src0_cur = (const char *) src0->data + cur_a * nb02;
++                    const void * wdata = (src1->type == vec_dot_type) ? src1->data : params->wdata;
++                    const size_t row_size_local = ggml_row_size(vec_dot_type, ne10);
++                    ggml_compute_forward_mul_mat_id_one_chunk(
++                        dst, src0, src1, ids, cur_a,
++                        ir0_start, ir0_end, 0, cne1,
++                        src0_cur, matrix_rows, row_size_local, src1_cont, wdata);
++                }
++            }
++            ggml_barrier(params->threadpool);
++            return;
++        }
++    }
++
+     for (int cur_a = 0; cur_a < n_as; ++cur_a) {
+         const int64_t cne1 = matrix_row_counts[cur_a];
+ 
+@@ -3070,7 +3134,7 @@ struct ggml_cplan ggml_graph_plan(
+                     {
+                         const int64_t S_v = node->src[2]->ne[0];
+                         const int64_t K   = ggml_get_op_params_i32(node, 0);
+-                        const int64_t per_thread = S_v + (K > 1 ? S_v * S_v : 0);
++                        const int64_t per_thread = 2 * S_v + (K > 1 ? S_v * S_v : 0);
+                         cur = per_thread * sizeof(float) * n_tasks;
+                     } break;
+                 case GGML_OP_COUNT:
