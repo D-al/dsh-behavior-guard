@@ -95,7 +95,7 @@ tensor parallel/MTP/DFlash 也都是它先做。IQ 量化（IQ2/IQ3/IQ4）是它
 - **fused delta-net** 明写 "for Qwen3-Next and Qwen3.5-MoE"——我们的 DeltaNet 架构同类，
   但 README **没有逐字写 "Qwen3.6-35B-A3B 支持"**——需实测加载确认
 
-### 最相关的社区实测（同配置！）
+### 最相关的社区实测（⚠ 后被同权重 A/B 反证——见"判断修正"）
 RTX **4060 Ti 8G** + Qwen3.6-35B-A3B（桌面 4060Ti，非我们的 Laptop 版）：
 - 主线 llama.cpp Q4_K_S + q8_0 KV：16k **41.6 t/s** → 163k **26 t/s**（掉 38%）
 - **ik_llama.cpp + IQ3_K_R4 + q4_0 KV**：16k **57.6 t/s** → 163k **55.6 t/s**（**完全不掉**）
@@ -116,10 +116,25 @@ RTX **4060 Ti 8G** + Qwen3.6-35B-A3B（桌面 4060Ti，非我们的 Laptop 版�
 - 需重编 ik 分支 + 重打 autoparser 两行补丁（ik 基于较老主线，补丁大概率能套）
 - 有已知坑：README 警告 split mode graph + 部分 offload 可能出乱码，需 `-cuda graphs=0`
 
-### 判断
-**值得做一次受控 A/B**，但优先级低于"升 v1.0.0 + #29307"——因为：
-① 收益数字是二手且硬件不同；② 要换量化格式（质量风险）；③ 我们 NCMOE 40 已在同类路线上。
-若 A/B 做：固定 CTX/模型任务集，只换引擎+量化，判据用**端到端墙钟 + 质量评分**双指标。
+### 判断修正（ik 子任务带回同权重 A/B 反证后）
+**不建议切换引擎**——那个 55 t/s 案例是 **IQ3_K_R4 + q4_0 KV（换量化损质量）**，不是引擎收益：
+- **同权重 A/B（L4 研究日志）ik 输给或持平主线**：chat 82.5/80.5、code **91.4/83.4**、json 93.7/92.7；
+  raw decode 70 vs 69.4 持平；MTP acceptance 主线 0.77 vs ik 0.67
+- **ik 的动态专家缓存**（--moe-cache-mib，源自上游 #29887/#30112）在我们同款 35B 上只有
+  **55.92→56.63 t/s（+1.27%）却多吃 497 MiB**——我们只剩 457 MiB，**直接不可行**
+- **ik 的 --moe-cache-cpu-share 是上游 #30966 的 partial port，同款缺陷**：
+  PR 讨论确认 share 同时控制 CPU 计算比例**和送到 GPU 的拷贝数**，share=1 会冻结缓存降命中率，
+  "Qwen-3.8-Next loses ... for any value > 0" → **任何分支都别再试 cpu-share**
+- **加载风险（致命）**：README 明说 Unsloth `_XL` 且含 f16 tensor 的 GGUF 可能不工作——
+  我们正是 UD-Q4_K_XL，必须先测加载
+- **分叉成本**：2024-08 后零同步，代码布局大变，autoparser 两行补丁**不能直接套**；
+  且 i7-12650H 无 AVX-512，ik 核心卖点 IQK GEMM 路径静默回退 AVX2
+- **社区 110-157 t/s 全是 IQ4_XS + 量化 KV**（换 quant 不是引擎）；8G 教程那条其实是 mainline llama.cpp
+
+**唯一值得从 ik 借鉴的**：issue #31951 的 **fused AVX2/FMA GDN + QKV 自动融合小补丁**
+（CPU-only 场景 +20%，但那是 AVX-512 机器，我们只有 AVX2，收益不确定）——可 backport 到主线副本 A/B，
+不是换引擎的理由。若允许质量取舍，IQ4_XS（17.0GB vs 21.3GB、PPL +1.9%）释放 ~4GB 显存
+放更多层进 GPU，可能比换引擎更值（IQ3_XXS 不建议：SWE 5/10 vs IQ4_XS 9/10）。
 
 ## 四、诚实标注
 - v1.0.0 发布事实、release notes 条目为 GitHub 一手核实；**性能数字**（+11~21% GDN、+55% MTP、+4.3~11% token-aware）均为 PR 作者/社区报告，**无独立复现**
