@@ -686,3 +686,98 @@ headroom = 16384
 
 ## 11.5 一句话总结
 **提升表现的最大杠杆不在模型/引擎（硬件墙已确认），而在 harness 的"从机制到目标"最后一公里：把压缩正反馈根治（今天部分做了）、把 KR1 从外部驱动改成自主闭环、把 Critic 从 L2 单测推到 L4 真实证据。工具面裁剪虽常被提起，但卡在决策与信号缺失，不是当前主战场。**
+
+
+---
+
+# 第十二部分：标准化 eval —— 建立可比对的尺子（2026-11-24 晚）
+
+> 用户："最好先把标准化搞好，这样才有和前沿比较差距的尺子，好知道我们在哪。"
+> 两路调研：① 公开 benchmark 适配性 ② 本地 eval 体系盘点。
+
+## 12.1 ⭐先纠正一个假设：现有 eval 测的不是目标对象
+
+调研发现现有 eval 的结构性问题：
+- **agentlab.py / projectlab.py 直连 llama-server**（`D:/Brain/workspace/bench/agentlab.py:41`、`projectlab.py:52`），**绕过真实 harness**——behavior-guard / 海马体 / 多角色 / 门控全没参与
+- 所以"自建 bench 高分"只说明**模型本身**行，不说明**harness+模型系统**行
+- 这解释了 ROADMAP L2 backlog 的判断："自建 bench 无法与社区同基准可比，外部效度存疑"——`ROADMAP_GRAPH.md:743-762`，`benefit_to_self: 知道自己在社区真实水平的位置，不再自我感觉良好`
+
+**所以标准化不只是"接公开 bench"，还要修"测的对象"——必须测真实 harness 链路。**
+
+## 12.2 关键发现：不必迁 SWE-bench，有更务实的路径
+
+backlog 默认要迁 SWE-bench Verified，但调研显示它是**最不划算**的选择：
+
+| 障碍 | 细节 |
+|---|---|
+| 环境重 | 每题一个 Docker + 代码库；WebArena 更夸张（GitLab 容器约 100GB）|
+| 信号差 | 弱模型（我们工具准确率 65-78%）在 SWE-bench 分数很低，**信噪比差** |
+| 已饱和 | SWE-bench Pro 上，Verified 拿 70%+ 的系统掉到 ~23%——Verified 接近饱和/污染 |
+| 口径不匹配 | SWE-bench 是单轮 patch，**85% 的 BFCL 工具调用问题它测不到**（开源分析）|
+
+**真正适合我们的第一梯队（离线可跑 + 有公开榜 + 直接测工具调用）：**
+
+| Bench | 题量 | 测什么 | 本地可跑 | 有榜 | 单机耗时 |
+|---|---:|---|---|:---:|---|
+| **BFCL V4 静态子集** | 2000+（取 100-200）| 工具调用 AST 判分 | ✅ 高 | ✅ SOTA 70.9% | 1-2 小时 |
+| **τ-bench Retail** | 115 | 多轮工具调用 + `pass^k` 可靠性 | ✅ 中高 | ✅ 82.4% | 4-10 小时 |
+| **CToolEval / AgentCLUE** | 398 API / 104 题 | 中文工具调用（抵消语言偏差）| ✅ 高 | ⚠️/✅ | 数小时 |
+
+**为什么这三个最适合**：
+- BFCL 的 AST 判分是**确定性**的（不靠 LLM judge），直接量化我们关心的 65-78% 工具准确率；小模型 xLAM-2-8b 在 BFCL 多轮能到 70%——说明工具调用不是模型规模的函数，我们 35B 有空间
+- τ-bench 的 **`pass^k`**（同题跑 k 次全中才得分）正好测 behavior-guard 关心的可靠性衰减——前沿模型 pass^1→pass^4 都会大幅掉分
+- 中文 bench 必须做：我们模型用 `chat_template_zh` 优化，英文 bench 可能低估能力
+
+## 12.3 现有 eval 体系盘点（可复用 vs 重写）
+
+**（子任务盘点结论）——"我们现在有没有尺子"的诚实回答：有内部尺子，但没有外部尺子。**
+
+现有资产：
+- `agentlab.py`（377 行，7 小任务）、`projectlab.py`（935 行，P1-P5）——**直连 llama-server，绕过 harness**
+- `regression_check.py`（29 门禁）、`verify_agent.py`、`test_turn_guard.mjs`（26）、`test_new_guards.mjs`（38）——**harness 机制门禁，有真实 trace 证据**
+- `trace_report.py`、`auditor_metrics.py`——证据分层工具（L1-L5）
+
+可复用：
+- 评判逻辑（agentlab 的 6 类失败标签 EMPTY/LOOP/FAKEOK/RUNAWAY/NOANSWER/INCOMPLETE）
+- trace 收集（`_trace.jsonl` + sid_filter 排除 s1 假数据——**89% 是测试假数据，必须过滤**）
+- 报告格式（JSON + 中位/sd）
+
+要重写：
+- **测评通道**：从直连 llama-server 改成走**真实 harness 会话**（通过 dsh-session-bridge 投递）
+- **判分口径**：接入 BFCL AST 判分 / τ-bench db_check / CToolEval 状态比对
+
+该废弃/降级：
+- 自建 bench 的"绝对分数"不再作为主指标，只作为**回归门禁**（防退化）
+- 知识层分层等待办（全库只有一行，无 ROADMAP 卡）→ 关闭
+
+## 12.4 自建 ↔ 公开 bench 的锚定方法
+
+**让自建分"可对标前沿"的三步**：
+1. **指标映射**：
+   - 自建 LOOP/RUNAWAY/NOANSWER → BFCL 格式遵循 + τ-bench pass^k（可靠性轴）
+   - 自建 FAKEOK/INCOMPLETE → τ-bench / AppWorld 的世界状态判分（db_check）
+   - 工具调用正确率 → BFCL AST 判分（**统一口径**）
+2. **锚题法**：在自建回归里嵌固定锚题——20 题 BFCL 静态 + 10 题 τ-bench Retail + 10 题 CToolEval，每次必跑，得到"自建分 ↔ 公开分"映射曲线
+3. **校准点**：跑 1-2 个有公开分数的开源模型在同批锚题上，拟合换算关系
+
+**关键纪律**：公开 bench 的题目/判分器**原样使用**，不能改——否则失去可比性。自建 bench 只做"补充场景 + 高频回归"。
+
+## 12.5 分阶段落地建议
+
+### 阶段 1（本周可做，零外部依赖）
+- 拉 BFCL V4 静态子集（simple/multiple/parallel/irrelevance/multi_turn），取 100-200 题
+- 写**适配器**：把 BFCL 的函数定义转成我们 harness 的工具 schema，通过 session-bridge 投递到真实 harness 会话
+- 用 BFCL 官方 AST 判分器打分 → 得到第一个**可对外比的分数**
+- 基线记录：注明模型版本（94f3af3）、harness 版本（v2.9）、配置（MTP nmax5 / t8 / cache1350 / ctx96K / threshold0.65 / retain16K）
+
+### 阶段 2（数天）
+- τ-bench Retail 115 题，跑 pass^1 和 pass^4（可靠性轴）
+- CToolEval 小子集（中文锚）
+- 建立"锚题集"嵌入现有 regression_check，每次改动后自动跑
+
+### 阶段 3（长期，按需）
+- SWE-bench：**只跑 mini-SWE-agent + 单 repo（django）20-30 题试水**，确认信号质量再决定是否全量
+- AppWorld（如果阶段 1-2 显示工具调用是瓶颈）：部署 Engine 跑 N168 子集
+
+## 12.6 一句话
+**标准化的第一步不是迁 SWE-bench，而是：接 BFCL 静态子集（离线、确定性判分、有公开榜）+ 修测评通道（走真实 harness 而非直连 llama-server）+ 嵌锚题到回归门禁。这样"我们在哪"第一次有了外部参照系。**
