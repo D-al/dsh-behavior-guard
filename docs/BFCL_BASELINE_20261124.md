@@ -241,3 +241,35 @@ BFCL V4 官方榜 Non-live AST（simple+multiple+parallel 加权汇总）参考�
 - simple 同 session：15s/题
 - multiple/parallel/irrelevance 新 session：35s/题
 - **multi_turn：~232s/题（4 轮 × 35s + 执行回灌）**——100 题要 6.5 小时，不划算。计划只跑 10-15 题做方向性验证。
+
+
+---
+
+## 更新 5：irrelevance 完整结果 + 四类别最终汇总（2026-11-24 21:02）
+
+**irrelevance：100/100 = 100.0%，Wilson 95% CI [96.3%, 100.0%]**，中位 35.4s/题。
+
+过程：中途 20:19 看门狗自动触发 RestartDsh 导致 dsh 重启，评测在 46/100 中断（旧 token 失效）。
+用 `bfcl_supervisor.py` 看护从 46 断点自动续跑，21:01:38 完成 100/100，看护自动退出。
+**抗重启机制全程生效，无需人工干预。**
+
+### 四类别最终汇总
+
+| 类别 | 结果 | Wilson 95% CI | 测什么 |
+|---|---:|---|---|
+| simple_python | 95/100 = 95.0% | [88.8%, 97.8%] | 单函数选择+参数 |
+| multiple | 95/100 = 95.0% | [88.8%, 97.8%] | 多候选择一 |
+| parallel | 92/100 = 92.0% | [85.0%, 95.9%] | 一函数多次调用 |
+| irrelevance | 100/100 = 100.0% | [96.3%, 100.0%] | 不该调用时不调用 |
+| **四类等权** | **95.5%** | — | 静态工具调用 |
+
+**结论强化**：irrelevance 满分进一步证实——behavior-guard 最关心的"误触发"维度，本地 35B 表现完美（模型能正确识别函数不匹配请求并用中文说明拒绝）。结合 simple/multiple 95%，**静态工具调用的四个维度都已达头部水平**。
+
+**仍未测**：multi_turn（链路已打通但每题 4 分钟，100 题要 6.5 小时，未跑全量）、agentic/live/format_sensitivity 类别。
+
+### 上线包状态（用户要求"测评一跑完就可以上线"）
+- 补丁：lever1/2/4 三个 patch 脚本在临时副本实跑验证通过（叠加 2541→2750 行，node --check 通过）
+- 工具：levers_deploy.py（preflight/backup/apply/rollback）+ levers_verify.py（L4 trace + L5 产物）
+- 手册：docs/LEVERS_GO_LIVE_20261124.md
+- **preflight 2026-11-24 21:02 全部通过**（评测完成/两副本一致/语法OK）
+- ⚠️ 补丁未应用到运行版——实际执行需重启 dsh，属生产变更，需用户确认。
