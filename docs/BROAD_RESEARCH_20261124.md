@@ -1047,3 +1047,77 @@ harness 能补偿流程纪律（状态/验证/规划/工具选择），**补偿�
 是否做①（真实任务 A/B 流水线）+ 顺手补②。
 需确认任务集口径：现有 `agentlab.py`(7小任务) / `projectlab.py`(P1-P5) 偏短，
 覆盖不到"20 轮后遇失败工具结果"类场景，可能需新建。
+
+
+---
+
+# 第十八部分：BigMoeOnEdge 调研与我们的优化方向（2026-11-25）
+
+> 用户问："BigMoeOnEdge 同配置 35 tok/s，参考它怎么实现的，我们怎么优化？"
+> **核心结论：前提不成立——35 tok/s 与我们不可比，不能为追这个数字改配置。**
+
+## 18.1 生产基线先核实（重要：记忆一度过时）
+
+调研中发现工作记忆的"生产配置（11-18 校准）"已过时，实际以 `.env.llama`（11-24 12:43 改）为准：
+- **引擎换代**：自编 b12244 → upstream 1.0（指纹 `94f3af3`，二进制 11-23 10:48 重编）
+- **三处参数反转**（11-23 有意重测）：
+  - THREADS 6→8（+18%，交叉验证；t12+ 因 HT 争抢内存控制器反降）
+  - MOE_CACHE_CPU_SHARE 0→1.0（20K e2e -10.6% 墙钟；上游 1.0 的 MoE cache 只处理 ≤32 token 批，
+    share 不再毒害 prefill，旧"share=0 最优"是 b12244 时代结论）——**应从已证伪清单移除**
+  - UBATCH 1536→2048（prefill +39%，解码不变）
+- 其余一致：CTX 98304 / NGL 99 / NCMOE 40 / CACHE 1350MiB / BATCH 4096 / CTK q8_0 / CTV q4_0 /
+  NMAX 5 / P_MIN 0.8 / CHECKPOINTS 2 / router models-max1 margin450
+- **真实基线是配置族**（11-24 `tps_ab.log`，20K prompt+128 生成+6~8 次中位）：
+  real_mtpoff 19.98 / nmax5 24.56 / mmproj_q8 27.00 / tokemb_cpu 27.84 / ctx48k 25.63 t/s
+  → 记忆"27.2"对应 mmproj_q8/tokemb_cpu 档；**保守说生产 ≈25-27 t/s @20K**
+
+## 18.2 35 tok/s 不可比（逐项差异）
+
+| 维度 | bmoe 报道 | 我们 |
+|---|---|---|
+| GPU | 桌面卡（3070/3060Ti 级，220W+，带宽~448GB/s）| **4060 Laptop（100-115W，带宽~256GB/s）** |
+| 量化 | 多为 Q4_K_M / IQ 档 | UD-Q4_K_XL（21.28GiB，更重）|
+| prompt | 30-90 token 短 prompt | **20K token** |
+| 上下文 | 16384 | 98304 |
+| MTP | 多数**关闭** | nmax5 开启 |
+| 专家来源 | RAM + GPU cache（8GB+31GB RAM）| 全 RAM（load_mode=none）+ GPU cache |
+
+- 归一化后真实差距：**保守 0-15%（基本被 prompt 长度解释掉）、乐观 30-50%（需换条件，套不到我们场景）**
+- 数据可信度中等偏上（docs/bench-data 逐行可追溯 + `scripts/bench-report.sh` 可复现），
+  但 35/45 两点只在单台机器、无 llama.cpp 原生 timings、社区质疑虚标/安装敏感
+- **结论："我们落后 29%"是错误前提，别为追不可比数字改配置**
+
+## 18.3 它的实现：不是黑科技，是"测量驱动的规划 + 精细缓存"
+
+- llama.cpp fork，README 明确"输出与 llama.cpp 相同、无自研 kernel、任意 GGUF 不重打包"
+- 核心：`--auto` 测量机器和模型 → 自动定 cache 大小/线程/设备分工（Plan 屏显示每个选择及理由）
+- 分层专家缓存：GPU cache → RAM → flash；**设备内存作为缓存的一层**（measured-planning step4）
+- 首次请求实测无损旋钮（lossless knobs），按模型自己的路由定 cache 预算（step1/2）
+- headroom probe：唯一其他引擎不做的测量（内核事实）
+- 关键文档：`hardware-planning.md` / `measured-planning.md` / `cache-sizing.md` / `moe-streaming.md`
+
+## 18.4 可直接借鉴的知识（不改配置也能用）
+
+1. **专家缓存悬崖**（cache-sizing.md）：LRU 预算低于一个 token 周期（`token_demand_MiB`）时
+   命中率**归零不是渐降**——模型按固定层序 0..N-1 访问，LRU 淘汰的正是马上要用的。
+   手调 cache 必须对照 token_demand_MiB 而非 cache_min_mb。
+   bmoe 0.40.2 起默认淘汰改 decayed frequency 规避此悬崖。
+2. **投机解码在专家流式下是负收益**（moe-streaming.md）：一批 token 的专家并集接近全部，
+   破坏稀疏性——所以 bmoe 默认关 MTP。**我们专家全在 RAM 不走流式，MTP 仍有正收益
+   （20→24.5 t/s）**，这是两套优化路径的根本分叉，不可直接照搬。
+3. **专家预测已实测证伪**（expert-prediction.md）：88.6% 准确率，但所有预取变体墙钟都变慢
+   （还被热节流污染过）——与我们"decode t/s 是误导性指标"教训同源。
+4. **未用杠杆清单**（hardware-planning.md:1598）：上游已有但我们未用的包括
+   `n_threads_batch` 独立于 `n_threads`、`flash_attn_type`、`kv_unified`、`llama_numa_init`、
+   `mparams.devices[]`/`split_mode` 等——但多数是 bmoe 规划器自己也没用或用完的。
+
+## 18.5 我们的优化方向（按优先级）
+
+- **不追 35 tok/s 这个数字**（前提错误）
+- **真实可提升空间**：bmoe 证明的是"测量驱动规划"优于手调——
+  我们已有 `speed_probe.py` + 大量 A/B 日志，缺的是把"按模型路由定 cache / 首次请求实测无损旋钮"
+  这套思路系统化。但收益上限受 4060 Laptop 带宽+功耗墙约束，且我们已在 25-27 t/s 接近瓶颈。
+- **唯一值得实测的新旋钮**：`n_threads_batch` 独立于 `n_threads`（bmoe 已纳入，我们没用），
+  可能改善 prefill（CPU 侧 MoE 并行度）；需 A/B 验证，不预设有效。
+- **存档**：本部分与生产基线核实一并沉淀；后续若做 A/B 流水线（第十七部分①），
+  应把"引擎版本/参数快照"作为每次实验的强制元数据，避免基线漂移重演。
