@@ -104,12 +104,16 @@ PATCHES.append((
 
 
 def main():
-    s = TARGET.read_text(encoding='utf-8')
-    actual = hashlib.sha256(s.encode('utf-8')).hexdigest()
-    print(f'anchor sha={actual[:16]}')
-    if actual != EXPECTED_SHA:
+    raw = TARGET.read_bytes()
+    actual = hashlib.sha256(raw).hexdigest()
+    crlf = b'\r\n' in raw
+    s = raw.decode('utf-8').replace('\r\n', '\n')  # 归一化做替换
+    import sys as _sys
+    expect = _sys.argv[1] if len(_sys.argv) > 1 else EXPECTED_SHA
+    print(f'anchor sha={actual[:16]} expected={expect[:16]} crlf={crlf}')
+    if actual != expect:
         print('ABORT: sha 不匹配')
-        sys.exit(1)
+        _sys.exit(1)
     for desc, old, new in PATCHES:
         cnt = s.count(old)
         if cnt != 1:
@@ -117,7 +121,8 @@ def main():
             sys.exit(1)
         s = s.replace(old, new, 1)
         print(f'  OK [{desc}]')
-    TARGET.write_text(s, encoding='utf-8')
+    out = s.replace('\n', '\r\n') if crlf else s
+    TARGET.write_bytes(out.encode('utf-8'))
     print(f'APPLIED patch4 self_consistency, new sha={hashlib.sha256(s.encode()).hexdigest()[:16]}')
 
 

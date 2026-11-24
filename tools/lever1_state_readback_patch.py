@@ -148,21 +148,26 @@ PATCHES.append((
 
 
 def main():
-    s = TARGET.read_text(encoding='utf-8')
-    actual = hashlib.sha256(s.encode('utf-8')).hexdigest()
-    print(f'anchor sha={actual[:16]} expected={EXPECTED_SHA[:16]}')
-    if actual != EXPECTED_SHA:
-        print('ABORT: sha 不匹配，补丁基于 v2.9.0（362e3715...），当前文件已变')
-        sys.exit(1)
+    import sys as _sys
+    raw = TARGET.read_bytes()
+    actual = hashlib.sha256(raw).hexdigest()
+    crlf = b'\r\n' in raw
+    s = raw.decode('utf-8').replace('\r\n', '\n')
+    expect = _sys.argv[1] if len(_sys.argv) > 1 else EXPECTED_SHA
+    print(f'anchor sha={actual[:16]} expected={expect[:16]} crlf={crlf}')
+    if actual != expect:
+        print('ABORT: sha 不匹配')
+        _sys.exit(1)
     for desc, old, new in PATCHES:
         cnt = s.count(old)
         if cnt != 1:
             print(f'ABORT: [{desc}] 锚点出现 {cnt} 次（期望恰好 1 次），不应用')
-            sys.exit(1)
+            _sys.exit(1)
         s = s.replace(old, new, 1)
         print(f'  OK [{desc}]')
-    TARGET.write_text(s, encoding='utf-8')
-    final = hashlib.sha256(s.encode('utf-8')).hexdigest()
+    out = s.replace('\n', '\r\n') if crlf else s
+    TARGET.write_bytes(out.encode('utf-8'))
+    final = hashlib.sha256(TARGET.read_bytes()).hexdigest()
     print(f'APPLIED patch1 state_readback, new sha={final[:16]}')
 
 

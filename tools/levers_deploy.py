@@ -25,7 +25,7 @@ STATE_FILE = BACKUP_DIR / 'state.json'
 EVAL_RESULT = Path('D:/Brain/workspace/bench/_bfcl_irrelevance_result.jsonl')
 EVAL_TARGET = 100
 
-LEVERS = {1: 'state_readback', 2: 'state_board', 3: 'tool_stage', 4: 'self_consistency'}
+LEVERS = {1: 'state_readback', 2: 'state_board', 3: 'tool_stage', 4: 'vote'}
 
 
 def sha(p):
@@ -36,8 +36,9 @@ def L(m):
     print(m, flush=True)
 
 
-def preflight():
-    """上线前置检查：评测完成 + 两副本一致 + 语法 OK。"""
+def preflight(require_sync=True):
+    """上线前置检查：评测完成 + (可选两副本一致) + 语法 OK。
+    逐补丁应用时 require_sync=False（中间态两副本本来就不一致）。"""
     ok = True
     # 1. 评测必须完成
     n = len([l for l in EVAL_RESULT.read_text(encoding='utf-8').splitlines() if l.strip()]) if EVAL_RESULT.exists() else 0
@@ -51,13 +52,15 @@ def preflight():
     for name, p in [('权威源', AUTHORITATIVE), ('运行版', RUNTIME)]:
         if not p.exists():
             L(f'[FAIL] {name} 不存在: {p}'); ok = False
-    if AUTHORITATIVE.exists() and RUNTIME.exists():
+    if AUTHORITATIVE.exists() and RUNTIME.exists() and require_sync:
         a, b = sha(AUTHORITATIVE), sha(RUNTIME)
         if a != b:
             L(f'[FAIL] 两副本不一致: 权威={a[:16]} 运行={b[:16]} —— 先同步再上线')
             ok = False
         else:
             L(f'[OK] 两副本一致 sha={a[:16]}')
+    elif not require_sync:
+        L('[SKIP] 两副本一致性检查（逐补丁应用中间态）')
 
     # 3. 语法检查
     for name, p in [('权威源', AUTHORITATIVE), ('运行版', RUNTIME)]:
@@ -97,12 +100,14 @@ def apply_lever(lever_id):
     """应用补丁（由各杠杆补丁脚本实现，这里只做调度 + 一致性保证）。"""
     if lever_id not in LEVERS:
         L(f'[FAIL] 未知杠杆 {lever_id}，可选: {list(LEVERS)}'); return
-    if not preflight():
+    if not preflight(require_sync=False):
         L('[ABORT] 前置检查失败，不应用'); return
     patch = Path(__file__).parent / f'lever{lever_id}_{LEVERS[lever_id]}_patch.py'
     if not patch.exists():
         L(f'[FAIL] 补丁脚本不存在: {patch}'); return
-    r = subprocess.run([sys.executable, str(patch)], capture_output=True, text=True)
+    # 传当前字节 sha（累积链：patch2/4 必须校验 patch1 之后的状态）
+    cur_sha = sha(AUTHORITATIVE)
+    r = subprocess.run([sys.executable, str(patch), cur_sha], capture_output=True, text=True)
     L(r.stdout[-2000:])
     if r.returncode != 0:
         L(f'[FAIL] 补丁失败: {r.stderr[:500]}'); return

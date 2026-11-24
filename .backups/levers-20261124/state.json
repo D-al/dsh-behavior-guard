@@ -1,0 +1,12 @@
+{
+  "authoritative": {
+    "path": "D:\\Brain\\publish\\dsh-behavior-guard\\index.mjs",
+    "sha": "362e37154586a5c4c8879c1c59973e3cc9bcb09ec1bf73f3f4e5fa0003113520",
+    "backup": "D:\\Brain\\publish\\dsh-behavior-guard\\.backups\\levers-20261124\\index.mjs.authoritative.bak"
+  },
+  "runtime": {
+    "path": "D:\\Brain\\dsh-data\\profiles\\desktop\\node_modules\\dsh-agent-harness\\index.mjs",
+    "sha": "362e37154586a5c4c8879c1c59973e3cc9bcb09ec1bf73f3f4e5fa0003113520",
+    "backup": "D:\\Brain\\publish\\dsh-behavior-guard\\.backups\\levers-20261124\\index.mjs.runtime.bak"
+  }
+}

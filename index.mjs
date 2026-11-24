@@ -241,12 +241,27 @@ const DEFAULTS = {
   // 短期②：Critic 去同源化——同模型 temp=0 会让评审与执行者 conditioning 相同。
   // 用异质温度(top_k)打破同源；prompt 只看产物+证据、绝不喂执行者推理链（AC3 结论）。
   criticTemperature: 0.7,
+  // ── P2 同模型 K=5 自洽投票（2026-11-24；默认关，高风险决策才开）──
+  voteK: 5,
+  voteTemperature: 0.7,
+  voteMinAgreement: 4,
+  voteMaxTotalMs: 180000,
+  voteOnCritic: false,   // 默认关；A/B 验证增益后再开
   criticTopK: 20,
   // P2 Planner 检查：首次 todo 的 [VERIFY] 项是否可验证（1 次 LLM ~11s/任务）
   // verify-on-edit：每次 write/edit 后做确定性语法检查（0 LLM，仅 py/json/yaml）
   verifyOnEditEnabled: true,
   // present 前深检（import 可解析/占位符/空文件/shell 语法）：~0.3s，0 LLM
   deepCheckEnabled: true,
+  // ── P0 确定性状态回读门（2026-11-24；零 LLM，纯同步 IO）──
+  deterministicReadbackEnabled: true,
+  deterministicReadbackMaxTargets: 5,
+  deterministicReadbackMaxPerTurn: 1,
+  deterministicReadbackReserveD5: 1,
+  // ── P1 状态板（2026-11-24）──
+  stateBoardEnabled: true,
+  stateBoardEverySteps: 4,
+  stateBoardMaxBytes: 4000,
   plannerCheckEnabled: true,
   plannerCheckTimeoutMs: 90000,
   maxPlannerCheckPerSession: 1,
@@ -553,6 +568,29 @@ function mindStateSignals(s, threshold) {
 // 缺一个所有模块共享的黑板。这里提供【唯一只读视图】，各消费者不再各读各的 s 字段。
 // 设计：纯函数、零 LLM、不修改 s（写入仍走原路径，向后兼容）；快照是当次调用的不可变投影。
 // 字段语义稳定后，新增机制只需往这里加一个字段，不用改每个消费者。
+// ── P1: 显式状态板（0 LLM；规则驱动，不依赖模型自省）──────────────────────
+// 三个字段：cwd / 最近改动文件 / 未完成前置项。
+// 硬约束：bridge send 4096 字节（session-bridge/index.mjs:134），超了只保留未完成项+最近3文件。
+function buildStateBoard(s, cfg) {
+  const st = s || {}
+  const lines = []
+  let cwd = ''
+  try { cwd = process.cwd().replace(/\\\\/g, '/') } catch { cwd = '(unknown)' }
+  lines.push(`cwd=${cwd}`)
+  const changed = Array.isArray(st.changedFiles) ? st.changedFiles.slice(-8) : []
+  lines.push('changed=' + (changed.length ? changed.slice(-3).join(', ') : '(none)'))
+  const todos = Array.isArray(st.todos) ? st.todos : []
+  const pending = todos.filter((t) => t && t.status !== 'completed' && /\[VERIFY\]/.test(String(t.text || t.title || '')))
+  lines.push('unfinished=' + (pending.length ? pending.slice(0, 4).map((t) => String(t.text || t.title).slice(0, 50)).join(' | ') : '(none)'))
+  let text = '【状态板】' + lines.join('；')
+  // 字节门禁：超 4096 就逐级降级
+  if (Buffer.byteLength(text, 'utf8') > 4000) {
+    text = '【状态板】cwd=' + cwd + '；unfinished=' + (pending.length ? pending.slice(0, 2).map((t) => String(t.text || t.title).slice(0, 30)).join(' | ') : '(none)')
+  }
+  if (Buffer.byteLength(text, 'utf8') > 4000) text = '【状态板】unfinished=' + (pending.length || 0)
+  return { text, bytes: Buffer.byteLength(text, 'utf8'), pending: pending.length }
+}
+
 function workspaceSnapshot(s) {
   const st = s || {}
   const todos = Array.isArray(st.todos) ? st.todos : []
@@ -580,7 +618,9 @@ function workspaceSnapshot(s) {
     hasVerifyItem: todos.some((t) => /\[VERIFY\]/.test(String(t?.content || ''))),
     // 证据层
     evidence: Object.freeze([...verified]),
-    verified: !!(st.verifyRan || st.verifiedThisTurn || (st.verifyEvidence || 0) > 0),
+    verifiedByLLM: !!(st.verifyRan || st.verifiedThisTurn || (st.verifyEvidence || 0) > 0),
+    verifiedDeterministic: st.stateReadbackOk === true,
+    verified: !!(st.verifyRan || st.verifiedThisTurn || (st.verifyEvidence || 0) > 0 || st.stateReadbackOk === true),
     wrote: !!(st.wroteThisTurn || (st.writeCalls || 0) > 0),
     product: String(st.lastProduct || ''),
     // 排除层
@@ -727,6 +767,62 @@ function fileState(path, since) {
     return { exists: false, fresh: false }
   }
 }
+// ── P0: 确定性状态回读门（0 LLM，纯同步 IO）────────────────────────────────
+// 铁律：
+//  1) 写目标只取【结构化字段】：s.lastProduct + 最近 tool_calls 的 file_path/path 等；
+//  2) 命令型工具只认结构化目标路径，绝不拿 fullArgs 正文做 /verify|pytest|test/ 关键词匹配
+//     （:1034-1036 已记录该假绿根因：文件名/内容含 verify 被误判为已验证）；
+//  3) mtime 容差复用 fileState 的 since - 1000（与 L1 同语义）。
+const RB_CMD_TOOLS = new Set(['pwsh', 'bash', 'shell', 'exec', 'run_command', 'terminal'])
+const RB_PATH_KEYS = ['file_path', 'path', 'filePath', 'target_file', 'notebook_path', 'target']
+
+function deterministicStateReadback(state, cfg) {
+  const s = state || {}
+  const out = { ok: false, targets: [], evidence: [], errors: [] }
+  const maxTargets = Math.max(1, Number(cfg?.deterministicReadbackMaxTargets) || 5)
+  const seen = new Set()
+  const addTarget = (raw, since) => {
+    const p = String(raw || '').trim().replace(/\\/g, '/')
+    if (!p || seen.has(p)) return
+    seen.add(p)
+    if (out.targets.length < maxTargets) out.targets.push({ path: p, since })
+  }
+  addTarget(s.lastProduct, s.turnStartedAt || Date.now())
+  const trail = Array.isArray(s.trail) ? s.trail : []
+  for (const call of trail.slice(-12)) {
+    if (!call || call.kind !== 'call') continue
+    const name = String(call.name || '')
+    if (!WRITE_TOOLS.has(name) && !RB_CMD_TOOLS.has(name)) continue
+    let a = {}
+    try { a = JSON.parse(call.fullArgs || call.args || '{}') || {} } catch { /* 解析失败跳过，绝不猜 */ }
+    for (const k of RB_PATH_KEYS) {
+      if (typeof a[k] === 'string' && a[k].trim()) {
+        addTarget(a[k], call.ts || s.turnStartedAt || Date.now())
+        break
+      }
+    }
+  }
+  if (!out.targets.length) {
+    // 无结构化写目标 → 无法回读 → 跳过本门（不误拦），由 verify-on-stop / D4 兜底
+    out.skipped = true
+    return out
+  }
+  for (const t of out.targets) {
+    try {
+      const fs1 = fileState(t.path, t.since)
+      if (!fs1.exists) { out.errors.push(t.path + ': 不存在'); continue }
+      if (!fs1.fresh) { out.errors.push(t.path + ': mtime 非本轮写入'); continue }
+      const buf = readFileSync(t.path)
+      if (buf.length === 0) { out.errors.push(t.path + ': 空文件'); continue }
+      out.evidence.push(t.path + ': exists=1 fresh=1 bytes=' + buf.length)
+    } catch (e) {
+      out.errors.push(t.path + ': 读取失败 ' + String(e?.message || e).slice(0, 80))
+    }
+  }
+  out.ok = out.errors.length === 0 && out.evidence.length > 0
+  return out
+}
+
 const TURN_GUARD_DEFAULTS = {
   maxContinuationsPerTurn: 1,
   maxContinuationsPerSession: 20,
@@ -875,6 +971,9 @@ export function apply(ctx, config) {
         wroteThisTurn: false, verifiedThisTurn: false, lastFrameParent: null,
         // S13: verifyEvidence 计数器（真实验证证据累积）
         verifyEvidence: 0,
+        changedFiles: [], stateBoardCount: 0,
+        // P0 确定性状态回读门
+        stateReadbackOk: false, stateReadbackEvidence: [], stateReadbackErrors: [], deterministicReadbackCount: 0,
         // S22: per-session disabled-tool warning dedup (not module-global)
         disabledWarned: new Set(),
         bdi: { goal: '', belief: '', preference: '', updatedAt: 0 },
@@ -1031,6 +1130,20 @@ export function apply(ctx, config) {
           if (callName === 'present') { s.presentCalled = true; s.delivered = true }
           if (callName === 'spawn_teammate') s.spawnedThisTurn = true
           if (callName === 'pwsh' && fullArgs.includes('verify_agent')) s.verifyRan = true
+          // ── P1: 累积本轮写过的文件路径（给状态板用）──
+          if (WRITE_TOOLS.has(callName)) {
+            try {
+              const aa = JSON.parse(callFull || '{}') || {}
+              for (const kk of ['file_path', 'path', 'filePath', 'target_file', 'notebook_path', 'target']) {
+                if (typeof aa[kk] === 'string' && aa[kk].trim()) {
+                  if (!Array.isArray(s.changedFiles)) s.changedFiles = []
+                  s.changedFiles.push(aa[kk].trim().replace(/\\/g, '/'))
+                  if (s.changedFiles.length > 40) s.changedFiles.shift()
+                  break
+                }
+              }
+            } catch { /* 解析失败跳过 */ }
+          }
           // verify-on-stop 证据：只认【命令型工具的验证动作】，绝不扫写入内容
           // （2026-11-18 实测：文件名 verify-probe.txt / 内容 "verify on stop test" 含 verify
           //  被宽正则误判为"已验证"→ verify-on-stop 静默失效。故限定 callName。）
@@ -1573,6 +1686,52 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
 
 字段纪律：evidence 必须引用产物里的具体行/段落，不能只给结论；confidence=low 且证据不足时用 UNCERTAIN 而非硬判；error_class 六选一（missing_requirement/incomplete/unusable/inconsistent/over_implementation/none）。`
 
+  // ── P2: 同模型自洽投票（推理时，无需训练）────────────────────────────────
+  // 实证：GSM8K +17.9%（K=5-10 边际最大）；我们的 65-78% 基础能力刚好跨过
+  // "不会把困惑封为共识"的门槛。与多 judge 投票（已证伪 9 judge≈2 票）不同：这是同模型采样。
+  // 防线：必须过 minAgreement 且不能无条件信任高一致度；tie/uncertain 回退 UNCERTAIN。
+  async function callLLMVote(prompt, maxTokens, timeoutMs, sampling, cfg, sid) {
+    const K = Math.max(2, Number(cfg?.voteK) || 5)
+    const minAgreement = Math.max(2, Math.min(K, Number(cfg?.voteMinAgreement) || Math.ceil(K * 0.8)))
+    const totalMs = Math.max(10000, Number(cfg?.voteMaxTotalMs) || 180000)
+    const started = Date.now()
+    const votes = []
+    for (let i = 0; i < K; i++) {
+      if (Date.now() - started > totalMs - 20000) break  // 留 20s 余量
+      let out = null
+      try {
+        out = await callLLMOnce(prompt, maxTokens, 20000, {
+          ...(sampling || {}), temperature: cfg?.voteTemperature ?? 0.7,
+        })
+      } catch (e) {
+        votes.push({ i, verdict: 'ERROR', error: String(e?.message || e).slice(0, 80) })
+        continue
+      }
+      let verdict = out?.verdict || out?.parsed?.verdict || 'PARSE_FAIL'
+      if (verdict !== 'ACCEPT' && verdict !== 'REJECT' && verdict !== 'UNCERTAIN') verdict = 'PARSE_FAIL'
+      votes.push({ i, verdict })
+    }
+    const tally = votes.reduce((a, v) => { a[v.verdict] = (a[v.verdict] || 0) + 1; return a }, {})
+    const sorted = Object.entries(tally).sort((a, b) => b[1] - a[1])
+    const top = sorted[0] || ['UNCERTAIN', 0]
+    const second = sorted[1] || ['', 0]
+    const agreed = top[1]
+    const tie = second[1] === agreed
+    // 一致性阈值 + tie 回退：防"5 次全错但一致"
+    const ok = agreed >= minAgreement && !tie && top[0] !== 'PARSE_FAIL' && top[0] !== 'ERROR'
+    const result = {
+      verdict: ok ? top[0] : 'UNCERTAIN',
+      votes: votes.map((v) => v.verdict),
+      tally, agreed, minAgreement, tie,
+      elapsedMs: Date.now() - started,
+    }
+    trace({ ts: new Date().toISOString(), sid: sid || '', kind: 'self_consistency_vote',
+      verdict: result.verdict, votes: result.votes, tally: result.tally,
+      agreed: result.agreed, minAgreement: result.minAgreement, tie: result.tie,
+      elapsedMs: result.elapsedMs })
+    return result
+  }
+
   async function runCritic(s) {
     // ① GWT：Critic 从共享快照取 product/goal（与控制回合同源，避免各读各的）
     const snap = workspaceSnapshot(s)
@@ -1604,12 +1763,15 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
     const criticTask = /present|交付|调用\s*\w+\s*工具/.test(String(snap.goal || ''))
       ? `${snap.goal}\n\n（评审边界：你只评"产物内容"。诸如 present/调用工具/交付 属于过程动作，不在产物里留痕，不要作为不达标理由。）`
       : snap.goal
-    const out = await callLLM(CRITIC_PROMPT(criticTask, product, content), cfg.criticMaxTokens ?? 1200, cfg.criticTimeoutMs || 90000, {
-      sid: snap.sid, tag: 'critic',
+    const promptText = CRITIC_PROMPT(criticTask, product, content)
+    const sampling = {
       temperature: cfg.criticTemperature, topK: cfg.criticTopK,
       review_kind: 'critic', rubric_version: CRITIC_RUBRIC?.version || 'builtin',
       dimensions_checked: criticDims,
-    })
+    }
+    const out = cfg.voteOnCritic
+      ? await callLLMVote(promptText, cfg.criticMaxTokens ?? 1200, cfg.criticTimeoutMs || 90000, sampling, cfg, snap.sid)
+      : await callLLM(promptText, cfg.criticMaxTokens ?? 1200, cfg.criticTimeoutMs || 90000, { sid: snap.sid, tag: 'critic', ...sampling })
     // verdict 在 callLLM 之后才产生——补记一条专属 trace，证明评审真的出了判定
     trace({ ts: new Date().toISOString(), sid: snap.sid, kind: 'review_verdict', review_kind: 'critic',
       rubric_version: CRITIC_RUBRIC?.version || 'builtin', dimensions_checked: criticDims,
@@ -1873,6 +2035,39 @@ function formatExecutorResult(pkg, exec) {
         ))
         info(`behavior-guard: [D4] present-gate 拦截 session=${sessionId}（present 无独立验收痕迹）`)
         return
+      }
+
+      // ── P0 确定性状态回读门（Critic 后、verify-on-stop 前；0 LLM，纯同步 IO）──
+      if (
+        cfg.deterministicReadbackEnabled &&
+        taskProfile(state).needsVerify &&
+        state.writeCalls > 0 &&
+        (state.deterministicReadbackCount || 0) < cfg.deterministicReadbackMaxPerTurn
+      ) {
+        state.deterministicReadbackCount = (state.deterministicReadbackCount || 0) + 1
+        let rb
+        try { rb = deterministicStateReadback(state, cfg) }
+        catch (e) { rb = { ok: false, evidence: [], errors: ['readback-throw: ' + String(e?.message || e)], targets: [] } }
+        state.stateReadbackOk = rb.ok === true
+        state.stateReadbackEvidence = Array.isArray(rb.evidence) ? rb.evidence : []
+        state.stateReadbackErrors = Array.isArray(rb.errors) ? rb.errors : []
+        trace({ ts: new Date().toISOString(), sid: sessionId || '', kind: 'verify_state_readback',
+          step: state.step, ok: rb.ok, skipped: rb.skipped === true, targets: (rb.targets || []).length,
+          evidence: state.stateReadbackEvidence.slice(0, 5), errors: state.stateReadbackErrors.slice(0, 3) })
+        const d5Reserve = Math.max(0, Number(cfg.deterministicReadbackReserveD5) || 0)
+        if (!rb.skipped && !rb.ok && state.sharedInjections + 1 <= cfg.sharedMaxPerTurn - d5Reserve) {
+          state.sharedInjections += 1
+          agent.steer(createSteeringMessage(
+            '[harness 确定性状态回读] 本轮声明的写产物回读失败，不能交付：' +
+            (state.stateReadbackErrors.slice(0, 2).join('；') || '未找到可回读的写产物') +
+            '。现在立刻用 write 工具把内容真正写到目标路径，' +
+            '然后用 pwsh 运行真实验证命令确认产物（如 python -m py_compile / node --check / pytest），' +
+            '或 read 一个路径含 [VERIFY] 的验收文件。不要只在正文里声称已写入。',
+            'behavior-guard'
+          ))
+          info(`behavior-guard: [确定性回读] FAIL session=${sessionId} — ${state.stateReadbackErrors.slice(0, 2).join(' | ')}`)
+          return
+        }
       }
 
       // ── verify-on-stop（合并补漏：改了文件没验证证据就否决退出，纯规则 0 LLM）──
@@ -2167,6 +2362,21 @@ function formatExecutorResult(pkg, exec) {
           if (cur) parts.push('② 当前项：' + String(cur.content).slice(0, 60))
           if (rej.length) parts.push('③ 已排除：' + rej.join('｜'))
           parts.push('④ 下一步：在思考里列出 2-3 个候选动作，评估哪个对完成目标收益最高，再选一个执行。')
+          // ── P1: 状态板（每 N 步注入一次，计入 shared 预算）──
+          if (
+            cfg.stateBoardEnabled &&
+            (s.step || 0) > 0 &&
+            (s.step % Math.max(1, Number(cfg.stateBoardEverySteps) || 4)) === 0
+          ) {
+            const sb = buildStateBoard(s, cfg)
+            if (sb.text) {
+              // 走控制回合 parts.push（prompt 内），与 M1 检索同性质，不占 sharedInjections
+              s.stateBoardCount = (s.stateBoardCount || 0) + 1
+              parts.push(sb.text)
+              trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'state_board_inject',
+                step: s.step, bytes: sb.bytes, pending: sb.pending })
+            }
+          }
           // ── M1 episodicSearch 情景检索：进入控制回合 parts.push（只进 prompt，不占运行时注入通道 ADR-0017）──
           if (cfg.episodicSearchEnabled) {
             try {
