@@ -1133,7 +1133,7 @@ export function apply(ctx, config) {
           // ── P1: 累积本轮写过的文件路径（给状态板用）──
           if (WRITE_TOOLS.has(callName)) {
             try {
-              const aa = JSON.parse(callFull || '{}') || {}
+              const aa = JSON.parse(fullArgs || '{}') || {}
               for (const kk of ['file_path', 'path', 'filePath', 'target_file', 'notebook_path', 'target']) {
                 if (typeof aa[kk] === 'string' && aa[kk].trim()) {
                   if (!Array.isArray(s.changedFiles)) s.changedFiles = []
