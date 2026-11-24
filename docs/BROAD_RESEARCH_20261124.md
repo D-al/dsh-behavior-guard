@@ -781,3 +781,38 @@ backlog 默认要迁 SWE-bench Verified，但调研显示它是**最不划算**�
 
 ## 12.6 一句话
 **标准化的第一步不是迁 SWE-bench，而是：接 BFCL 静态子集（离线、确定性判分、有公开榜）+ 修测评通道（走真实 harness 而非直连 llama-server）+ 嵌锚题到回归门禁。这样"我们在哪"第一次有了外部参照系。**
+
+
+---
+
+# 第十三部分：标准化 eval 阶段 1 实施（2026-11-24 晚）
+
+## 13.1 已完成
+
+**数据源**：BFCL V4 官方静态子集已克隆到 `D:/bfcl-src/berkeley-function-call-leaderboard`。
+- `BFCL_v4_simple_python.json` 400 题 / `multiple` 200 / `parallel` 200 / `irrelevance` 240
+- 标准答案：`data/possible_answer/BFCL_v4_simple_python.json`，ground_truth 格式 `[{"func": {"param": [allowed_values]}}]`
+
+**判分器**：官方 `bfcl_eval/eval_checker/ast_eval/ast_checker.py` 可用。踩坑记录：
+- 它 import 链拖进 cohere/anthropic/java_parser 等无关 SDK（BFCL 自带完整 handler 全家桶）
+- 解法：import 前 stub `bfcl_eval.constants.model_config`（判分器只用 `underscore_to_dot` 一个字段）
+- 必须传 `Language.PYTHON` 枚举，不能传 None
+- `possible_answer` 直接传 ground_truth 列表（不是包 dict）
+
+**适配器**：`D:/Brain/workspace/bench/bfcl_harness_eval.py`
+- 通过 dsh-session-bridge 的 HTTP API 投递到**真实 dsh 会话**（不是直连 llama-server）
+- 模型以 JSON 输出函数调用，抽取后交官方 AST 判分器
+- 关键坑：① 现存 subagent routing 会话不能用 bridge 投递，必须 `create` 专用会话 ② bridge.mjs CLI 的 `events` 把每条记录截断到 300 字符，必须直连 HTTP API 才能读完整 assistant text ③ 计划任务环境 PATH 没有 node，必须用绝对路径
+
+**链路验证**：单题 `simple_python_0` 模型正确输出 `{"calculate_triangle_area": {"base": 10, "height": 5}}`，官方 AST 判分 `valid: true`。说明"BFCL 题 → 真实 harness → 模型输出 → 官方判分"整条链路打通，harness 的 system prompt / 注入 / 门控都真实参与（events 里可见完整的 request/header、tools、skills 注入）。
+
+## 13.2 进行中
+
+计划任务 `BFCLRun` 正在跑 simple_python 前 10 题，结果写 `D:/Brain/workspace/bench/_bfcl_result.jsonl`，日志 `D:/Brain/_cleanup_20261118/bfcl_eval.log`。预计 30-40 分钟（每题 2-4 分钟，35B 生成慢）。
+
+## 13.3 待做（阶段1收尾）
+
+- 汇总 10 题分数，记录完整基线（模型 94f3af3 / harness v2.9 / MTP nmax5 / t8 / cache1350 / ctx96K / threshold0.65 / retain16K）
+- 把结果沉淀成 `docs/BFCL_BASELINE_20261124.md`
+- 评估是否扩到 100 题（需数小时）
+- 阶段2：τ-bench Retail + CToolEval 中文锚
