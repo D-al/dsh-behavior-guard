@@ -207,3 +207,37 @@ BFCL V4 官方榜 Non-live AST（simple+multiple+parallel 加权汇总）参考�
 4. **CToolEval**——中文锚，抵消语言偏差
 
 **这些才是"尺子"真正该量的地方。**
+
+
+---
+
+## 更新 4：multi_turn 适配器验证 + irrelevance 进行中（2026-11-24 20:00）
+
+### multi_turn 链路已跑通（1 题验证）
+适配器 `D:/Brain/workspace/bench/bfcl_harness_eval3.py`：
+- 每题新 session，逐轮 agent loop（question 每轮一条用户请求）
+- 函数定义从官方 `MULTI_TURN_FUNC_DOC_FILE_MAPPING` 加载，按 `path` 只暴露用到的函数
+- 模型每轮输出 JSON 数组 → 转 `func(k=repr(v))` 字符串 → 官方 `multi_turn_checker` 判分
+- 回灌执行用官方 `func_source_code` 后端（给模型下一轮观察）
+
+验证结果（multi_turn_base_0，4 轮，232 秒）：模型输出了合理调用序列 `mv → grep → sort → mv+diff`，判分 `valid=False`（`multi_turn:instance_state_mismatch`）——漏了 `cd`/`mkdir` 步骤，状态不匹配。**说明多轮状态依赖确实有区分度**。
+
+### 踩坑（multi_turn 特有）
+1. BFCL multi_turn 数据**没有 `function` 字段**——函数定义在 `data/multi_turn_func_doc/<类>.json`（JSONL），按 `path` 过滤
+2. **bridge send 硬限 4096 字节**（`index.mjs:134`）——完整函数 schema 4328 字符被拒 "text too long"。解法：压缩成 `func(k:type*,...)` 签名（727 字节）
+3. `execute_multi_turn_func_call` 的 `func_call_list` 要**扁平** `list[str]`，不是嵌套 `[strs]`
+4. checker 返回的 error 里可能含不可序列化对象（`Directory`），写 JSON 要 `default=str`
+
+### 重要局限性（必须标注）
+为绕过 bridge 的 4096 字节限制，multi_turn 的函数定义被压成**只有签名、无 description**。BFCL 官方用完整函数文档（含语义描述）。这**可能低估模型能力**（模型不知道 `diff`/`grep` 的确切语义）。要公平对标，需提高 bridge 限制后重测——但那要改插件并重启 dsh，风险高，暂不做。
+
+### irrelevance 进行中
+- 已跑 34 题，34/34 全对（100%）
+- 模型正确识别"函数不匹配请求"并拒绝调用，给中文说明
+- 判分逻辑：无函数调用 = 通过（官方 `irrelevance_error:decoder_success` 反向）
+- 预计还需 40 分钟跑完 100 题
+
+### 成本观察
+- simple 同 session：15s/题
+- multiple/parallel/irrelevance 新 session：35s/题
+- **multi_turn：~232s/题（4 轮 × 35s + 执行回灌）**——100 题要 6.5 小时，不划算。计划只跑 10-15 题做方向性验证。
