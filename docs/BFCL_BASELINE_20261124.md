@@ -114,3 +114,96 @@ BFCL 题目 → 包装成 prompt（函数 schema + 用户请求 + "只输出 JSO
 3. **irrelevance 类**——测"不该调用时不调用"，对应 behavior-guard 误触发
 4. 扩到 simple 全 400 题（CI 进一步收窄）
 5. 阶段 2：τ-bench Retail（pass^k）+ CToolEval（中文锚）
+
+
+---
+
+## 更新 2：multiple 基线 + v2 适配器（2026-11-24 17:30）
+
+### v2 适配器改进
+- **每题新建独立 session**：消除 v1 的上下文累积干扰（v1 在 simple_86 出现"输出别的题函数名"的幻觉）
+- **支持类别参数**：simple_python / multiple / parallel
+- **parallel 输出 JSON 数组**：prompt 让模型输出 `[{func:params}, ...]`，抽取器支持数组
+- **结果文件按类别分**：`_bfcl_<category>_result.jsonl`
+
+### multiple 结果：95/100（95.0%，Wilson CI [88.8%, 97.8%]）
+
+与 simple 完全相同的分数。错题 5 道分类：
+
+| ID | 类型 | 说明 |
+|---|---|---|
+| multiple_9 | wrong_func_name | **格式泄漏**：模型输出了原生 tool_call 的 message 包装 `{"message":{"role":"user","content":[{"type":"function_call",...}]}}`，函数名其实对，但被包了一层 |
+| multiple_53 | value_error:string | 值表述不符 |
+| multiple_58 | value_error:string | 值表述不符 |
+| multiple_92 | value_error:list/tuple | 列表类型/值问题 |
+| multiple_93 | value_error:string | 值表述不符 |
+
+**关键发现——"格式泄漏"**：即使 prompt 明确要求裸 JSON，模型偶尔（1%）仍按 harness 的原生工具调用格式输出。这**恰恰证明真实 harness 参与了测试**（工具 schema 在 system prompt 里影响了模型行为）——是 v2 走真实链路的证据，不是 bug。
+
+### 每题新 session 的成本
+- 每题 30-45 秒（中位 35s），100 题约 1 小时
+- 确认 router 复用同一 llama 实例（显存稳定 7829 MiB），新 session 不触发模型重载——开销来自 prefill + 生成
+
+### 对标更新
+
+| 模型 | Non-live AST 汇总 | 我们 |
+|---|---:|---:|
+| Claude Opus 4.5 (FC) | 88.5 | — |
+| Qwen3-32B (FC) | 88.7 | — |
+| Qwen3-30B-A3B (FC) | 85.7 | — |
+| **我们 simple_python** | — | 95.0% |
+| **我们 multiple** | — | 95.0% |
+
+两个单类别都是 95%，但**官方 Non-live AST 是加权汇总**，我们还没法直接比。等 parallel 完成后可算三类别的等权平均作为粗略对照。
+
+**诚实提醒**：simple 和 multiple 都 95% 且 CI 完全重叠，说明前两类对当前模型区分度低——真正的区分度可能在 parallel（多调用）和后续 agentic/multi_turn 类。
+
+
+---
+
+## 更新 3：三类别完整基线 + 对标结论（2026-11-24 18:40）
+
+| 类别 | 结果 | Wilson 95% CI | 耗时 |
+|---|---:|---|---:|
+| simple_python | 95/100 = **95.0%** | [88.8%, 97.8%] | 25 min（同 session）|
+| multiple | 95/100 = **95.0%** | [88.8%, 97.8%] | ~58 min（新 session）|
+| parallel | 92/100 = **92.0%** | [85.0%, 95.9%] | 66.5 min（新 session）|
+| **三类等权平均** | **94.0%** | — | 总计约 2.5 小时 |
+
+### 与官方 leaderboard 的对标（关键：口径差异）
+
+BFCL V4 官方榜 Non-live AST（simple+multiple+parallel 加权汇总）参考：
+- Claude Opus 4.5 (FC): 88.5
+- Qwen3-32B (FC): 88.7
+- Qwen3-30B-A3B-Instruct-2507 (FC): 85.7
+- Qwen3-8B (FC): 87.5
+
+**我们三类等权 94.0% 表面上高于所有头部模型，但不能这样解读**：
+1. 我们每类只跑 100 题（simple 400 / multiple 200 / parallel 200 的子集），官方是全量
+2. 我们的测试是 **JSON 文本输出**，官方 FC 列是**原生 tool_call**——机制不同
+3. 每题新 session（干净上下文），官方可能有不同的上下文管理
+4. **前两类（simple/multiple）区分度低**——95% 且 CI 完全重叠；真正的区分度在 parallel（92%）
+
+**诚实的结论**：
+- 在**静态离线单轮工具调用**这个窄范围内，我们的 35B + harness 表现**与头部模型同档甚至略高**——这与社区"BFCL simple 类已接近饱和"的观察一致
+- 真正拉开差距的是 **multi_turn / agentic / live / format_sensitivity** 类别（官方榜 Overall 从 94 掉到 41-77）——这些我们**还没测**
+- 所以"我们在哪"的答案是：**静态工具调用已达头部水平，但 agentic 维度完全未知**。不能因为 94% 就自我感觉良好——这正是 ROADMAP L2 backlog 警告的陷阱。
+
+### parallel 错题分类（8 题）
+
+| 错误类型 | 数量 | 说明 |
+|---|---:|---|
+| `cannot_find_match` | 6 | 多次调用中某个参数/值不匹配 ground truth |
+| `wrong_count` | 2 | 调用次数错误——典型是把两次调用合并成一次带数组参数的调用 |
+
+最典型的 wrong_count：`parallel_9` 模型输出 `find_movie_showing(movie=['Tenet','No Time To Die'], time=['5 pm','7:30 pm'])` 一次调用，ground truth 期待两次独立调用。**这是"并行调用语义理解"的真实能力差距**，不是格式问题。
+
+### 下一步（真正有信息量的方向）
+
+前三类静态测试已接近饱和，**继续加题的边际信息很低**。要真正定位差距，必须测：
+1. **multi_turn**（多轮工具调用 + 状态变化）——官方榜头部在此掉到 50-80%，区分度大
+2. **irrelevance**（不该调用时不调用）——直接对应 behavior-guard 误触发
+3. **τ-bench Retail pass^k**——可靠性衰减，behavior-guard 的核心诉求
+4. **CToolEval**——中文锚，抵消语言偏差
+
+**这些才是"尺子"真正该量的地方。**
