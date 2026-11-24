@@ -142,6 +142,38 @@ ik_llama.cpp IQ3_K_R4:  55-57 t/s，且不随上下文衰减
 
 ---
 
+# 第五·五部分：调研后的实测验证（2026-11-24 晚）
+
+## A. `-ot token_embd.weight=CPU`：**+7.4%（真实收益，已上线）**
+
+| 配置 | tps | n | sd |
+|---|---:|---:|---:|
+| 基线（F16 视觉 + token_embd 在 GPU）| 24.91 | 6 | 1.69 |
+| **token_embd 挪 CPU** | **27.84 / 26.75** | 6+8 | 1.72 / 1.04 |
+
+**两次独立测量均值 27.3 t/s，+7.4%**。理论预期 <0.3%（每步只读 2.2 KB），实测远超——**收益来自显存再分配**：token_embd 挪出 515 MiB 后，llama.cpp 把显存让给了 compute buffer / ubatch，缓解了 WDDM 换页压力。机制和"禁用视觉 +4.9%"同源。
+
+**注意**：`output.weight`（LM head，515 MiB）**必须留在 GPU**——每步 matvec 要读全文，挪 CPU 会掉 34%（见 2.2 节）。
+
+**配置**：preset 全局段加 `override-tensor = token_embd.weight=CPU`。
+
+## B. mmproj F16→Q8_0：**文件存在但加载失败，已回滚**
+
+本机有两个 Q8_0 mmproj 文件，换上后 `health=200` 但日志反复报 `failed to load multimodal model`：
+```
+[61850] E srv load_model: failed to load multimodal model, '...mmproj-Q8_0.gguf'
+[61850] E srv server_run_i: exiting due to model loading error
+```
+GGUF 头检查：三份文件都是 `arch=clip`、334 张量，但 122 MiB 那份 `general.name=Qwen3.6 35B A3B`（点变空格），疑似转换时元数据不一致被 mtmd 拒绝。**已回滚 F16，多模态正常。**
+
+教训：**health 200 ≠ 多模态可用**，必须查 `load_model: loaded multimodal model` 日志。
+
+（Q8 视觉下 decode 测到 27.0 t/s，但视觉功能失效，无实用价值。）
+
+## C. 已验证为"伪机会"的项
+- ~~ClassLRU 未合入~~ → 已在生产版本（94f3af3）
+- ~~mmproj Q8 可用~~ → 加载失败
+
 # 第六部分：诚实的元结论
 
 调研的**最高价值发现不是新技巧，而是排除了两个伪机会 + 确认了一个真差距**：
