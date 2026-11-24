@@ -76,3 +76,41 @@ BFCL 题目 → 包装成 prompt（函数 schema + 用户请求 + "只输出 JSO
 脚本：`D:/Brain/workspace/bench/bfcl_harness_eval.py`
 结果：`D:/Brain/workspace/bench/_bfcl_result.jsonl`
 日志：`D:/Brain/_cleanup_20261118/bfcl_eval.log`
+
+
+---
+
+## 更新：100 题基线（2026-11-24 15:40）
+
+**结果：95 / 100 = 95.0%，Wilson 95% CI [88.8%, 97.8%]**，总耗时 25.1 分钟（中位 15.3s/题）。
+
+### 错题分类（5 题）
+
+| 类型 | 数量 | 例子 |
+|---|---:|---|
+| `type_error:nested`（int vs float）| 2 | `[12,15,18]` 整数数组，ground truth 期待 float 数组 |
+| `value_error`（值推理/表述）| 2 | `operating_hours=11` 期望 23；`condition="Sundays"` 期望 "open on Sundays" |
+| `wrong_func_name`（函数名幻觉）| 1 | 输出了另一题的函数名 `calculate_triangle_area` |
+
+**关于 int vs float**：这 2 题严格说是 BFCL AST 判分器的严格类型检查（实际 API 调用中 int 可自动转 float）。但**判分器原样使用是纪律**，不为提高分数而改判分逻辑。记录为"适配器侧的输出类型规范化待办"（可在模型输出后、判分前统一把 int 转 float——但这属于改输出而非改判分，需谨慎评估是否算作弊，暂不做）。
+
+**关于函数名幻觉**：`simple_python_86` 输出了 `calculate_triangle_area`（第 0 题的函数名）——说明**同一 session 连续跑题存在上下文累积干扰**。后续应改为每题新 session 或定期 reset，以消除交叉污染。
+
+### 对标 leaderboard（BFCL V4, 2026-04-12）
+
+| 模型 | Non-live AST | Overall |
+|---|---:|---:|
+| Claude Opus 4.5 (FC) | 88.5 | 77.47 |
+| Qwen3-32B (FC) | 88.7 | 48.56 |
+| Qwen3-30B-A3B-Instruct-2507 (FC) | 85.7 | 41.22 |
+| Qwen3-8B (FC) | 87.5 | 42.57 |
+| **我们（simple_python 100 题）** | **95.0** | 未测 |
+
+**必须诚实标注口径差异**：官方 Non-live AST 是 simple + multiple + parallel 的**加权汇总**，我们只跑了 simple_python 的 100/400 题。95% 说明**在最简单的单函数调用上我们与头部模型同档甚至更高**，但这不构成"我们超过 Claude"的结论——因为 multiple/parallel/agentic 类别还没测，而那些才是区分度所在。
+
+### 下一步（优先级）
+1. **multiple / parallel 各 100 题**——真正的区分度所在（头部模型在这些类上掉到 73-84%）
+2. **每题新 session**——消除函数名幻觉类的交叉污染
+3. **irrelevance 类**——测"不该调用时不调用"，对应 behavior-guard 误触发
+4. 扩到 simple 全 400 题（CI 进一步收窄）
+5. 阶段 2：τ-bench Retail（pass^k）+ CToolEval（中文锚）
