@@ -931,3 +931,68 @@ harness 能补偿流程纪律（状态/验证/规划/工具选择），**补偿�
 ## 15.6 沉淀结论
 优先级：**A（约束解码）> B（错误剧本）> C（预算调度）> 天花板**。
 杠杆 A 是四杠杆之后唯一"层次不同 + 成本低 + 本机已验证可行"的剩余空间。
+
+
+### 15.2 补测（22:40）：json_schema 也可用，但 token 预算是前提
+
+初测 `json_schema` 在 max_tokens=200 时返回 content 空、finish=length——**不是不支持，是 thinking 吃光了预算**。
+补测 max_tokens=600：正常输出 `{"city":"Beijing","temp":25}`、finish=stop、reasoning_content 508 字符。
+
+**结论修正**：
+- `json_object` 和 `json_schema` 两种约束本机都可用
+- **thinking 模型必须用足够 max_tokens**（Critic 现值 1200 够用；投票曾因 20s 超时 + token 不足全 PARSE_FAIL）
+- 锁字段用 json_schema（形状+字段名），只保合法 JSON 用 json_object
+- 仍守"8443→844 陷阱"：schema 的 maximum 会把越界值压成合法错值→**只约束结构，不约束业务数值范围**
+
+
+---
+
+# 第十六部分：三杠杆落地执行与实测效果（2026-11-24 23:10）
+
+## 结果总表
+
+| 杠杆 | 受控 A/B | 门禁 | 真实会话 | 结论 |
+|---|:---:|:---:|---|---|
+| A 约束解码 | 5/5 ✅ | 81/0 | `constrained_json` applied=true parsed=true，**llm ok=true retry=0** | **上线，真实有效** |
+| B 错误剧本 | 6/6 ✅ | 81/0 | 未命中（失败是"路径不存在"，走既有 tool_failure_heal；剧本的参数名错分支未触发）| **上线，受控有效，真实样本不足** |
+| C 风险调度 | ❌ | 破坏5项测试 | 未上线 | **放弃** |
+
+## 杠杆A：约束解码（成功）
+
+- 实现：`callLLMOnce` 加 `sampling.constrained` → fetch body 带 `response_format:{"type":"json_object"}`
+- 四个调用点：审计/Planner/Critic/投票；各有独立开关便于 A/B
+- **用 json_object 不用 json_schema**：规避"8443→844 越界压值"陷阱（只锁形状不锁字段值）
+- 保留 reasoning_content 兜底（thinking 模型 token 不足时仍可提取）
+- **真实会话证据**（sid 5373ce33）：`constrained_json` applied=true parsed=true tag=audit；
+  对应 `llm` trace **ok=true、retry=0**——审计调用一次解析成功，零格式修正重试
+- 实测 json_object / json_schema 本机都可用；json_schema 需 max_tokens≥600（thinking 吃预算）
+- 性能：子任务实测无退化（23.08→24.17 t/s）
+
+## 杠杆B：错误恢复剧本（受控有效，真实样本不足）
+
+- 实现：`errorPlaybook(s,cfg,c,status)` 顶层函数 + tool/result 挂点；三类确定性动作：
+  参数名错→改用 file_path / 路径不存在→先列目录 / 未知工具→查工具列表
+- **只读结构化字段**（工具名、参数、status），绝不扫 fullArgs 内容（守铁律）
+- 只处理首次失败，D1/D2 管重复，不冲突；同类错误一轮只注入一次
+- 受控 A/B 6/6：开关对照、确定性动作、trace、去重、成功不误伤全通过
+- **踩坑**：顶层函数访问不到 apply 内的 `trace` 闭包 → ReferenceError 被 catch 吞掉，
+  动作生效但无 L4 证据。修复：trace 移到挂点（apply 作用域内）。**这是"动作生效但无证据"的新例**
+- 真实局限：本次失败是"读不存在的文件"，参数用的是标准 `file_path`（不是参数名错），
+  且 `pathMissing` 标志 harness 未设置 → 剧本的"路径不存在"分支是死代码。
+  实际由既有 `tool_failure_heal` 处理。**需要后续补 pathMissing 标志才能激活该分支**。
+
+## 杠杆C：风险感知调度（放弃，诚实记录）
+
+- 实现尝试：`riskProfile(s,cfg)` risk 0-3，应用到控制回合间隔 + Critic 上限
+- **失败原因**：把控制回合从 `s.step % 8 === 0` 改成"距上次 ≥ interval"，
+  破坏 5 个测试契约（intent_drift / short_term_goals / maintenance_fixes / new_guards / gwt_fep）
+  ——这些测试依赖"每8步必触发"的确定性
+- 调 `riskControlLow` 8/16 均无法解决——是**调度机制本身与现有契约不兼容**，非参数问题
+- **决策：整体回滚到 a663826d（杠杆A+B状态），杠杆C不进代码**
+- 采纳的子任务洞察（保留为知识）：MTP 接受率单步低【不算高危】——代码类任务 0.55-0.70 常驻，
+  误判风险高；若未来重启杠杆C，需用"连续3步<0.5 且无其他风险信号"
+
+## 最终生产状态
+- 两副本 sha=`a663826d7e37`（杠杆A+B+trace修复），重启 23:03:16 生效
+- 门禁 **81 pass / 0 fail**；杠杆A测试 5/5、杠杆B测试 6/6
+- 回滚点：git 版本 a58d59a5（三杠杆前）；重放脚本 leverA/B patch + fix_leverB_trace

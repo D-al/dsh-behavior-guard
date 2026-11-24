@@ -57,6 +57,46 @@ function taskProfile(s) {
     reason: hasProduct ? '有产物，需验收/深检' : '有写调用，需验证' }
 }
 
+// ── 杠杆B：错误恢复剧本（0 LLM；只读结构化字段，不扫内容）────────────────
+// 只处理【首次失败】：D1/D2 管重复探测，本函数管第一次出错时的确定性修正动作。
+const EP_KNOWN_PATH_KEYS = new Set(['file_path', 'path', 'filePath', 'target_file', 'notebook_path', 'target'])
+const EP_HINT_KEYS = new Set(['filename', 'file', 'name', 'target_path', 'output_path'])
+
+function errorPlaybook(s, cfg, c, status) {
+  const st = s || {}
+  if (cfg?.errorPlaybookEnabled === false) return null
+  if (status !== 'FAIL' && status !== 'UNPRODUCTIVE' && status !== 'ERROR') return null
+  if ((st.errorPlaybookCount || 0) >= (cfg?.errorPlaybookMaxPerTurn || 2)) return null
+  const name = String(c?.name || '')
+  let a = {}
+  try { a = JSON.parse(c?.fullArgs || c?.args || '{}') || {} } catch { return null }
+  const kind = st.errorPlaybookKind || {}
+  let action = null, type = ''
+
+  // ① 参数名错：有可疑路径键但没有标准键
+  const hasStd = [...EP_KNOWN_PATH_KEYS].some((k) => typeof a[k] === 'string' && a[k].trim())
+  const badKey = [...EP_HINT_KEYS].find((k) => typeof a[k] === 'string' && a[k].trim())
+  if (!hasStd && badKey) {
+    type = 'param-key'
+    action = `[harness 错误剧本] 工具 ${name} 调用失败：参数名 "${badKey}" 可能不被识别。` +
+      `该工具期望路径参数（file_path / path / filePath）。请把 "${badKey}" 的值改用 file_path 重试，不要换工具。`
+  }
+  // ② 路径不存在：从失败结果的结构化标志判定（不读正文）
+  else if (c?.pathMissing === true || a?.pathMissing === true) {
+    type = 'path-missing'
+    action = `[harness 错误剧本] 路径不存在：先用 glob 或 list 工具列出上级目录，确认真实文件名后再重试，不要重复同一个路径。`
+  }
+  // ③ 工具名不存在/禁用
+  else if (status === 'ERROR' && (c?.unknownTool === true || name === '')) {
+    type = 'unknown-tool'
+    action = `[harness 错误剧本] 调用了不存在的工具。先用工具列表确认可用工具名，再重试。`
+  }
+  if (!action || kind[type]) return null  // 每类每轮最多一次
+  st.errorPlaybookCount = (st.errorPlaybookCount || 0) + 1
+  st.errorPlaybookKind = { ...kind, [type]: true }
+  return { type, text: action }
+}
+
 // ── 路径解析层（2026-11-20 平台整治 P0）────────────────────────────────────
 // 历史 bug：下面 DEFAULTS 里所有路径写死 C:/Users/Ad 和 D:/Brain/workspace/...，
 // 换机器、删 .dsh junction、或重装到别的盘后全部失效——GitHub 上的版本同样带这个病。
@@ -240,6 +280,14 @@ const DEFAULTS = {
   maxCriticPerSession: 2,
   // 短期②：Critic 去同源化——同模型 temp=0 会让评审与执行者 conditioning 相同。
   // 用异质温度(top_k)打破同源；prompt 只看产物+证据、绝不喂执行者推理链（AC3 结论）。
+  // ── 杠杆A 约束解码（2026-11-24；json_object 只锁形状不锁字段值）──
+  constrainedJsonEnabled: true,
+  constrainedJsonCritic: true,
+  constrainedJsonAudit: true,
+  constrainedJsonVote: true,
+  // ── 杠杆B 错误恢复剧本（2026-11-24；首次失败确定性动作，0 LLM）──
+  errorPlaybookEnabled: true,
+  errorPlaybookMaxPerTurn: 2,
   criticTemperature: 0.7,
   // ── P2 同模型 K=5 自洽投票（2026-11-24；默认关，高风险决策才开）──
   voteK: 5,
@@ -971,6 +1019,7 @@ export function apply(ctx, config) {
         wroteThisTurn: false, verifiedThisTurn: false, lastFrameParent: null,
         // S13: verifyEvidence 计数器（真实验证证据累积）
         verifyEvidence: 0,
+        errorPlaybookCount: 0, errorPlaybookKind: {},
         changedFiles: [], stateBoardCount: 0,
         // P0 确定性状态回读门
         stateReadbackOk: false, stateReadbackEvidence: [], stateReadbackErrors: [], deterministicReadbackCount: 0,
@@ -1417,6 +1466,15 @@ export function apply(ctx, config) {
               info(`audit-loop: S5 spawn 后 ${s.verifyContext.stepsAfterSpawn} 步无 wait → 主动代验收 (${s.pendingVerify.product})`)
             }
           }
+          // ── 杠杆B：首次失败的确定性恢复剧本（D1/D2 管重复，这里管首次）──
+          if (!s.pendingInject) {
+            const ep = errorPlaybook(s, cfg, c, status)
+            if (ep) {
+              s.pendingInject = ep.text
+              trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'error_playbook',
+                tool: String(c?.name || ''), errorType: ep.type, step: s.step || 0, injected: true })
+            }
+          }
           // v3.1 确定性信号（代码判定，不等审计窗口）：
           // D1 同名调用总数>=3 且其中 FAIL/UNPRODUCTIVE >= 2 → 重复探测无进展
           // D2 同参数 FAIL >= 2 → 交给纠正器产出修正包
@@ -1505,14 +1563,19 @@ ${evidence || '(无证据可用)'}
     // 短期②：Critic 去同源——异质温度/top_k 打破与执行者相同的确定性 conditioning
     const temperature = sampling.temperature ?? 0.0
     const topK = sampling.topK ?? 1
+    // 杠杆A：约束解码。json_object 只保证合法 JSON 形状，不锁字段值——
+    // 规避 schema maximum 把 8443 压成合法 844 的陷阱（调研实证）。
+    const useConstrained = cfg.constrainedJsonEnabled !== false && sampling.constrained === true
+    const bodyObj = {
+      model: cfg.model,
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: maxTokens, temperature, top_k: topK,
+    }
+    if (useConstrained) bodyObj.response_format = { type: 'json_object' }
     try {
       const resp = await fetch(cfg.endpoint, {
         method: 'POST',
-        body: JSON.stringify({
-          model: cfg.model,
-          messages: [{ role: 'user', content: prompt }],
-          max_tokens: maxTokens, temperature, top_k: topK,
-        }),
+        body: JSON.stringify(bodyObj),
         headers: { 'Content-Type': 'application/json' },
         signal: ctrl.signal,
       })
@@ -1543,6 +1606,8 @@ ${evidence || '(无证据可用)'}
         return { parsed: null, raw: out, error: 'no-json', finish, emptyContent: !choice?.message?.content, reasoningUsed, reasoningChars: reasoning.length }
       }
       try {
+        if (useConstrained && sampling.sid) trace({ ts: new Date().toISOString(), sid: sampling.sid,
+          kind: 'constrained_json', applied: true, parsed: true, reasoningUsed, tag: sampling.tag || '' })
         return { parsed: JSON.parse(out.slice(i, j + 1)), raw: out, finish, emptyContent: !choice?.message?.content, reasoningUsed, reasoningChars: reasoning.length }
       } catch {
         return { parsed: null, raw: out, error: 'json-invalid', finish, emptyContent: !choice?.message?.content, reasoningUsed, reasoningChars: reasoning.length }
@@ -1559,14 +1624,16 @@ ${evidence || '(无证据可用)'}
   // callLLM = callLLMOnce + trace + 一次 JSON 格式重试（社区标准：解析失败附纠正再试一次）
   async function callLLM(prompt, maxTokens, timeoutMs, ctx = {}) {
     const t0 = Date.now()
-    const sampling = { temperature: ctx.temperature, topK: ctx.topK }
+    // 杠杆A：调用点通过 ctx.constrained 请求约束解码（各调用点显式声明）
+    const sampling = { temperature: ctx.temperature, topK: ctx.topK,
+      constrained: ctx.constrained === true, sid: ctx.sid, tag: ctx.tag }
     let r = await callLLMOnce(prompt, maxTokens, timeoutMs, sampling)
     let retried = 0
     if ((!r || !r.parsed) && (cfg.jsonRetryTimes || 0) > 0) {
       retried = 1
       const fixPrompt = prompt + '\n\n【格式修正】你上一次的输出无法解析为 JSON。这次只输出一个纯 JSON 对象：不要 markdown 代码块、不要任何解释文字、不要前后缀。'
       // 格式修正重试用确定性采样（temp=0）——只修格式，不引入新判断
-      r = await callLLMOnce(fixPrompt, maxTokens, timeoutMs, {})
+      r = await callLLMOnce(fixPrompt, maxTokens, timeoutMs, { ...sampling })
     }
     const parsed = (r && r.parsed) ? r.parsed : null
     // S5-①：失败不再静默——trace 记明确 error 字段，区分服务不稳 vs 机制失效
@@ -1600,6 +1667,7 @@ ${evidence || '(无证据可用)'}
       const auditChecks = Array.isArray(AUDIT_RUBRIC?.checks) ? AUDIT_RUBRIC.checks.map((c) => c.id) : []
       const out = await callLLM(AUDIT_PROMPT(snap.goal, trail, evidLog), 600, cfg.auditTimeoutMs, {
         sid: snap.sid, tag: 'audit', review_kind: 'audit',
+        constrained: cfg.constrainedJsonAudit !== false,
         rubric_version: AUDIT_RUBRIC?.version || 'builtin', dimensions_checked: auditChecks,
       })
       // verdict 专属 trace：证明这次审计真的出了判定（不能只靠"调用过"）
@@ -1651,6 +1719,7 @@ ${(PLANNER_RUBRIC.rules || []).map((r) => `- ${r.requirement}（反例：${r.bad
     const plannerDims = Array.isArray(PLANNER_RUBRIC?.dimensions) ? PLANNER_RUBRIC.dimensions.map((d) => d.id) : []
     const out = await callLLM(PLANNER_PROMPT(s.initial, items), 400, cfg.plannerCheckTimeoutMs || 90000, {
       sid: s.sid || '', tag: 'planner', review_kind: 'planner',
+      constrained: cfg.constrainedJsonEnabled !== false,
       rubric_version: PLANNER_RUBRIC?.version || 'builtin', dimensions_checked: plannerDims,
     })
     trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'review_verdict', review_kind: 'planner',
@@ -1702,6 +1771,7 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
       try {
         out = await callLLMOnce(prompt, maxTokens, Math.min(60000, timeoutMs || 60000), {
           ...(sampling || {}), temperature: cfg?.voteTemperature ?? 0.7,
+          constrained: cfg?.constrainedJsonVote !== false, sid: sid, tag: 'vote',
         })
       } catch (e) {
         votes.push({ i, verdict: 'ERROR', error: String(e?.message || e).slice(0, 80) })
@@ -1771,7 +1841,7 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
     }
     const out = cfg.voteOnCritic
       ? await callLLMVote(promptText, cfg.criticMaxTokens ?? 1200, cfg.criticTimeoutMs || 90000, sampling, cfg, snap.sid)
-      : await callLLM(promptText, cfg.criticMaxTokens ?? 1200, cfg.criticTimeoutMs || 90000, { sid: snap.sid, tag: 'critic', ...sampling })
+      : await callLLM(promptText, cfg.criticMaxTokens ?? 1200, cfg.criticTimeoutMs || 90000, { sid: snap.sid, tag: 'critic', ...sampling, constrained: cfg.constrainedJsonCritic !== false })
     // verdict 在 callLLM 之后才产生——补记一条专属 trace，证明评审真的出了判定
     trace({ ts: new Date().toISOString(), sid: snap.sid, kind: 'review_verdict', review_kind: 'critic',
       rubric_version: CRITIC_RUBRIC?.version || 'builtin', dimensions_checked: criticDims,
