@@ -129,3 +129,39 @@ python tools/levers_deploy.py rollback
 ```bash
 python tools/levers_deploy.py rollback   # 恢复到 362e3715（含三次修复前的原始版本）
 ```
+
+
+---
+
+# 杠杆4 K=5 投票效果验证（2026-11-24 21:40）
+
+## 执行过程
+1. 开启 `voteOnCritic=true`（toggle_vote.py），重启 dsh（探针 21:31:30）
+2. 发真实交付任务（写 vote_test_report.md + present）触发 Critic
+3. **真实会话首次结果：5 次采样全 PARSE_FAIL，耗时 100s（5×20s 超时）**
+   - 根因：投票用 `callLLMOnce` 单次超时硬编码 20000ms，thinking 模型 20s 内出不完 JSON；
+     原 Critic 的 `callLLM` 用 90000ms 且有 reasoning_content 兜底
+   - 修复：单次超时 20s→60s（`Math.min(60000, timeoutMs)`），总预算 180s→360s
+4. 补单测 `tools/test_self_consistency_vote.mjs`：**9/9 通过**
+   - 多数票 ACCEPT 胜出 / 5 次采样记录 / agreed 阈值
+   - tie 2/2/1 → UNCERTAIN（防"把困惑封为共识"）
+   - 低于 minAgreement → UNCERTAIN
+   - **thinking 格式（content 空 + reasoning_content 含 JSON）能解析，无 PARSE_FAIL** ← 真实会话 bug 的回归测试
+
+## 关键决策：生产开关改回 false
+- 全局开启 `voteOnCritic=true` 导致门禁从 77/0 掉到 75/3（a17_runtime / falsegreen_fixes / role_fixes）
+- 根因：这些测试 mock fetch 假设 Critic 单次调用，投票改变了调用契约
+- **改回 false 后 78 pass / 0 fail**（含新增投票测试）
+- 结论：投票逻辑正确但**不能全局默认开**——它与现有测试契约和其他机制的预算模型冲突。
+  若要用，需：(a) 只在对质量极敏感的任务类型按 taskProfile 条件开，或 (b) 重构测试契约。
+
+## 效果评估（诚实）
+- **L4 命中**：真实会话 `ae2d97e8` 出现 `self_consistency_vote` trace（5 次全 PARSE_FAIL，旧代码）
+- **L2 验证**：修复后 9/9 单测通过，含 thinking 格式回归
+- **未获得**：修复后真实会话的"正确投票"证据（未再跑一次 5 分钟的真实任务）
+- **成功率提升**：无 A/B 数据（n≥16 门槛未达），不声称任何提升
+- 生产默认关，成本（5×推理）与收益（防个别误判）的权衡需用户拍板
+
+## 最终状态
+- 生产：voteOnCritic=false（稳定态），门禁 78/0，两副本 sha=6e051953
+- 能力：投票代码在包内且验证过，开关可逆（tools/toggle_vote.py on|off）
