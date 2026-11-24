@@ -1121,3 +1121,62 @@ harness 能补偿流程纪律（状态/验证/规划/工具选择），**补偿�
   可能改善 prefill（CPU 侧 MoE 并行度）；需 A/B 验证，不预设有效。
 - **存档**：本部分与生产基线核实一并沉淀；后续若做 A/B 流水线（第十七部分①），
   应把"引擎版本/参数快照"作为每次实验的强制元数据，避免基线漂移重演。
+
+
+---
+
+# 第十九部分：源码深挖后的修正（2026-11-25，覆盖第十八部分的部分判断）
+
+> 第一路源码调研返回，**推翻了第十八部分基于 README 的两个判断**。以本部分为准。
+
+## 19.1 纠偏一：它不是 llama.cpp fork
+
+`AGENTS.md:9-11`："built **on top of** llama.cpp's public API … we do not fork llama.cpp"。
+`third_party/llama.cpp` 是空 submodule。它靠公开 API（`cb_eval` / `moe_cache_size` /
+`moe_cache_cpu_share` / `tensor_buft_overrides` / `ggml_backend_register_host_buffer`）实现，
+只有 `--overlap` 需约 25 行 fork hook，**且只在模型>RAM 的流式场景才用**——我们 21GB 常驻 64GB RAM，不走流式。
+
+## 19.2 纠偏二：share=1.0 vs share=0 的冲突是场景差异，不是谁错
+
+第十八部分写"应将 share=1.0 移出已证伪清单"——**过度推论**。源码实证：
+bmoe 的 `--auto` 在 `planner.cpp:1133-1142` **硬编码 `device_cache_cpu_share = 0.0f`**，
+注释给出理由（32GB 卡 share 0.89 → 114→68 tok/s；固定时机无法预判 cache 是否填满）。
+
+与本机 11-23 实测（share=1.0 墙钟 -10.6%）冲突，但**两者前提不同**：
+- 我们：cache 1350MiB（覆盖 7.2% 专家）+ PCIe4 x8 upload ~12GB/s < DDR4 双通道 ~51GB/s → CPU 直算赢
+- bmoe：cache 2079MiB + **pinned host buffer upload 20.6GiB/s**（近我们 2 倍）→ 上传赢
+- **结论：share 值本身不是可抄项；让 upload 变快 2 倍才是。**
+
+## 19.3 真正的核心差异（按重要性）
+
+1. **布局路线不同**（`docs/comparison.md:119-121`）：bmoe 把全部 expert 用 `-ot exps=CPU` 钉 host，
+   GPU 放大 cache 缓存热点并**在 GPU 算**；我们 `NCMOE 40` 是把 40 层固定留 CPU 算。
+   同卡实测（`backends.md:167-176`）：CPU 全算 18.9 / 我们的路线 31.9 / **bmoe 61.8 / 77.9 tok/s**。
+2. **cache 尺寸**：我们 1350MiB；bmoe 8GB 卡实测 2079MiB（3.3 token cycles；Qwen3.6-35B 一个 cycle = 581MiB）。
+   bmoe 定的规则 = "fitter 放不下一整层而浪费的 VRAM 全给 cache"（`planner.cpp:499-507,845`），不是拍固定值。
+3. **pinned host buffer**（最高优先可抄项）：`GGML_CUDA_REGISTER_HOST=1` + expert 复制进 CUDA pinned host buffer，
+   原 mmap 页交还（只占一份内存）；upload 9.9→20.6GiB/s、decode +7~27%（`CHANGELOG:2242-2248`）。
+4. **`n_outputs_max` 压小**：llama.cpp 默认给整个 ubatch 预留 logits 行（一行=整个词表），
+   2048 token 的 35B-A3B 白占 1.7GiB compute buffer（`session.cpp:1449-1456`）——可直接抄。
+5. **server 线程收敛**：`CHANGELOG:1010-1017` OpenMP 每调用线程留 worker team，server 每请求多用 122 线程 → 9.2 tok/s；
+   改单 engine_thread → 16.4。**若测的是 server，这可能就是"29%"本体**（需核实我们是否命中）。
+6. **MTP**：两边方案完全一样（self-speculation），bmoe 8GB 卡 UD-Q4_K_XL + --mtp 实测 25.2/24.1/27.4——
+   **和我们的 24.56/27.0 几乎一样**，不是差距来源，别再投入。
+7. **bmoe 自己也证伪的**：`--prefetch` 2× 变慢、`--ngram` host -4%/device -29%、route-ahead/expert-dropping 全 lossy 默认关
+   —— 与我们的已证伪清单高度一致。
+
+## 19.4 可直接借鉴（按优先级）
+
+- **A1** 把 `-ncmoe 40` 换成 `-ot exps=CPU`（全部 expert 留 host）+ 更大 GPU cache
+- **A2** cache 按"放得下的全部 VRAM"定，不拍固定值（目标 8GB 卡 2079MiB）
+- **A3** `GGML_CUDA_REGISTER_HOST=1` + pinned host buffer + 交还 mmap 页（约 50 行胶水，单点 +7~27%）
+- **A4** `n_outputs_max` 压小，腾 VRAM 给 cache
+- **A5** 若用 server：engine 计算收敛到单线程（9.2→16.4 的量级）
+- **A7** MTP draft 5→3 A/B（bmoe 实测 3 最优，我们 11-24 日志 nmax3=25.09 > nmax5=24.56，**已隐含支持**）
+
+## 19.5 最终结论
+**35 tok/s 不可比（前述），但 bmoe 指出了两条我们确实没走的路**：
+① expert 全留 host + 大 GPU cache（我们现在 40 层固定 CPU）；
+② pinned host buffer 加速 upload（我们裸 PCIe）。
+这两条有同卡数量级证据（18.9/31.9 → 61.8/77.9），值得做 A/B——
+但必须守住"端到端验证"铁律（decode t/s 单独看会骗人，见 share=1.0 的历史反转）。
