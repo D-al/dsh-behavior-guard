@@ -245,7 +245,7 @@ const DEFAULTS = {
   voteK: 5,
   voteTemperature: 0.7,
   voteMinAgreement: 4,
-  voteMaxTotalMs: 180000,
+  voteMaxTotalMs: 360000,
   voteOnCritic: false,   // 默认关；A/B 验证增益后再开
   criticTopK: 20,
   // P2 Planner 检查：首次 todo 的 [VERIFY] 项是否可验证（1 次 LLM ~11s/任务）
@@ -1700,7 +1700,7 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
       if (Date.now() - started > totalMs - 20000) break  // 留 20s 余量
       let out = null
       try {
-        out = await callLLMOnce(prompt, maxTokens, 20000, {
+        out = await callLLMOnce(prompt, maxTokens, Math.min(60000, timeoutMs || 60000), {
           ...(sampling || {}), temperature: cfg?.voteTemperature ?? 0.7,
         })
       } catch (e) {
