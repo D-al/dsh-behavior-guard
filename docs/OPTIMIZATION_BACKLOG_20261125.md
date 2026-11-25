@@ -548,3 +548,45 @@ decode/LLM 语义判断不宜再压（有质量底线）；显存路已到硬约
 ### 判定
 "还能外包什么"的答案：**大部分已外包完，剩余不是加守卫层数，而是把已写机制接上线**（S24-ctx 是第一个）。
 下一步优先级：真实会话补 L4 证据 > pathMissing 去重接线 > requireFreshMtime 验证 > 判定账本。
+
+
+---
+
+## 十一、已写机制全量启用审计（2026-11-25 18:3x）
+
+**用户要求**："把所有已写机制打开并验证，要实测。"
+
+### 盘点：4 个默认关的开关 + 1 个写了没接线的
+
+| 机制 | 位置 | 决定 | 依据（实测/反证） |
+|---|---|---|---|
+| **requireFreshMtime** | `index.mjs:883` | ✅**已打开** | fileState 判定 5/5、claim 误报边界 6/6、L1 正负例实测通过 |
+| adaptiveThinkEnabled | `index.mjs:218` | ❌**不打开** | **已有反证**：CHANGELOG.md:367-368 off=189s/4172tok vs on=301s/4168tok——
+  token 未降、耗时 +59%；CAPABILITY_LADDER X11 已 rejected。开它违背 DoD |
+| specThresholdByTaskEnabled | `index.mjs:272` | ❌**不打开** | 只有单测（test_short_term_goals.mjs:62-84），**无端到端证据**；
+  项目铁律"端到端验证才落地"。且引入新误报风险（creative@0.55 不触发审计的边界未实测） |
+| voteOnCritic | `index.mjs:297` | ❌**不打开** | K=5 → LLM 成本 ×5；多 judge 已证伪（9 judge≈2 票）；项目已有"投票默认关"决策 |
+| pathMissing 设置点 | `index.mjs:85-88` | ❌**不补线** | 与 S24 的 FS_NOT_FOUND 分支功能重叠；S24 已接真实相近路径回灌（第十节），
+  补 pathMissing 会叠两条提示——先去重再考虑，不是简单"打开" |
+
+### requireFreshMtime 打开实测（三层证据）
+
+1. **判定函数正确性** 5/5：文件不存在→false、无since→false、刚写完→true、旧文件→false、边界→true
+2. **claim 误报边界** 6/6："已写入/保存到"→匹配；"读取了/文件在/修改了config"→不匹配。
+   注意 `FUTURE_CLAIM`（"接下来要写"）会匹配——这是既有行为，非本次开关引入
+3. **L1 拦截正负例**：本轮真实写入 → `fresh:true` → 放行；since 在未来（本轮没写）→ `fresh:false` → 拦截
+
+### 同步与门禁
+- 改权威源后 INV-3 立即 FAIL（`authority=1ccf57ff runtime=旧`）——**三副本门禁再次正确拦住未同步**
+- 复制到运行版后 sha 一致（1ccf57ff），8/8 invariants HEALTHY，82/0，config 一致
+
+### 诚实结论
+"全部打开"不等于"全开"——2 个开关有明确反证或证据不足，1 个会引入双重提示。
+**有根据的拒绝与有根据的打开同样重要**：这是项目"不硬凑成果"纪律的体现。
+本轮真正启用 1 个（requireFreshMtime），累计启用 2 个（上轮 S24-ctx + 本轮 mtime）。
+
+### 证据等级声明
+- ✅ L2 单测 + 门禁：全部通过
+- ⚠️ L4 真实会话：**两处新增机制（S24-ctx / requireFreshMtime）均未完成真实会话验证**——
+  dsh 未重启、需模型真的触发错误/假完成。按"机制生效≠有效"铁律，
+  **不宣称成功率已提升**，待下次真实会话观察 trace 证据。
