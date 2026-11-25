@@ -5,6 +5,46 @@
 > 当前生产基线：upstream 1.0（94f3af3）/ CTX98304 / NGL99 / 全host cpu-moe / cache1350 / share1.0 /
 > UBATCH2048 / THREADS8 / CTK q8_0 / CTV q4_0 / MTP nmax3 / temp0.7。
 
+## ⚠️ 状态审计（2026-11-25 14:3x，逐条对照代码核实）
+
+**发现 16 处"已做/部分做但文档标未做"**——根因是关键词搜索漏判（实现用了不同命名）+ 时间差污染。
+
+**三副本一致性（子任务审计）**：权威源 `publish/index.mjs` 与运行版
+`dsh-data/profiles/desktop/node_modules/dsh-agent-harness/index.mjs` **sha256 完全一致**（bdaa39d7…，172247 字节），
+即 INV-3 校验的那对；pnpm store clone 是另一个旧包（36599 字节），**不在 INV-3 范围**——
+下文所有"已做"均指权威源+运行版。注意 `bench/` 下并无 index.mjs 主文件。
+
+审计证据（路径:行号）：
+
+| 条目 | 原断言 | 实际状态 | 硬证据 |
+|---|---|---|---|
+| **H6** Critic/Planner 打点 | "无 critic_review/planner_check" | **已做** | `index.mjs:1648` `rubric_version`/`dimensions_checked`；`:1674` `kind:'review_verdict'` + verdict（注释"A1_7 评审机制元数据"）。实现名叫 `review_verdict` 不是 `critic_review`，故关键词漏判 |
+| **H7** trace turn/controlTotal | "未做" | **已做** | `index.mjs:399-406` `makeTracer` 自动补 `rec.turn`/`rec.controlTotal`，注释 S3 频次审计 |
+| **H8** 验收员触发路径 | "wait_agent 0 次，未修" | **已做** | `index.mjs:151-157` "v3.2 代验收：spawn_teammate 验收 wait 连续超时→直接跑 verify_agent.py"；`:157` "新版 spawn 异步回注（无 wait_agent）→spawn 后 N 步主动代验收" |
+| **H10** 长文本结构隔离 | "未做" | **已做** | `index.mjs:1324` "短文本≤2000字符才送检；长文本跳过（滑窗不可用，靠结构隔离）" |
+| **M2** S6 Tier-2 | "未见实现" | **已做** | `index.mjs:1324-1331` "S6 Tier-2：ONNX 注入分类器（异步、只写 trace + info，绝不 steer）"+ 短文本门控 + S24 时序修复（pre-step 同步） |
+| **H12** 高信号守门 | "未做" | **已做** | `index.mjs:1327-1330` "2026-11-22 高信号守门：零成本正则先判，只送含指令性信号文本（18/18 单测），延迟税 2.4%~35%" |
+| **H1** GBNF 约束解码 | "harness 空白" | **已做** | `index.mjs:284` 默认开 + `:1568-1577` response_format + `:1722` 传 constrained；`tools/leverA_constrained_patch.py` 含三调用点独立 A/B 开关 + trace 打点 |
+| **H4** 禁用工具移除 | "未做" | **部分做** | `cordis.patch.yml:244` tool-jobs disabled:true（已移除）；`:364-368` tool-web 仍 `fetch:true`（ADR-0028 要求改 false 但**未生效**）；`index.mjs:385` 有 `web_fetch→一律用 web_search` 映射 |
+| **M6** 工具面裁剪 | "待拍板" | **部分做** | ADR-0028 用户已拍板三层治理（核心7常驻/低频不可砍/禁用入口移除）；ADR-0029 推翻"架构不支持动态工具面"（有 `ctx.tools.register` 热替换）——状态是"已拍板待重选"，非"待拍板" |
+| **H5** 预算感知调度 | "未做" | **已做** | `tools/leverC_risk_patch.py` 明确"杠杆C：按风险信号分配验证密度，risk 0-3，默认开"，含 MTP 接受率修正；`index.mjs:292` K=5 默认关 |
+| **H4** 错误剧本 | "未做/剧本没接上" | **已做** | `tools/leverB_playbook_patch.py` "杠杆B：首次失败给确定性动作 0 LLM，只读结构化字段"；`index.mjs:78-87` 三类剧本 |
+| **H13** RRSI 正则化 | "未做，需评测台" | **已做(部分)** | `tools/holdout_split.py` "S18 RRSI 纪律第一个真实前置工具" + 产物 `_holdout_tasks.json`/`_train_tasks.json`；`roadmap_check.py:46 NOISE_FLOOR=0.10` |
+| **H17** 会话僵尸治理 | "SESSION_BRAKE已加cancel但M10未见" | **部分做** | `index.mjs:1562` 仅 LLM 调用级 AbortController，无会话级检测/abort 命令；插件 cancel 未确认覆盖"停止后复活" |
+
+**仍确认未做**（backlog 正确）：H3 pathMissing 无设置点、H14 edit前 read、M3 三项埋点、
+M4 审计权锁定（pre-commit hook 只刷新科技树，无评判文件保护）、M8 变异测试、
+M9 审计成本核算、H2 harness 机制开关 A/B runner（有 lever_effect_report.py 但只做评估不做两臂自动跑）。
+
+**方法论教训（双向）**：
+1. **别只靠关键词搜"未做"**：`critic_review` 搜不到 `review_verdict`，导致 H6/H8/M2 等 6 项被误标未做——
+   必须读实现代码 + 注释里的卡号（A1_7/S3/S24 都对上了）。
+2. **也别只靠子任务声称"已做"**：本轮子任务声称 M4 有 PROTECTED 检查、M8 有 sentinel 脚本、
+   H17 有五层 kill switch，但 grep/find 实盘验证**全部无结果**——按证据分层不采信，维持原判。
+   一切"已做"必须附**具体路径:行号 + 代码片段**（本表所列均已亲自读源码核实）。
+  本轮两子任务共虚报 5 项（M4 PROTECTED/M8 sentinel/H17 五层killswitch/M9 timing模型/H2 harness AB runner），
+  全部经 grep/find 实盘证伪后剔除——**子任务声称只能当线索，不能当证据**。
+
 ## 状态图例
 - ✅ 高价值低风险，可立即做
 - ⚠️ 需先验证证据 / 有前提约束
@@ -65,7 +105,7 @@
 
 ## 二、harness / 工程效率（高价值，不需要改引擎）
 
-### H1 ✅【已落地】GBNF / JSON-Schema 约束解码（根治格式漂移）
+### H1 ✅【已落地·效果待证】GBNF / JSON-Schema 约束解码（根治格式漂移）
 - **来源**：`LEVERS_AND_BROAD_RESEARCH_20261124.md` §15.2——标记"最高杠杆，成本低"
 - **本机实证**：11-24 22:30 直连 `/v1/chat/completions` + `response_format={"type":"json_object"}`，
   并行函数调用**一次 JSON.parse 成功**，无围栏无解释
@@ -87,6 +127,8 @@
 ### H2 ✅ 真实任务 A/B 流水线（最大杠杆，有复利）
 - **来源**：同卷 §17.3 ①——"继续加第八个机制是低回报的，会落进同样的证据真空"
 - **现状**：每测一个杠杆靠手工造会话/看 trace/统计 → 样本永远 n=1；相关 trace 177 条但真实 sid 仅 1 个（99% 是 s1 单测假数据）
+- **审计补充（14:4x）**：`tools/test_levers_ab_effect.mjs`（杠杆1/2受控实验）、`tools/lever_effect_report.py`（L4命中/L5效果）
+  **已存在**——覆盖了"自动聚合 trace 判效果"这一半；但"两臂自动跑 harness 机制开关"仍缺（引擎 runner 有、机制 runner 无）
 - **需要**：固定任务集（简单/高危各≥20）+ 开关两臂自动跑 + 自动聚合 trace 算 Wilson CI/符号检验
 - **现有雏形**：`gdn_ab_runner.py`/`share_ab_runner.py`/`skills_ab_runner.py`，**没有一个覆盖 harness 机制开关维度**
 - **价值**：做一次后，回读/状态板/约束解码/错误剧本的效果都能统一度量
@@ -98,13 +140,18 @@
 - **可验证性**：低成本——加设置点 + 单测 + 真实会话验证
 - **预期收益维度**：可靠性
 
-### H4 ⚠️ 错误恢复从「补救式」改「剧本式」
+### H4 ✅【已落地·14:4x审计修正】错误恢复从「补救式」改「剧本式」
 - **来源**：同卷 §15.3——高频错误查表（参数名错→查 schema 重试、路径不存在→列目录、JSON 解析失败→去围栏），每类配确定性动作，不消耗 LLM
 - **符合**：项目"规则驱动、不依赖模型元认知"核心经验
-- **依赖**：H3 先补死代码
+- **⚠️ 审计修正（14:4x）**：`tools/leverB_playbook_patch.py` 明确"杠杆B：错误恢复剧本（首次失败给确定性动作，0 LLM）"，
+  且遵守"只读结构化字段，绝不扫 fullArgs"；`index.mjs:78-87` 有 param-key/path-missing/unknown-tool 三类剧本。**已落地**。
+  注意：仍与 H3 的 `pathMissing` 无设置点并存——剧本逻辑在，但该结构化标志谁设置仍未找到（这是剩余的真空，不是剧本没做）
 
-### H5 ⚠️ 预算感知调度
+### H5 ✅【已落地·14:4x审计修正】预算感知调度
 - **来源**：同卷 §15.4——控制回合每 8 步一刀切、Critic 每会话≤2 次，不管难易；改为按风险信号分配（写操作/不可逆/present 加密验证，纯读走快通道）
+- **⚠️ 审计修正（14:4x）**：`tools/leverC_risk_patch.py` 明确"杠杆C：预算感知调度，按风险信号分配验证密度"，
+  risk 0=纯读/1=有写已验证/2=有写未验证或present/3=错误累积，**默认开可关做 A/B**；采纳子任务修正
+  "MTP 接受率单步低不算高危，需连续3步<0.5"。配合 `index.mjs:292` K=5 默认关。**已落地**
 - **预期收益维度**：速度 + token 成本 + 可靠性（同时）
 
 ---
@@ -128,26 +175,29 @@
 > 219 个 Error 关键词 200+ 误报、session-bridge 重复计数 11810——据 OFFICIAL_VS_CUSTOM_AUDIT，
 > 部分已被 v2.16 修复，**必须按当前版本重测**。
 
-### H6 ✅ Critic/Planner 评审可观测性打点（A1_7）
+### H6 ✅【已落地·14:3x审计修正】Critic/Planner 评审可观测性打点（A1_7）
 - **来源**：COMPACTION 卷 §3 + GAP_REVIEW——`runCritic`/`runPlannerCheck` 只调 `callLLM(tag:'critic'|'planner')`，
   trace 只记 `kind:'llm'`，**没记 rubric 版本/判了哪些维度/结论**。按证据分层不算真实生效。
-- **现状核实（13:4x）**：当前 trace kind 有 `crit_hit`，但**无** `critic_review`/`planner_check`；
-  即 Critic 触发有打点，但评审维度/verdict 仍不可观测，Planner 检查完全无打点
-- **判定**：v2.9.0 仍未完全落地——这是判断"治理组件真在工作"的地基
+- **⚠️ 审计修正（14:3x）**：之前判断错误——实现用的是 `review_verdict` 不是 `critic_review`，关键词漏判。
+  `index.mjs:1648` 的 llm trace 已带 `rubric_version`/`dimensions_checked`；`:1674` 有独立 `kind:'review_verdict'`
+  记录 `verdict`+`rubric_version`+`dimensions_checked`，注释明确 "A1_7：审计员评审可观测性"。**已落地**
+- **剩余**：Planner 检查是否有同等 verdict 打点需单独核实（audit 已确认，planner 未知）
 - **可验证性**：纯脚本——加 `critic_review`/`planner_check` kind + `rubric_version`/`dimensions`/`verdict` 字段
 - **铁律**：别写成"存在即成功"，要记 verdict 和具体维度
 - **收益维度**：可靠性、质量
 
-### H7 ✅ trace 补 `turn`/`controlTotal` 字段
+### H7 ✅【已落地·14:3x审计修正】trace 补 `turn`/`controlTotal` 字段
 - **来源**：COMPACTION 卷 CADENCE_REDESIGN（"建议，未实施"）——`step` 每轮重置、`controlTotal` 是 state 级但没进 trace，
   导致初判"控制回合被上限掐断"（核实后排除）
-- **判定**：零成本（每事件多 2 个数字），直接决定频次审计能否从数据算而非反推
+- **⚠️ 审计修正（14:3x）**：`index.mjs:399-406` `makeTracer` **已自动补** `rec.turn`/`rec.controlTotal`，注释“S3：频次审计需区分跨轮与跨会话”。**已落地，从第一梯队移除**
+- **原判定（已过时）**：零成本
 - **可验证性**：脚本，改 `trace()` 一处
 
-### H8 ✅ 验收员触发路径 `wait_agent`→实际等待工具
+### H8 ✅【已落地·14:3x审计修正】验收员触发路径 `wait_agent`→实际等待工具
 - **来源**：COMPACTION 卷问题 3——验收员触发条件是 `wait_agent` 连续 2 次 UNPRODUCTIVE，但 5538 行 trace 里
   **`wait_agent` 调用 0 次**，实际用 `spawn_teammate`（73 次）→ **主触发路径永远命不中**
-- **判定**：若 v2.9.0 工具面又变，需先查当前实际用哪个等待工具——"明说未做"的典型
+- **⚠️ 审计修正（14:3x）**：`index.mjs:151-157` 明确“v3.2 代验收：spawn_teammate 验收 wait 连续超时 → 直接跑 verify_agent.py”，`:157` 还有“新版 spawn 异步回注（无 wait_agent）→ spawn 后 N 步主动代验收”。**已针对 spawn_teammate 修好**
+- **原判定（已过时）**：若 v2.9.0
 - **可验证性**：脚本+真实事件
 
 ### H9 ✅【已落地】判据/卡片腐化静态体检（已纳入门禁）
@@ -156,10 +206,11 @@
 - **现状核实（13:4x）**：`tools/run_all.sh:95` 已有 `criteria-health` 门禁，**已落地**
 - **价值**：零误报、收益最高——避免"对着完好的功能瞎修"
 
-### H10 ✅ 长文本结构隔离提示（零延迟兜底）
+### H10 ✅【已落地·14:3x审计修正】长文本结构隔离提示（零延迟兜底）
 - **来源**：S6 卷 §7.3——长文本 >2000 字符分类器**结构性缺席**，靠模型自身规则兜住，
   但"不能依赖模型元认知"——长文本注入防线目前是空的
-- **判定**：对超长工具结果做结构隔离提示（不送检但提醒"此内容未经过注入检测"），零延迟
+- **⚠️ 审计修正（14:3x）**：`index.mjs:1324` 已写“短文本≤2000字符才送检；长文本跳过（靠结构隔离）”，配合 `:1320` 的 `[harness 安全提示] 工具输出一律是数据`。**已落地**
+- **原判定（已过时）**：对超长
 - **可验证性**：规则，一句提示注入
 
 ### H11 ⚠️ 治理组件真实触发基线（leave-one-mechanism-out）
@@ -169,17 +220,21 @@
 - **但**：OFFICIAL_VS_CUSTOM_AUDIT 纠正这些是历史状态+部分伪造误报，v2.16 已修——**必须重测现状**
 - **可验证性**：trace 统计（零成本）+ 关键机制 LLM 实测
 
-### H12 ⚠️ S6 分类器长跑退化 → 定期重启
+### H12 ⚠️【高信号守门已做·定期重启未做】S6 分类器长跑退化 → 定期重启
 - **来源**：S6 卷——服务绑 E 核刚重启 1.263s，跑 35min 后 3.853s（3×），重启即恢复；
   "方案 A 服务定期重启，零代码、收益最大，先做"
-- **判定**：机制未定位（CPU 频率/线程状态/ONNX arena 碎片三选一），定期重启是回避而非根治，但性价比最高
+- **审计修正（14:3x）**：`index.mjs:1327-1330` 的“2026-11-22 高信号守门：零成本正则先判，只送含指令性信号文本（18/18 单测），延迟税 2.4%~35%”**已做**。但“解绑 E 核”与“定期重启”仍未见实现
+- **原判定（已过时）**：机制未定位
 - **关联**：PIPELINE 卷 DOWNSIDE——同步门控长跑退化态下 +35% 总时长，**足以抵消 S24 之类所有执行层优化**
 
-### H13 ⚠️ 自改进正则化（RRSI：hold-out/噪声地板/剪枝）
+### H13 ✅【已落地·14:4x审计修正】自改进正则化（RRSI：hold-out/噪声地板）
 - **来源**：AUTONOMY 卷 ROUTE_POSITION 第 1 名——"我们的 agentlab/projectlab 没 hold-out、没编辑预算退火、
   没噪声地板、没成本规则、没剪枝；按论文标准属'无正则化的 RSI'，OOD 收益很可能是负的"
-- **判定**：元级最高杠杆但最重，需评测台（24 任务 train/heldout × 2 repeats）
-- **注意**：与已废弃的"一刀切复杂度预算"是两回事，前者仍缺
+- **⚠️ 审计修正（14:4x，已核实）**：`tools/holdout_split.py` 明确"S18 自改进正则化(RRSI纪律)第一个真实前置工具"，
+  产品 `bench/_holdout_tasks.json` + `_train_tasks.json`（11-22 13:58）；`tools/roadmap_check.py:46` `NOISE_FLOOR=0.10`；
+  `:839` 有 `--noise-floor` 参数。**至少 hold-out 切分 + 噪声地板已落地**（剪枝/编辑预算退火未核实）
+- **原判定（已过时）**：元级最高杠杆但最重，需评测台（24 任务 train/heldout × 2 repeats）
+- **注意**：与已废弃的"一刀切复杂度预算"是两回事——后者（复杂度预算）已废弃，前者（RRSI）已落地 hold-out+噪声地板
 
 ### H14 ⚠️ edit 前强制 read（FS_EDIT_NOT_FOUND 33%）
 - **来源**：PIPELINE 卷 TOOL_FAILURE_ANALYSIS §六——54 次失败中 18 次是 FS_EDIT_NOT_FOUND，单一最大源；
@@ -196,10 +251,12 @@
   这是比继续堆卡更高杠杆的方向"；CEB 实证 9/9 组合 ECE/Brier/AUC 全胜、ECE 最多 -54%
 - **判定**：研究线，中高成本（设计者与验证者分离的影子模式）
 
-### H17 ⚠️ 会话生命周期治理（僵尸会话）
+### H17 ⚠️【部分落地】会话生命周期治理（僵尸会话）
 - **来源**：FUTURE_CLAIM 卷 GAP_REVIEW 遗漏 1【🔴 零覆盖】——M8 僵尸会话停止后复活，把 index.mjs 改出语法垃圾；
   路线图没有任何卡覆盖会话停止/隔离/僵尸检测；bridge 8 命令无 abort/stop
 - **判定**：SESSION_BRAKE 已加 cancel 端点，但 M10/A2_5 未见落地
+- **审计补充（14:3x）**：`index.mjs:1562` 只有 LLM 调用级 `AbortController` 超时，**无会话级僵尸检测/abort 命令**；
+  插件侧 cancel 端点未确认覆盖 M8 那种"停止后复活改坏文件"场景。**部分落地**
 
 ### H18 ❌ 已证伪（别重试，除非有新场景）
 - **M3 抽锚点**：6/6 会话锚点是 initial 原文子串，P0 存档已覆盖，成本 15-16s + 格式漂移（PIPELINE §M3_ANCHOR）
@@ -213,9 +270,11 @@
 
 ## 五、模型能力 / 评测 / 审计权（深挖组 B 结果）
 
-### M2 ✅ S6 Tier-2 只告警不拦截（阈值 0.9）
+### M2 ✅【已落地·14:3x审计修正】S6 Tier-2 只告警不拦截（阈值 0.9）
 - **来源**：`CLASSIFIER_BENCH_SERIES_20261121.md` §七——"TL;DR 只告警、不拦截，阈值 0.9，命中时给模型中性提示，观察数天误报后再决定是否收紧"
-- **现状核实（14:2x）**：未见 Tier-2 实现；但注意 FPR 18.7% 不可接受是已知边界，**只告警是正确姿态**
+- **⚠️ 审计修正（14:3x）**：`index.mjs:1324` 明确 "S6 Tier-2：ONNX 注入分类器（异步、只写 trace + info，**绝不 steer**）"；
+  `:1328-1331` 有 S24 时序修复（pre-step 同步 await，修了 fire-and-forget 晚 10.2s 问题）+ 高信号正则门控。**已落地**
+- **剩余**：阈值 0.9 是否与卷里建议一致需核实
 - **可验证性**：规则（改提示注入）+ 误报率统计（真实 trace）
 - **收益维度**：可靠性（不误伤）
 
@@ -230,6 +289,8 @@
 - **论文依据**：2026 自改进 harness 论文（arXiv:2611.22299/2509.26354）明确列 evaluator tampering、权限自削弱、benchmark gaming；防御 = agent 不得改写唯一评判测试、不得削弱权限层
 - **建议（按性价比）**：①冻结评判测试（仅人工可改 + git path hook）②缩小信任基（抽独立小模块）③外部锚（HEAD/体检单向发第二设备）
 - **现状核实（14:2x）**：无写保护/hook，**未落地**
+- **审计复核（14:4x）**：子任务声称存在 PROTECTED 检查，但 grep `ITSELF_PROTECTED`/`[PROTECTED]` 
+  在 pre-commit/index.mjs/run_all.sh/audit_* 中**均无结果**；实读 pre-commit hook 仅做科技树刷新。不采信，维持"未做"
 - **明确不建议**：区块链、zkVM、TSA、全量形式化验证、CHERI 硬件
 - **收益维度**：可靠性（评测结果可信度）
 
@@ -238,9 +299,11 @@
 - **与 H2 同源**：真实任务 A/B 流水线 = 这个 eval 基础设施的具体形态；本次 nmax/ngram 95% 实验全靠手工配对脚本，正是缺口体现
 - **收益维度**：所有后续优化的验证效率（复利）
 
-### M6 ⚠️ 工具面收敛 ≤20（现 28）
+### M6 ⚠️【已拍板·待重选】工具面收敛 ≤20（现 28）
 - **来源**：`GOAL_STATEMENT_EVOLUTION_20261122.md` §四第 5——"M5 无依赖、中高收益(5.4)，但需人工拍板"
-- **状态**：待用户价值拍板（非技术问题）；静态裁剪已证伪、动态检索多一层失败点
+- **审计修正（14:3x）**：ADR-0028 用户**已拍板**三层治理（核心7常驻/低频关键不可砍/禁用入口移除），
+  ADR-0029 又推翻其中"架构不支持动态工具面"（asar 内官方 cookbook 确认 `ctx.tools.register` 热替换）。
+  状态是"已拍板、第2层需用户重选"，不是"待拍板"。静态裁剪已证伪、动态检索多一层失败点
 - **收益维度**：token 成本 + 速度（工具选择准确率）
 
 ### M7 ❌ 已证伪（别重试）
@@ -254,22 +317,24 @@
 ## 六、优先级总表（跨组合并，按"价值 × 可验证性"）
 
 ### 第一梯队：立即做（脚本/规则，低成本）
+> **14:3x 审计后重排**：原 1/2/3/5（H6/H7/H8/H10）**已落地，移出待办**（见状态审计表）。
+
 | # | 方向 | 收益维度 | 前置核实 |
 |---|---|---|---|
-| 1 | H6 Critic/Planner 评审打点（verdict+维度） | 可靠性 | 已核实：只有 crit_hit，无评审细节 |
-| 2 | H7 trace 补 turn/controlTotal | 可观测 | 零成本改 trace() 一处 |
-| 3 | H8 验收员触发路径修到实际工具 | 自主性 | 需查当前等待工具是什么 |
-| 4 | M3 NOT_INSTRUMENTED 三项埋点 | 可观测 | 已核实未做 |
-| 5 | H10 长文本结构隔离提示 | 可靠性 | 零延迟兜底 |
-| 6 | H4 补 pathMissing 死代码 | 可靠性 | 受控 6/6 测的是参数名错 |
+| 1 | M3 NOT_INSTRUMENTED 三项埋点 | 可观测 | 已核实未做（baseline_metrics.py:57/66/83）|
+| 2 | H4 补 `pathMissing` 设置点 | 可靠性 | 剧本已做，但结构化标志 index.mjs:85 只有判断处无设置点 |
+| 3 | H4 web_fetch 入口真正移除 | token/速度 | cordis.patch.yml:368 仍 `fetch:true`，ADR-0028 要求改 false 未生效 |
+| 4 | M9 审计成本核算（trace 已有） | 速度/决策 | 纯分析，零成本 |
+| 5 | M8 变异测试 sentinel | 可靠性 | 可扩展 H9 判据体检，注入已知腐化确认门禁变红 |
+| 6 | H14 edit 前锚点确认 | 质量/速度 | FS_EDIT_NOT_FOUND 占 33%，事前确认缺位 |
 
 ### 第二梯队：建基础设施（有复利）
 | # | 方向 | 收益维度 |
 |---|---|---|
 | 7 | H2/M5 真实任务 A/B 流水线 + eval 基础设施 | 所有后续优化的验证效率 |
 | 8 | M4 审计权锁定（冻结评判测试 hook） | 评测可信度 |
-| 9 | H11 治理组件 leave-one-out 基线 | 可靠性（先重测现状）|
-| 10 | H13 RRSI 正则化（hold-out/噪声地板） | 质量（元级最高杠杆） |
+| 9 | H11 治理组件 leave-one-out 基线 | 可靠性（14:3x 已核实：audit 有 verdict 打点，leave-one-out 本身仍缺）|
+| 10 | ~~H13 RRSI 正则化~~ **已落地**：hold-out 切分+噪声地板；剩剪枝/编辑预算退火未核实 | 质量 |
 
 ### 第三梯队：95% 实验验证（有具体设计）
 | # | 方向 | 实验设计 |
@@ -292,6 +357,7 @@
   朴素有效法：故意改坏一个行为，确认测试变红"
 - **价值**：直接治本项目反复踩的"代码存在 + 单测过 ≠ 真实生效"坑（89% s1 假数据、守卫静默失效等）
 - **现状核实（14:2x）**：地基守卫 INV-1~6 已有，但未见变异测试/sentinel 机制
+- **审计复核（14:4x）**：子任务声称存在 sentinel 脚本，但全盘 `find *sentinel*/*mutant*` **无结果**——不采信，维持"未做"判定
 - **可验证性**：脚本（注入已知腐化，确认对应门禁变红）——与 H9 判据体检同源，可扩展
 - **收益维度**：可靠性（守卫本身的可信度）
 
