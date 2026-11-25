@@ -30,6 +30,34 @@ Move-Item ...  # 388 个 session-* 目录
 且脚本把**当前 profile 自己的会话组**（`--D-Brain-dsh-data-profiles-desktop--`）清空了，
 该组 cwd = `D:\Brain\dsh-data\profiles\desktop`，正是 dsh 启动计算的 session group 路径。
 
+## 源码级机制（子任务从 asar 权威源码核实，非推断）
+
+错误链：
+```
+sessionPersistence.list() 抛错
+  → workspaceRegistry pending（inject sessionPersistence）
+  → workspaceController pending（inject workspaceRegistry）
+  → gateway 严格 ctx.get() 返回 undefined → gateway/service-unavailable
+```
+
+关键源码（asar 内路径）：
+- **服务注册**：`dsh-api-workspace-controller/src/index.ts:57-95`（`WorkspaceController extends TypertRemoteService`，
+  `inject=['remoteAccess','typert','workspaceRegistry']`，注册名 `workspaceController`）
+- **网关严格查找**：`dsh-api-gateway/src/index.ts:829-837`——`receiverContext.get(descriptor.service)`，
+  非 object 即抛 `gateway/service-unavailable`
+- **"active ... unavailable" 的确切含义**：`cordis/src/reflect.ts:249-258`——服务在 store 里，
+  但**提供它的 fiber 不是 ACTIVE**（pending/failed/disposed），严格 get 返回 undefined。
+  ⚠ 所以报错里的 `TypeError:` 前缀**不是**"调用了 undefined 方法"（那会是另一条
+  `gateway/method-unavailable` 路径，`:863-869`）
+- **抛错点**：`dsh-session-persistence-jsonl/src/index.ts:1605-1632`——
+  `corrupt session log "...": header id "..." and cwd identify "..."`：
+  路径由 `header.cwd` 反推（`format.ts:227-271` 的 `projectKey(cwd)`），与实际所在目录不符即抛错
+- **扫描器遍历 sessions/ 全部子目录**：`dsh-session-persistence-jsonl/src/index.ts:1673-1684`
+  `listProjectDirs()` → `readdir(root)` 取所有子目录——扁平备份目录因此被当成一个 project 扫描
+- **实证**：备份中的 `session-00dd946a` 在 projcache 里 cwd=`D:\Brain\dsh-data\profiles\desktop`，
+  预期 group 是 `--D-Brain-dsh-data-profiles-desktop--`，实际却躺在 `_backup_sessions_20261118/` 下 → 必然不匹配
+- **recycle-bin 插件非根因**：只 inject 三个服务并挂 `SessionTrashHost`，不注册/注销 workspaceController
+
 ## 修复（已验证有效）
 ```powershell
 Move-Item "D:\Brain\dsh-data\sessions\_backup_sessions_20261118" `
