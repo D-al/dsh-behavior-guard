@@ -153,6 +153,7 @@ CHAT_TEMPLATE bench/chat_template_zh.jinja
 | 四杠杆/GBNF/广搜 | `docs/LEVERS_AND_BROAD_RESEARCH_20261124.md` |
 | 工具面证据/失败分析 | `docs/PIPELINE_AND_INFRA_BRIDGE_20261120.md` |
 | harness 治理/自主化 | `docs/AUTONOMY_AND_SELF_HARNESS_20261122.md` 等 |
+| 插件安全防线方案 | `docs/GUARD_PLAN_PLUGIN_SAFETY_20261126.md`（profile 默认 full-access，护栏必须外置）|
 | 路线图状态（机器权威）| `ROADMAP_GRAPH.md`（不要手改，agent 读写靠工具）|
 | 文档总索引 | `docs/README.md` |
 | 决策档案 | `decisions/*.md`（accepted 不可改原文）|
