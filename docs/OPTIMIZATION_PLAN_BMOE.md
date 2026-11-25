@@ -218,3 +218,25 @@ bmoe 实测：Windows 上 live mapping 使该文件并发 unbuffered 读串行�
   要么已等价、要么不适用、要么工程量极大且上限仅 1.2-1.5x
 - 我们 800 t/s 与 bmoe 8GB 卡 873-1212 t/s 同量级，**不在同一个可优化差距上**
 - 真正该做的只有：跑 ttft_probe.py 拿真实三段数据（当前空白），确认无隐藏瓶颈
+
+
+## 11. nmax A/B 失败复盘（2026-11-25 08:22）
+
+第一次：prompt 缓存卡死（f_keep=0.985 触发同步 save/load）→ 随机前缀修复。
+第二次（4.6k×3? 实为 20K×3）：`timeout 420` 到期（exit=124），只拿到 1 个有效点
+`nmax3 r0=23.38 t/s`；第二请求 ConnectionResetError。
+server 日志：`selected slot by LRU, n_tokens=11307` → 即使 `cache_prompt=false` 仍选了上次槽位；
+prefill 实测 577-585 t/s（低于 fa_prefill.log 的 806 t/s，因槽内有 11K token 增量路径）。
+
+**根因**：20K prompt 单请求 ~35s prefill + 200 token decode ~8s = ~43s；
+每变体 3 次 + 2 次预热 + 4 组交叉 = 20 次请求 ≈ 14 分钟，远超 7 分钟 timeout。
+且 server 的 LRU 槽位选择 + 长 prefill 让请求间耦合（不是独立样本）。
+
+**改进方案（下次做 A/B 时）**：
+1. 用短 prompt（2K）+ 短生成（64 token），单请求压到 <10s，样本独立性更好
+2. 或用 `-np 2` 双槽轮转，避免 LRU 复用
+3. 每次变体切换重启 server（已做），但要给足 timeout（≥900s）
+4. 核心指标改用**端到端 wall clock + decode t/s 双记录**，不只看 t/s
+
+**当前结论**：nmax 3 vs 5 尚无有效 A/B 数据（仅 1 点 23.38），
+不能据此改生产配置。11-24 旧日志 nmax3=25.09 > nmax5=24.56 仍只是单次观察。
