@@ -123,6 +123,8 @@ CHAT_TEMPLATE bench/chat_template_zh.jinja
 - **看门狗空转**：RestartDsh 卡 Running+IgnoreNew 时 [ACTION] 日志刷但 pid 不变 → `Stop-ScheduledTask` 回 Ready 再重启
 - **`!!js` 坑**：dsh JsExpr 只 eval 标量，`!!js [...]` 被 YAML 当 flow sequence 逗号切碎 → dsh 起不来；从包内 patch 删路径键，由 DEFAULTS 接管
 - **zstd 多帧**：必须 `ZstdDecompressionReader` 循环读所有帧，`zstd.open().read()` 只读第一帧（239 字节）
+- **dsh 会话备份铁律**：备份目录必须在 `sessions/` **外面**且保留 `<group>/session-X` 层级——
+  扁平化 388 个 session 放进 sessions/ 内 → workspaceController 初始化 TypeError、加工作区全失败（11-25 实测，详见 POSTMORTEM_SESSION_BACKUP）
 - **session-bridge cursor**：`hasMore` 恒 true、cursor 无效 → 曾重复计数 11810 假数据；按 callId/sid 去重
 - **trace 89% 是 s1 单测假数据**：零证据先分辨没触发/别处/默认关/真没有
 - **S6 长文本 >2000 字符结构性缺席**：靠结构隔离兜底（已做），别指望分类器
