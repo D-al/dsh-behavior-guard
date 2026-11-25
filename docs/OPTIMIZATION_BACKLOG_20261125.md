@@ -869,3 +869,34 @@ Q3 首次加载 14s / 二次命中 3.6s / 切 Q4 34s / 切回 18.6s。
 
 **结论**：0.6B CPU 常驻不值得。它"擅长的确定性子任务"在本项目里**全部已有更快更准的非生成式解法**
 （规则 / 86M ONNX / 脚本），而它不擅长的语义任务必须由 35B 做。这不是"还没试"，是已证伪+已覆盖。
+
+### E. 热切换子任务补充（2026-11-25 22:5x）
+
+**版本纠错（双向）**：子任务称磁盘二进制是 15e5099/0.9.0-dev——它查的是
+`D:/WorkBuddyWorkSpace/2026-10-13-20-41-43/llama-server.exe`（**旧副本**）。
+生产用 `D:/llama.cpp/build/bin/llama-server.exe` = **1.0.0-dev build1 / 94f3af3**，
+与源码 `D:/llama-master-src` HEAD 一致；autostart:37 `DEFAULT_DIR='D:/llama.cpp/build/bin'` 证实。
+router 的 `--models-max N`（LRU 淘汰）+ `--models-memory-margin N`（每设备留空闲）
+在 94f3af3 源码中均存在（README:236,2220、common/arg.cpp），机制分析适用于生产版。
+
+**切换延迟的完整构成（源码级）**：
+①淘汰旧模型 `request_stop`（优雅退出 stop-timeout 默认 **10s**）→ ②起新子进程等 LOADED
+→ ③权重从 NVMe 读入上 GPU（Q3 16GB/Q4 22.9GB）→ ④**KV 随子进程一起没**，首请求重 prefill
+→ ⑤目标模型首次 measurement 未完成时请求排队（MEASURE_TIMEOUT=300s）。
+`/slots/save|restore`（~50ms）是**同模型**机制，跨模型（张量形状/层数/tokenizer 不同）用不了。
+→ 这解释了项目实测 Q3↔Q4 12.7~34s 的来源，不是单一因素。
+
+**0.6B 常驻的理论可能与实际障碍**：`models-max` 是**数量**不是 GB；0.6B 设 `n-gpu-layers=0`
+纯 CPU 时 device memory 不计入 margin（host 不设限），**理论上可与 GPU 上的 35B 并存**（models-max 2）。
+但要覆盖 `[*]` 一大堆共享参数（清 mmproj/spec、缩 ctx、换模板、reasoning-format=none、threads 调低
+避开 35B 的 cpu-moe 争抢）——是需新做的工作。且 S7 已证伪它做实时信号（4s vs <10ms）。
+
+**更优架构（比热切换好）**：**规则分流的 sidecar fast path**——0.6B 独立 CPU 服务常驻（项目已有
+8090 实例 + small_model_bench.py + S4 adaptive_proxy.py 原型），harness 按规则把
+classify/format/verify_signal 分流过去，**主对话永远留在 35B 不切换**。
+但注意 D 段结论：这些子任务现有更优解（86M ONNX 102ms / 规则 / verify-on-edit），
+所以 sidecar 也只是架构备选，不是当前值得做的事。
+
+**查不到的**：upstream 已合并的"GPU 常驻多模型权重共享/跨模型 KV 复用"PR——没有。
+第三方 `llama-sleep`（llama-swap 生态）声称 swap 1.7-2.1s 保留 prompt cache，
+但单机作者自测、非 upstream、需新依赖，不纳入当前决策。
