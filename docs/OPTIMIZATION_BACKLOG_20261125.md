@@ -953,3 +953,35 @@ classify/format/verify_signal 分流过去，**主对话永远留在 35B 不切�
 **结论不变**：能力画像证实 0.6B 的强项（分类/抽取/草稿）在本项目都已有更优解，
 弱项（推理/代码/agent）正是项目的核心场景。0.6B 对项目**没有新增助力**，
 其价值仅是"能力下限参照物"——用来证明 harness 必须建立在 35B 之上。
+
+---
+
+## 十六、frame_limiter 对 dwm 限帧从未生效（2026-11-25 23:1x）
+
+**用户报"自动降频又没发挥作用，3D 核心又满了"**。诊断：
+
+### 限帧器本身在工作（不是它坏了）
+- 进程 13212（22:13 启动，`--parent-pid 3084` = dsh 主进程）活着
+- **真日志是 `_frame_limiter.jsonl`**（不是 `frame-limiter.log`，后者 0 字节是误导）
+- 今天 THROTTLE **85 次**，23:10:48 刚给 dsh(3D 25.8%)/WorkBuddy(3D 32.3%) 打了 EcoQoS
+- `SLOTS` URL 正确带 `?model=Qwen3.6-35B-A3B-UD-Q4_K_XL`（router 必须带，否则 400）
+- 空闲时正确释放：诊断末 state={'pids':[]}、is_processing=False、dwm 降到 6.1%
+
+### 真因：dwm（pid 992）的 EcoQoS 从未成功
+- 实测 `eco_qos(992, True) → False, err=0`；dsh/WorkBuddy 都 True
+- **历史日志中 dwm 的 THROTTLE 记录 = 0 条**（从来没成功过）
+- 原因：dwm 是**受保护系统进程（PPL）**，`OpenProcess(0x0300)` 打不开 →
+  `eco_qos` 返回 False 且 err=0（失败分支没取 GetLastError，错误码误导）
+- 而项目早有铁律："抢 3D 真凶是 WorkBuddy + dwm"（PIPELINE:1828、PLATFORM_REPAIR:347）
+  → **限帧器压住了 WorkBuddy，却从来压不住 dwm 的 33% 3D**
+
+### 判据复述（别再踩）
+nvidia-smi 聚合 util 100% 但显存带宽 1%/功耗 25W = 纯 3D 渲染空转，不是推理。
+本次诊断起始快照正是：`100% util, 1% mem, 25.23W, 7844MiB`。
+
+### 选项（未执行，待拍板）
+1. **NVIDIA 控制面板全局帧率限制**——项目文档 11-20 就列了"零成本方案"但未执行
+   （PIPELINE:1845-1859）。驱动层限帧覆盖 dwm，是当前唯一能压它的路径。
+   局限：无命令行 API（nvidia-smi -h 无 frame/fps 选项），需 GUI 设置或注册表
+2. 修 `eco_qos` 的错误码（`OpenProcess` 失败时取 GetLastError）——诊断价值，不解决 dwm
+3. 保持现状：限帧器已压住 dsh+WorkBuddy（两个真凶之一），dwm 是无解的系统进程
