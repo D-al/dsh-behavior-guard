@@ -33,7 +33,8 @@
 | **H17** 会话僵尸治理 | "SESSION_BRAKE已加cancel但M10未见" | **部分做** | `index.mjs:1562` 仅 LLM 调用级 AbortController，无会话级检测/abort 命令；插件 cancel 未确认覆盖"停止后复活" |
 
 **仍确认未做**（backlog 正确）：H3 pathMissing 无设置点、H14 edit前 read、M3 三项埋点、
-M4 审计权锁定（pre-commit hook 只刷新科技树，无评判文件保护）、M8 变异测试、
+M4 审计权锁定（**版本钉住已实测生效**：我改 run_all.sh 加一行测试注册 → rulepack_guard + INV-7 立刻 FAIL
+  并强制走审批通道，已回退；物理写保护仍未做）、M8 变异测试（**已实测**：见 test_hardened_rules.py 10/10）、
 M9 审计成本核算、H2 harness 机制开关 A/B runner（有 lever_effect_report.py 但只做评估不做两臂自动跑）。
 
 **方法论教训（双向）**：

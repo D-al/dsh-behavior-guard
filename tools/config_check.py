@@ -136,6 +136,47 @@ def check_agents_skills():
     return problems
 
 
+# 硬值断言（2026-11-25 门禁化迁移）：只放"破坏后必出事"的项。
+# 设计铁律：不断言可调参数（会误报），只断言实测证明过是承重墙的值。
+# 每条带 reason——失败时输出为什么，不逼人去翻 BRIEF。
+HARDENED_RULES = [
+    ('LLAMA_35B_CTX_CHECKPOINTS', '2',
+     '降到 1 → 每步全量重预填 +23% 耗时（11-18 实测）'),
+    ('LLAMA_35B_MMPROJ_OFFLOAD', '1',
+     '关掉 → 截图走 CPU 编码 141s（实测）'),
+    ('LLAMA_35B_DRY_ALLOWED_LENGTH', '32',
+     '设 2 → 模型改字形躲惩罚（DRY 必须给足窗口）'),
+    ('LLAMA_35B_MOE_CACHE_CPU_SHARE', '1.0',
+     '全host 布局下 share=1.0 端到端 -10.6%（11-23 五轮中位）'),
+    ('LLAMA_35B_NMAX', '3',
+     'nmax=5→3 已 95% 验证；7 占更多显存+CPU draft 更差'),
+    ('LLAMA_35B_SPEC_TYPE', 'draft-mtp',
+     'ngram 加生产参数后 e2e CI 跨 0，不落地'),
+    ('LLAMA_35B_TOP_P', '0.95',
+     '温度/top_p 组合是 Q4 实测最优区（0.7/0.95）'),
+    ('LLAMA_35B_REASONING_BUDGET', '4096',
+     '硬切会截断半句引发回路；4096+message 是平滑版'),
+]
+
+
+def check_hardened_config(env):
+    """检查 5：BRIEF 铁律中可机械判定的硬值（fail-closed）。"""
+    problems = []
+    if not env:
+        return problems
+    for key, expected, reason in HARDENED_RULES:
+        actual = env.get(key)
+        if actual is None:
+            continue  # 键缺失由 env-vs-INI 检查覆盖，不重复报
+        if normalize(actual) != normalize(expected):
+            problems.append(f'  {key}={actual}（应为 {expected}）— {reason}')
+    # TEMP 必须留空：CLI 会覆盖 preset 的 temp=0.7
+    temp = env.get('LLAMA_35B_TEMP')
+    if temp is not None and temp.strip() and temp.strip() != '""':
+        problems.append(f'  LLAMA_35B_TEMP={temp}（必须留空）— CLI 会覆盖 preset 的 temp=0.7，破坏按模型配温')
+    return problems
+
+
 def check_skill_keywords():
     """检查 4：skill frontmatter keywords 非空、无重复"""
     problems = []
@@ -186,6 +227,11 @@ def main():
     p4 = check_skill_keywords()
     print(f'[4] skill keywords 完整性：{"OK" if not p4 else "有问题"}')
     problems += p4
+
+    # 5. BRIEF 铁律硬值（门禁化迁移）
+    p5 = check_hardened_config(env)
+    print(f'[5] 硬值断言（{len(HARDENED_RULES)}条+TEMP）：{"OK" if not p5 else "违规"}')
+    problems += p5
 
     if problems:
         print('\n[不一致] 以下问题需修复：')

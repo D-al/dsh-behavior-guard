@@ -28,13 +28,25 @@ CHAT_TEMPLATE bench/chat_template_zh.jinja
 ```
 - 路由模式：server 不带 `-m`，`--models-preset bench/llama-router-preset.ini --models-max 1 --models-memory-margin 450`
 - ⚠ `/slots` 必须带 `?model=<已加载模型>`
-- ⚠ `.env` 覆盖 INI；`tools/config_check.py` 查两处一致性
+- ⚠ `.env` 覆盖 INI；`python tools/config_check.py` 查一致性 **+ 9 条硬值断言**（见 §2 门禁化块）。
+  改任何本地配置前/后跑一次——违规会带"为什么"报出来，不必背规则
 - 硬件 i7-12650H / 64GB DDR4-3200 / RTX4060Laptop 8G（**空闲显存安全线 ≥450MiB**，186 必卡 WDDM 换页→1~2 t/s）
 - 当前空闲显存 ~509MiB；**别用聚合 util% 判推理是否在跑**——看 Copy 引擎 + 显存带宽 + 功耗（UI 渲染走 3D，推理走 Copy）
 
 ---
 
 ## 2. 铁律（不知道就会犯错）
+
+> **已门禁化（不用背，工具会拦）**：`python tools/config_check.py` 检查 9 条硬值——
+> CTX_CHECKPOINTS=2 / MMPROJ_OFFLOAD=1 / DRY_ALLOWED_LENGTH=32 / share=1.0 / nmax=3 /
+> SPEC_TYPE=draft-mtp / TOP_P=0.95 / REASONING_BUDGET=4096 / TEMP 留空。
+> 违规会报出原因（如"降到1→每步全量重预填+23%"）。变异测试 `tools/test_hardened_rules.py`
+> 已验证每条"故意改坏→门禁变红"（10/10）。
+> **已实测的旁路护栏**：`rulepack_guard.py`+INV-7 版本钉住会拦住 agent 偷改评判规则——
+> 实测只给 run_all.sh 加一行测试注册就立刻 FAIL，强制走审批通道（已回退，82/0 恢复）。
+> 所以别试图改门禁来"让测试通过"——那正是它设计来抓的。
+> **注意**：门禁只覆盖配置值；操作类铁律（删 junction/强推/危险命令）仍需人工遵守——
+> 现有"block"是注入文本而非硬拦截，勿误以为工具会挡住。
 
 1. **中文思维链**：唯一有效的是生成位置锚点 `{{- '嗯，' }}`（必须是自述句；祈使句会回「好」后 EOS）
 2. **「只输出好」= 上下文自强化回路**：模板 `is_stub` 跳过「确认词+无tool_calls+非最后一条」的 assistant（治本）
