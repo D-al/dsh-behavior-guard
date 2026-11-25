@@ -660,3 +660,89 @@ decode/LLM 语义判断不宜再压（有质量底线）；显存路已到硬约
   "ClassLRU" 是**项目自己的术语**（llama.cpp PR #31233，本机 94f3af3 已含；`LEVERS:772`），
   Strata 官方用的词是 profile 排名 + decayed-count——两者不是同一机制，别混
 - 两条都遵循同一判据：**不看榜单看约束**（显存/延迟/集成成本）
+
+
+---
+
+## 十三、dsh v0.2.2-rc.5 跟进评估（2026-11-25 19:0x）
+
+**用户问**："看看 dsh 的 rc5 有什么值得跟进的地方"
+**本地版本**：0.2.2-rc.3（CHANGELOG.md:884，11-18 已升级验证过）
+
+### 一手证据：rc.3→rc.5 全部 commit（GitHub compare）
+
+| 区间 | commit 数 | 实质变化 | 与本地 llama 项目相关？ |
+|---|---|---|---|
+| rc.3→rc.4 | 9 | ①`llm-deepseek` content safety check开关+强制 high+CONTENT_REFUSED（3+2 commits）
+  ②`liveshare` 测试时钟硬编码修复（2）
+  ③`liveshare` tunnel worker 在 Host Electron Node 模式启动修复（1）| ❌ 全是 DeepSeek 云 API + liveshare，本地模型无关 |
+| rc.4→rc.5 | 4 | ①`feat(web): default DeepSeek model conversations to Messages search`（搜索路由：DeepSeek 模型走服务端搜索不按次收费，其他模型默认 DeepSeek Search API）
+  ②liveshare 测试时钟修复的 cherry-pick | ❌ 只对 DeepSeek 云模型有效；项目用本地 llama + SearXNG，不用 DeepSeek 搜索 |
+
+**官方 changelog（deepseekdsh.com/changelog）只列 rc.5 一项**：DeepSeek 模型服务端搜索免按次收费——
+正是二手新闻标题里"搜索省一笔"的来源。
+
+### 判断：❌ 不升级（零功能价值，纯回归风险）
+
+1. **rc.3→rc.5 没有任何本地模型 / 插件契约 / sessionController / slot 契约 / cordis / approval 机制的变更**
+   （逐 commit 核实，不是关键词计数）
+2. 项目深度定制：cordis.patch.yml（禁 tool-jobs/tool-web fetch/llama provider/bundles）、
+   dsh-session-bridge（sessionController API）、dsh-approval-delegate、三副本一致性、82 门禁——
+   升级要全量重跑，收益为零
+3. 搜索计费变化**只对 DeepSeek 云模型有效**；项目用本地 llama + 本地 SearXNG（`web_fetch→web_search` 映射，index.mjs:385）
+
+### 需要澄清的历史包袱
+- CHANGELOG.md:927 记的"rc.2→rc.3 等用户手动升级"已完成（:884 确认 rc.3 全量验证通过）——本次不是遗留待办
+- 0.2.1-rc.5（10-29）曾改 thinking block 渲染 + Slot 契约（reasoning-text.ts / slots.ts），
+  **那是 0.2.1 线，与 0.2.2-rc.3→rc.5 无关**，别混
+
+### 何时才值得升级
+- dsh GA（0.2.2 正式版）出来后重新评估——rc 线预发布，接口可能微调
+- 或出现明确命中本项目的修复（sessionController API 变更 / 本地 provider 支持 / tool-call bug 修复）
+
+### 元结论
+又一次"不看标题看 diff"：rc.5 的标题（搜索免收费）对用本地模型的项目毫无意义。
+逐 commit 核实比读 release notes 更可靠。
+
+
+---
+
+## 十三、dsh v0.2.2-rc.5 跟进评估（2026-11-25 19:0x）
+
+**用户问**："看看 dsh 的 rc5 有什么值得跟进的地方"
+**本地版本**：0.2.2-rc.3（CHANGELOG.md:884，11-18 已升级验证过）
+
+### 一手证据：rc.3→rc.5 全部 commit（GitHub compare）
+
+| 区间 | commit 数 | 实质变化 | 与本地 llama 项目相关？ |
+|---|---|---|---|
+| rc.3→rc.4 | 9 | ①`llm-deepseek` content safety check开关+强制 high+CONTENT_REFUSED（3+2 commits）
+  ②`liveshare` 测试时钟硬编码修复（2）
+  ③`liveshare` tunnel worker 在 Host Electron Node 模式启动修复（1）| ❌ 全是 DeepSeek 云 API + liveshare，本地模型无关 |
+| rc.4→rc.5 | 4 | ①`feat(web): default DeepSeek model conversations to Messages search`（搜索路由：DeepSeek 模型走服务端搜索不按次收费，其他模型默认 DeepSeek Search API）
+  ②liveshare 测试时钟修复的 cherry-pick | ❌ 只对 DeepSeek 云模型有效；项目用本地 llama + SearXNG，不用 DeepSeek 搜索 |
+
+**官方 changelog（deepseekdsh.com/changelog）只列 rc.5 一项**：DeepSeek 模型服务端搜索免按次收费——
+正是二手新闻标题里"搜索省一笔"的来源。
+
+### 判断：❌ 不升级（零功能价值，纯回归风险）
+
+1. **rc.3→rc.5 没有任何本地模型 / 插件契约 / sessionController / slot 契约 / cordis / approval 机制的变更**
+   （逐 commit 核实，不是关键词计数）
+2. 项目深度定制：cordis.patch.yml（禁 tool-jobs/tool-web fetch/llama provider/bundles）、
+   dsh-session-bridge（sessionController API）、dsh-approval-delegate、三副本一致性、82 门禁——
+   升级要全量重跑，收益为零
+3. 搜索计费变化**只对 DeepSeek 云模型有效**；项目用本地 llama + 本地 SearXNG（`web_fetch→web_search` 映射，index.mjs:385）
+
+### 需要澄清的历史包袱
+- CHANGELOG.md:927 记的"rc.2→rc.3 等用户手动升级"已完成（:884 确认 rc.3 全量验证通过）——本次不是遗留待办
+- 0.2.1-rc.5（10-29）曾改 thinking block 渲染 + Slot 契约（reasoning-text.ts / slots.ts），
+  **那是 0.2.1 线，与 0.2.2-rc.3→rc.5 无关**，别混
+
+### 何时才值得升级
+- dsh GA（0.2.2 正式版）出来后重新评估——rc 线预发布，接口可能微调
+- 或出现明确命中本项目的修复（sessionController API 变更 / 本地 provider 支持 / tool-call bug 修复）
+
+### 元结论
+又一次"不看标题看 diff"：rc.5 的标题（搜索免收费）对用本地模型的项目毫无意义。
+逐 commit 核实比读 release notes 更可靠。
