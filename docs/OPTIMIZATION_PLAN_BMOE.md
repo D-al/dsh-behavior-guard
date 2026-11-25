@@ -186,3 +186,35 @@ bmoe 的 flash 路径是为"模型 > RAM"（手机/16GB Mac/125B 模型）设计
 但**冷启动阶段完全受 SSD 读速约束**。D 盘实测读 2420MB/s 已接近 NVMe 上限，
 21GB 加载理论下限 9s，实测 10-30s 有优化空间但不大。
 真正可能的大头是 **prefill 阶段**（25s），需看 bmoe 的 prefill-device 机制能否借鉴（调研中）。
+
+
+## 10. TTFT/冷启动调研结论（2026-11-25 08:20）
+
+### 10.1 首字 5 秒之谜——解开了
+bmoe 的"8GB 卡长 prompt 首字 5s"真相（bench-data 原文）：**4.6-4.7k prompt / 873-1212 t/s**，
+首字计时**不含加载**。我们 20K prompt @ 800 t/s ≈ 25s 与其同量级（换算 20K 按 1212 也需 16.5s）。
+**差距在 prompt 长度，不在 prefill 黑科技。**
+
+### 10.2 最高优先项已核实为"已有"
+- **`op_offload` 默认 true**（common.cpp:1772 `!params.no_op_offload`、arg.cpp:2943-2947 default true），
+  我们没传 `--no-op-offload` → 已开。bmoe 实测关掉它 20.7k prompt 慢 4.5x 的收益**我们已经拿到**，
+  此项收益 = 0。（无需 A/B，源码核实即可定案）
+- **UBATCH 2048 << CTX 98304**：已满足。bmoe 实测 graph 宽=context 时首字 **786 秒（13 分钟）**，
+  narrow 到 10240 后 8.4 秒——这个坑我们已避开，只需防止回退。
+
+### 10.3 冷启动：常驻进程已是现状
+- dsh 的 llama-server 是**常驻服务**（autostart 随 dsh 启动），不是 one-shot → 加载 10-30s 只在重启时付，
+  bmoe 的"进程复用省 10-30s"我们已具备。
+- `--dense-weights anon` / dense warm-up：我们 load_mode=none 全量常驻，已等价（bmoe 文档自认 "a wash"）。
+- 跨 run 持久专家 cache：bmoe 明确 "not built"，无参考实现。
+
+### 10.4 唯一待实测的加载瓶颈：Windows mmap serialisation
+bmoe 实测：Windows 上 live mapping 使该文件并发 unbuffered 读串行化，4 lanes 2295-2665 → 895-930 MB/s（2.6x）。
+**判据**：若我们加载稳态 ~900MB/s（30s 端）而非 2.4GB/s（9s 端）则命中。
+**待做**：`tools/ttft_probe.py` 测 load_s，若 >15s 则需查此坑。
+
+### 10.5 最终判定：TTFT/冷启动维度无低风险大收益
+- 所有 bmoe 招牌机制（prefill-device arena / io lanes / dense anon / release-mmap）对我们 RAM 常驻 + 独显 + 20K 场景
+  要么已等价、要么不适用、要么工程量极大且上限仅 1.2-1.5x
+- 我们 800 t/s 与 bmoe 8GB 卡 873-1212 t/s 同量级，**不在同一个可优化差距上**
+- 真正该做的只有：跑 ttft_probe.py 拿真实三段数据（当前空白），确认无隐藏瓶颈
