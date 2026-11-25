@@ -1418,9 +1418,9 @@ items:
     serves_success_dim: null
   verify:
   - kind: file_exists
-    path: docs/SESSION_BRAKE_20261120.md
+    path: docs/AUTONOMY_AND_SELF_HARNESS_20261122.md
   - kind: file_exists
-    path: docs/MECHANISM_TRIGGER_AUDIT_20261120.md
+    path: docs/COMPACTION_CONTEXT_CADENCE_20261120.md
   - kind: test_pass
     cmd: node tools/test_kill_switch.mjs
     min: 3

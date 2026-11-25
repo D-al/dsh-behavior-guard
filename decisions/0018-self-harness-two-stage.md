@@ -2,7 +2,7 @@
 
 - 状态：accepted
 - 日期：2026-11-19
-- 决策者：项目所有者确认"先提方案"后采纳（方案见 [SELF_HARNESS_PLAN](../docs/SELF_HARNESS_PLAN.md)）
+- 决策者：项目所有者确认"先提方案"后采纳（方案见 [SELF_HARNESS_PLAN](../docs/AUTONOMY_AND_SELF_HARNESS_20261122.md)）
 
 ## Context（背景）
 

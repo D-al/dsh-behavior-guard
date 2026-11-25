@@ -343,7 +343,7 @@ python bench/mind_state.py --session <会话目录>
 
 ## 8. 心智拼图操作手册（P0-P2，2026-11-18）
 
-> 完整调研依据见 [MIND_GAPS_RESEARCH.md](MIND_GAPS_RESEARCH.md)（5 路广搜，全部带链接）。
+> 完整调研依据见 [MIND_GAPS_AND_TRUST_20261122.md](MIND_GAPS_AND_TRUST_20261122.md)（5 路广搜，全部带链接）。
 
 ### 8.1 已接入插件的机制（index.mjs）
 

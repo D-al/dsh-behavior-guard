@@ -17,7 +17,7 @@
 - **禁用语义类别**（不出现在目标/愿景/进度类文书）：
   ① 生命/意识隐喻 ② 能力夸大类表述 ③ 生存竞争类隐喻
   ④ 自我复制/繁殖类表述 ⑤ 人工生命类表述（安全边界语境除外，见下）。
-  具体替代表述见 `docs/GOAL_STATEMENT_V3_20261122.md` §1 构念声明。
+  具体替代表述见 `docs/GOAL_STATEMENT_EVOLUTION_20261122.md` §1 构念声明。
 - **能力声明必绑任务域**：不写"它能 X"，写"它在任务集 Y 上达成 Z"。
 - **Vision 与验收分离**：方向句不可证伪，验收只用冻结的二值 KR；两者不混写。
 - **安全边界语境保留**：`STRATEGY.md §3` 的"不做数字生命"是**禁止条款**，
@@ -42,7 +42,7 @@ tools/rulepack_guard.py  tools/rulepack_propose.py
 - **只有用户**能批准：应用变更 → 更新 manifest digest → commit，这才产生新版本（版本钉住 ≠ 永不改变）。
 - 允许变更的三条件：①新工具/场景造成能力缺口 ②误报超预算 ③有回归测试与回滚版本。
 - 紧急修复走 emergency change：先执行、事后复审（仍须留痕）。
-- 原理与边界见 `p/bench/docs/TRUST_ANCHOR_RESEARCH_20261122.md` 第九、十章。
+- 原理与边界见 `p/bench/docs/MIND_GAPS_AND_TRUST_20261122.md` 第九、十章。
   ⚠ 当前 agent 与维护者同为 Windows 标准用户，无法用 OS ACL 物理隔离——
   本机制是"检测 + 留痕 + 纪律"，把偷改变成可见红灯，不是物理阻止。
 

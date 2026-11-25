@@ -63,8 +63,8 @@ bench/
 ├── docs/                        ← L2 参考（新建，从 bench/ 根迁入）
 │   ├── README-harness.md        ← 项目单一入口（指向所有其他文档）
 │   ├── USAGE_GUIDE.md
-│   ├── PERIPHERAL_CAPABILITIES.md
-│   ├── MORNING_REPORT_20261118.md
+│   ├── MIND_MODEL_CAPABILITY_EVAL_20261121.md
+│   ├── PLATFORM_REPAIR_20261120.md
 │   ├── RESEARCH_NOTES.md        ← 论文索引的活文档（从 README Part 8 拆出）
 │   └── config-history/
 ├── archive/                     ← L4 归档（新建）

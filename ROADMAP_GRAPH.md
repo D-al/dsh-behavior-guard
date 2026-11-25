@@ -149,7 +149,7 @@ items:
   status: done
   verify:
   - kind: file_exists
-    path: docs/S4_ADAPTIVE_AB_RESULT.md
+    path: docs/AUTONOMY_AND_SELF_HARNESS_20261122.md
   what: adaptiveThinkEnabled 默认值验证
   why: token 消耗需要自适应机制
   benefit_to_self: 智能开关思考深度以省 token
@@ -206,7 +206,7 @@ items:
   status: done
   verify:
   - kind: file_exists
-    path: docs/S7_SMALL_MODEL_BENCH_RESULT.md
+    path: docs/AUTONOMY_AND_SELF_HARNESS_20261122.md
   what: 0.6B CPU 分类 4-2s 基准
   why: 证伪实时外设可行性（边缘设备 392ms vs 本机 4.2s）
   benefit_to_self: 知道什么可行、什么不可行，避免浪费时间
@@ -404,7 +404,7 @@ items:
   status: done
   verify:
   - kind: file_exists
-    path: docs/ROADMAP_REBASELINE_20261119.md
+    path: docs/ROADMAP_EVOLUTION_20261120.md
   what: 短期全完成、M4/M1 升首档、M7/L5 降级、L7 新增
   why: v2.23 短期全部完成需重新评估优先级
   benefit_to_self: 路线图反映真实进展而非历史遗留
@@ -588,7 +588,7 @@ items:
   - L1
   cost: 中
   category: mind
-  review: docs/M3_VALUE_REVIEW_20261122.md + docs/CLASSIFIER_ECOSYSTEM_RESEARCH_20261122.md + docs/M3_ANCHOR_COST_BENEFIT_20261122.md + docs/M3_PATTERN_GUARD_LANDING_20261122.md
+  review: docs/PIPELINE_AND_INFRA_BRIDGE_20261120.md + docs/CLASSIFIER_BENCH_SERIES_20261121.md + docs/PIPELINE_AND_INFRA_BRIDGE_20261120.md + docs/PIPELINE_AND_INFRA_BRIDGE_20261120.md
 - id: M9
   tier: 2
   deps: []
@@ -669,7 +669,7 @@ items:
   caveats:
   - ⛔ 用户拍板治理原则
   - 不看单纯频次-低频但关键必须保留
-  - 证据:docs/TOOL_SURFACE_EVIDENCE_20261122.md
+  - 证据:docs/PIPELINE_AND_INFRA_BRIDGE_20261120.md
   reflection: []
   abort_if: 无（人工决策项，不自主执行）
   preconditions:
@@ -944,9 +944,9 @@ items:
   autonomous: true
   verify:
   - kind: file_exists
-    path: docs/SESSION_BRAKE_20261120.md
+    path: docs/AUTONOMY_AND_SELF_HARNESS_20261122.md
   - kind: file_exists
-    path: docs/MECHANISM_TRIGGER_AUDIT_20261120.md
+    path: docs/COMPACTION_CONTEXT_CADENCE_20261120.md
   - kind: test_pass
     cmd: node tools/test_kill_switch.mjs
     min: 3
@@ -976,8 +976,8 @@ items:
   - at: '2026-11-22T07:51:44.627358+00:00'
     commit: 43840dd
     checks:
-    - D:\Brain\publish\dsh-behavior-guard\docs\SESSION_BRAKE_20261120.md
-    - D:\Brain\publish\dsh-behavior-guard\docs\MECHANISM_TRIGGER_AUDIT_20261120.md
+    - D:\Brain\publish\dsh-behavior-guard\docs\AUTONOMY_AND_SELF_HARNESS_20261122.md
+    - D:\Brain\publish\dsh-behavior-guard\docs\COMPACTION_CONTEXT_CADENCE_20261120.md
     - rc=0 PASS=4
     - 1 hits in index.mjs
     - rc=0 PASS=3
@@ -994,7 +994,7 @@ items:
     regex: effect_check|回读|no_effect|WARN_THROTTLE
     min: 1
   - kind: file_exists
-    path: docs/FRAME_LIMITER_SLOTS_BUG_20261120.md
+    path: docs/PLATFORM_REPAIR_20261120.md
   - kind: test_pass
     cmd: D:/Python/python.exe -B tools/test_frame_limiter_effect.py
     min: 1
@@ -1804,7 +1804,7 @@ rungs:
     cmd: D:/Python/python.exe -B tools/test_future_claim_guard.py
     min: 1
   - kind: file_exists
-    path: docs/FUTURE_CLAIM_GUARD_20261120.md
+    path: docs/FUTURE_CLAIM_AND_CONSISTENCY_20261120.md
   what: 把 guardDecide 的 L1 从只校验过去时声明（已写入X）扩展到将来时承诺（现在写X/接下来创建X），要求承诺的产物在本轮真实产生
   why: 2026-11-20 A1_5 会话输出"现在进入核心：编写 check_verify.py"后结束回合、文件不存在——WRITE_CLAIM 只匹配过去时，将来时承诺穿过
     L0-L3 全部防线，是"只输出好"的新变体
@@ -1824,7 +1824,7 @@ rungs:
     checks:
     - 2 hits in index.mjs
     - rc=0 PASS=8
-    - D:\Brain\publish\dsh-behavior-guard\docs\FUTURE_CLAIM_GUARD_20261120.md
+    - D:\Brain\publish\dsh-behavior-guard\docs\FUTURE_CLAIM_AND_CONSISTENCY_20261120.md
   tier: 0
   category: autonomy
 - id: A1_7
@@ -1840,7 +1840,7 @@ rungs:
     regex: 'kind: ''review_verdict''|review_kind: ''critic''|review_kind: ''planner'''
     min: 1
   - kind: file_exists
-    path: docs/MECHANISM_TRIGGER_AUDIT_20261120.md
+    path: docs/COMPACTION_CONTEXT_CADENCE_20261120.md
   - kind: file_grep
     path: index.mjs
     regex: rubric_version|dimensions_checked
@@ -1925,7 +1925,7 @@ rungs:
   - kind: test_pass
     cmd: node tools/test_task_profile_integration.mjs
     min: 1
-  what: 按 docs/REFACTOR_PATTERN_20261121.md 的四段式模式，把剩余 13 个嵌套函数外置成"纯函数+单测+内联+集成测试"；先从
+  what: 按 docs/MEMORY_AND_REFACTOR_20261120.md 的四段式模式，把剩余 13 个嵌套函数外置成"纯函数+单测+内联+集成测试"；先从
     3 个无依赖纯函数开始
   why: 合成心智需要 agent 能安全自修改；嵌套函数边界不清、无单测，agent 改自己时无法证明等价。taskProfile 已示范模式并验证可行
   benefit_to_self: 每次自修改都有机器可验的等价证据，不靠人肉小心（今晚手滑4次的根治）

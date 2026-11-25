@@ -54,7 +54,7 @@ curl -X POST http://127.0.0.1:9899/classify -H "Content-Type: application/json" 
 ## 状态
 
 未接入运行时检测调用（harness S6 尚未加 HTTP 客户端）。当前只管理服务生命周期。
-实测依据见 `docs/CLASSIFIER_BENCH_FINAL_20261121.md`。
+实测依据见 `docs/CLASSIFIER_BENCH_SERIES_20261121.md`。
 
 ## 踩坑记录（2026-11-21 重启验证）
 

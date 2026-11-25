@@ -168,7 +168,7 @@ CoALA（TMLR 2024, arXiv:2309.02427）仍是工程骨架：
 
 ## 附：来源（支撑本战略陈述的具体依据）
 
-- 77 轮战略会话「Harness目标解析」（本仓库 `docs/STRATEGIC_SESSION_ANALYSIS_20261121.md`）：Q1/Q7/Q23/Q61/Q85/Q109/Q111/Q113/Q117
+- 77 轮战略会话「Harness目标解析」（本仓库 `docs/AUTONOMY_AND_SELF_HARNESS_20261122.md`）：Q1/Q7/Q23/Q61/Q85/Q109/Q111/Q113/Q117
 - `[CoALA]` Sumers et al., TMLR 2024, arXiv:2309.02427 — LLM 作为概率产生式系统
 - `[RRSI]` arXiv:2609.24972 — 无正则自改进 OOD 跌破基线
 - `[DGM]` Zhang et al., Nature 2025, arXiv:2505.22954 — objective hacking 实证

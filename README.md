@@ -19,18 +19,18 @@
 |---|---|
 | **只想用** | [一键开箱](#一键开箱) → [说明书](docs/MANUALS.md) |
 | **想接手开发** | [文档地图](docs/README.md) → [科技树](TECH_TREE.html) → [决策档案](decisions/README.md) |
-| **想知道为什么这么做** | [说明书 §8 心智拼图](docs/MANUALS.md) → [调研汇总](docs/MIND_GAPS_RESEARCH.md) → [社区对比](docs/COMPETITIVE_ANALYSIS.md) → [同族 harness 对标](docs/PEER_HARNESS_BENCHMARK.md) |
+| **想知道为什么这么做** | [说明书 §8 心智拼图](docs/MANUALS.md) → [调研汇总](docs/MIND_GAPS_AND_TRUST_20261122.md) → [社区对比](docs/MIND_GAPS_AND_TRUST_20261122.md) → [同族 harness 对标](docs/MIND_MODEL_CAPABILITY_EVAL_20261121.md) |
 | **想看脑功能分区对照** | [覆盖度盘点](docs/BRAIN_PARITY.md)（人脑分区 → 我们的机制 → 空白区）|
-| **想看 harness 自进化方案** | [Self-Harness 落地方案](docs/SELF_HARNESS_PLAN.md)（短期①的实现路径）|
+| **想看 harness 自进化方案** | [Self-Harness 落地方案](docs/AUTONOMY_AND_SELF_HARNESS_20261122.md)（短期①的实现路径）|
 | **我是 agent，想自己成长 / 找下一件可做的事** | [能力阶梯](CAPABILITY_LADDER.yaml)（机器可读成长卡片：what/why/解锁/好处/代价/坑/反思）+ `python tools/roadmap_check.py --next` 选下一项、`--card M1` 读任意卡片、`--dry-run` 验判据。设计见 [成长卡片说明](docs/GROWTH_CARD_DESIGN_20261120.md)|
 | **我是谁、我从哪里来、为什么相信这些** | [认知谱系](lineage/README.md)（独立于路线图/操作手册的身份家谱：五层依赖链演化史 ORIGIN + 51 个决策的依据与严格性评级 DECISION_LEDGER + 三层决策链 + 决策主体与最优性 + 认识论 + 身份锚）|
 | **我有哪些资产、在哪、何时调用** | [资产地图](lineage/ASSET_MAP.md)（人读）+ [资产索引](config/ASSET_INDEX.json)（机器可读）：16 项资产的调度中枢，含证据生产工具与工作契约 [技能卡](skills/literacy.md)（读写识字率）|
 | **怎么当场做决策 / 这套方法真能用吗** | [一页纸决策卡](lineage/QUICK_DECISION_CARD.md) · [方法论自审](lineage/METHODOLOGY_AUDIT.md) · [操作化与器官受益](lineage/OPERATIONALIZING.md)；反仪式检查 `python tools/decision_impact_audit.py`（首测 19 ADR 100% 无验证条件）|
-| **想确认 GitHub/权威/生产是否一致** | `python tools/consistency_guard.py`（零 LLM 守卫，exit 0/1/2；清单 `config/GUARD_MANIFEST.yaml`，设计见 [守卫设计](docs/CONSISTENCY_GUARD_DESIGN_20261120.md)）|
+| **想确认 GitHub/权威/生产是否一致** | `python tools/consistency_guard.py`（零 LLM 守卫，exit 0/1/2；清单 `config/GUARD_MANIFEST.yaml`，设计见 [守卫设计](docs/FUTURE_CLAIM_AND_CONSISTENCY_20261120.md)）|
 | **窗口一开 GPU 就卡死** | [3D/Copy 争抢诊断与降帧](docs/GPU_ENGINE_GUARD.md)（含守护脚本）|
-| **为什么压缩后重复干活/看不到角色** | [压缩与角色诊断](docs/COMPACTION_AND_ROLES_DIAGNOSIS.md)（含存档去重修复）|
-| **能不能用 0.8B 小模型当角色** | [判断类证伪](docs/HETEROGENEOUS_MODELS_EVALUATION.md) / [周围神经类成立](docs/PERIPHERAL_MODELS_EVALUATION.md)（S6/S7）|
-| **误差放大 / NSED / 蒸馏造队友** | [反馈环与蒸馏评估](docs/FEEDBACK_LOOP_AND_DISTILLATION_EVALUATION.md)（S8/S9/L6）|
+| **为什么压缩后重复干活/看不到角色** | [压缩与角色诊断](docs/COMPACTION_CONTEXT_CADENCE_20261120.md)（含存档去重修复）|
+| **能不能用 0.8B 小模型当角色** | [判断类证伪](docs/MIND_MODEL_CAPABILITY_EVAL_20261121.md) / [周围神经类成立](docs/MIND_MODEL_CAPABILITY_EVAL_20261121.md)（S6/S7）|
+| **误差放大 / NSED / 蒸馏造队友** | [反馈环与蒸馏评估](docs/MIND_MODEL_CAPABILITY_EVAL_20261121.md)（S8/S9/L6）|
 | **想看历史** | [时间线](docs/history/TIMELINE.md) → [调优决策](docs/history/tuning/DECISIONS.md) |
 
 ---
@@ -85,7 +85,7 @@
 | decode t/s 是误导性指标 | 本项目证伪：+37% decode 却端到端慢 2.4× | 加速必须端到端验证 |
 | 合成 > 调教 | 权重零改，能力来自外置器官的组合涌现 |  muscles→反射→器官→整合→合成 |
 
-> 护城河是**整合与跨层复用**，不是任何单一技术原创——详见 [社区对比](docs/COMPETITIVE_ANALYSIS.md)。
+> 护城河是**整合与跨层复用**，不是任何单一技术原创——详见 [社区对比](docs/MIND_GAPS_AND_TRUST_20261122.md)。
 
 ---
 
@@ -99,7 +99,7 @@
 
 **执行顺序的根据**：结构性地基越晚越贵（已完成）→ 数据型目标时间站在我们这边 → 需要世界模型/外部基准的最后做。详见 [ADR-0017](decisions/0017-gwt-first-then-fep.md) ——依赖层级含义见科技树列头（地基/工程改造/结构/攻坚/自主化终局）。
 
-**近期焦点**：频次审计（[CADENCE_AUDIT](docs/CADENCE_AUDIT.md)）证明大部分自动化频次经实测校准合理，
+**近期焦点**：频次审计（[CADENCE_AUDIT](docs/COMPACTION_CONTEXT_CADENCE_20261120.md)）证明大部分自动化频次经实测校准合理，
 真问题只有 learn_watcher 过密（已改）和注入预算按次数不按 token（列 M4）——**不要无差别调频次**。
 **明确不做**：多模态/CUA、通用 agent 框架、向量检索、训练微调、堆 judge、改 Electron 参数降 3D。理由见科技树最左红列（点开看每条理由）或 [LADDER.rejected](CAPABILITY_LADDER.yaml)。
 
@@ -141,8 +141,8 @@ git clone https://github.com/D-al/dsh-behavior-guard.git && cd dsh-behavior-guar
 | [docs/MANUALS.md](docs/MANUALS.md) | **说明书集合**：怎么装、怎么调、怎么查 |
 | [docs/history/](docs/history/README.md) | **历史说明书**：时间线 + 调优决策 + 经验证据 |
 | [decisions/](decisions/README.md) | **ADR 决策档案**：为什么这么决定（不可变） |
-| [docs/MIND_GAPS_RESEARCH.md](docs/MIND_GAPS_RESEARCH.md) | 6 路调研：心智还缺什么拼图 |
-| [docs/COMPETITIVE_ANALYSIS.md](docs/COMPETITIVE_ANALYSIS.md) | 社区对比：先进 / 落后 / 以为先进其实平凡 |
+| [docs/MIND_GAPS_AND_TRUST_20261122.md](docs/MIND_GAPS_AND_TRUST_20261122.md) | 6 路调研：心智还缺什么拼图 |
+| [docs/MIND_GAPS_AND_TRUST_20261122.md](docs/MIND_GAPS_AND_TRUST_20261122.md) | 社区对比：先进 / 落后 / 以为先进其实平凡 |
 | [docs/MD_SYSTEM_PLAN.md](docs/MD_SYSTEM_PLAN.md) | 文档分层原则（三层体系） |
 | [docs/GPU_ENGINE_GUARD.md](docs/GPU_ENGINE_GUARD.md) | 3D/Copy 引擎争抢诊断 + 主动降帧守护（tools/gpu_engine_guard.py）|
 

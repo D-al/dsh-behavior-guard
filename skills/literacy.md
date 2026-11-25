@@ -52,4 +52,4 @@ read→write 转化率仅 **18.2%**（148 次 read 只换来 41 次 write，6/8 
 - `todo-discipline`：防止"读了不写"的进度黑洞
 - `tool-boundaries`：写工具选择
 
-> 详细调研见 `docs/FILE_RW_CAPABILITY_PLAN_20261120.md`（§6 学术 + §7 社区 + 读写漏斗数据）。
+> 详细调研见 `docs/PIPELINE_AND_INFRA_BRIDGE_20261120.md`（§6 学术 + §7 社区 + 读写漏斗数据）。

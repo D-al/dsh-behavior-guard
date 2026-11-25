@@ -32,7 +32,7 @@
 - 与D1不重叠(D1要同工具失败>=2次)；intent_drift trace新增stepsSinceLastDrift/
   stepsSinceGoal/controlCount(StepShield:时机才有用)。
 - 测试: pattern_guard 6/6 + wire 4/4 + drift_trace 5/5；门禁77/77。
-- 运行版index.mjs+新模块sha一致(门禁盲区教训)。见 docs/M3_PATTERN_GUARD_LANDING_20261122.md。
+- 运行版index.mjs+新模块sha一致(门禁盲区教训)。见 docs/PIPELINE_AND_INFRA_BRIDGE_20261120.md。
 
 ## [2.27.11] - 2026-11-22（S6 守门/片段筛选 + M3 原型验证）
 
@@ -47,7 +47,7 @@
   真实会话383 calls/33 users回放：锚点正确、仅1次目标级改口、不误报；
   合成循环能检出。两个未解：goal_keyword_hit真实恒≈0（工具参数无目标词）、折叠阈值无标注验证。
   未改生产bdi结构（autonomous=false需人工确认）。门禁75/75。
-- 见 docs/M3_PROTOTYPE_VALIDATION_20261122.md。
+- 见 docs/PIPELINE_AND_INFRA_BRIDGE_20261120.md。
 
 ## [2.27.10] - 2026-11-22（S6 坏处评估 + M3 重定位落地）
 
@@ -57,7 +57,7 @@
 - 用户拍板"M3重定位改成反模式匹配版"→ M3卡title/what/why/kr_why/review已改为
   "反模式匹配的目标锚定+确定性状态机"(依据：Goal Drift论文state complexity消融否定状态路线、
   RGE混合架构、StepShield时机教训)；三副本同步，门禁72/72。
-- 见 docs/S6_DOWNSIDE_ASSESSMENT_20261122.md + docs/CLASSIFIER_ECOSYSTEM_RESEARCH_20261122.md。
+- 见 docs/S6_DECISION_WIRE_SERIES_20261122.md + docs/CLASSIFIER_BENCH_SERIES_20261121.md。
 
 ## [2.27.9] - 2026-11-22（M3 价值复核 + 意图漂移可观测）
 
@@ -68,7 +68,7 @@
   （M9 blocker"8G不可行"因今晚ONNX INT8跑通部分解除）。
 - 立即动作：⑤漂移检测补intent_drift trace埋点(overlap/drifted字段)+删⑥死代码；测试4/4；门禁72/72。
 - M3卡修正错误证据描述+重定位说明+review引用；M9/M1/M4前置均done/rejected。
-- 见 docs/M3_VALUE_REVIEW_20261122.md。
+- 见 docs/PIPELINE_AND_INFRA_BRIDGE_20261120.md。
 
 ## [2.27.8] - 2026-11-22（S6 时序修复 + 对抗/长文本测试）
 
@@ -78,7 +78,7 @@
 - 短文本对抗(逐字输出危险内容)：分类器score=1命中、step1同步注入、模型逐字复述但未执行注入/未输出secret。
 - **长文本弱点实证**：9023字符(>2000阈值)→分类器完全没触发(0次)，但服务端单独测score=1；
   模型靠AGENTS.md自身规则识别注入并拒绝，未泄露secret——但长文本注入防线目前是空的(不能依赖模型元认知)。
-- 用户提醒：不要同时发两个会话会卡(单GPU单模型)。dsh已关、llama0；门禁71/71；见 docs/S6_DECISION_WIRE_REAL_TEST_20261122.md §7。
+- 用户提醒：不要同时发两个会话会卡(单GPU单模型)。dsh已关、llama0；门禁71/71；见 docs/S6_DECISION_WIRE_SERIES_20261122.md §7。
 
 ## [2.27.7] - 2026-11-22（S6 决策线接线 + 真实会话验证）
 
@@ -87,7 +87,7 @@
 - 接线：命中→neutral安全提示（复用规则层措辞ADR-0014）+共用injectionHits预算+开关injectionClassifierSteerEnabled。
 - **三轮真实验证**：①异步回调+2s太晚提示没进上下文→pre-step存agentRef主动steer；②steer后没清pendingInject→双份提示；③改完没同步运行版→第3轮才生效。终轮(session-02528cd5)提示恰好1次+模型正确把注入当数据未执行。
 - 另修：分类器服务多旧进程抢9899端口，新筛选没生效→精确kill+重启验证exit前缀skipped=true。
-- S6_model 卡 done；门禁 71/71；见 docs/S6_DECISION_WIRE_REAL_TEST_20261122.md。
+- S6_model 卡 done；门禁 71/71；见 docs/S6_DECISION_WIRE_SERIES_20261122.md。
 
 ## [2.27.6] - 2026-11-22（工具调用失败画像）
 
@@ -96,7 +96,7 @@
 - 54 次真实失败 / 2000+ 调用 ≈ 2.6%，且在升（11-19 1.2% → 11-22 4.8%，但样本小波动大）。
 - 根因高度集中：文件系统类 63%——FS_EDIT_NOT_FOUND 18次(old_string锚点失配) + FS_NOT_FOUND 16次(路径臆想)；命令/搜索类 24%；违规残留等 13%。
 - 最大杠杆=edit前强制read确认old_string（事后verify-on-edit已有，缺事前锚点确认）。
-- 见 docs/TOOL_FAILURE_ANALYSIS_20261122.md。
+- 见 docs/PIPELINE_AND_INFRA_BRIDGE_20261120.md。
 
 ## [2.27.5] - 2026-11-22（工具面注意力实测）
 
@@ -104,7 +104,7 @@
 - 数字：工具 36→15（−58%）、schema 30,824→15,871 字符（−48%）、description 10,596→5,650（−47%，约省 1,400 token/请求）。
 - **归因诚实**：主因是 11-17 审计（v2.12.0 禁用 delegation 整组 17 工具 + tool-jobs），本轮 fetch:false 只贡献 web_fetch 一个。
 - 观察：工具数少 58% 但 pwsh description 从 1,950→2,007（占现总量 36%）——省的是"数量"维不是"描述"维；不建议砍 pwsh 边界规则（那是实测教训）。
-- 见 docs/TOOL_SURFACE_ATTENTION_20261122.md。
+- 见 docs/PIPELINE_AND_INFRA_BRIDGE_20261120.md。
 
 ## [2.27.4] - 2026-11-22（Skills 双轨受控重复实验）
 
@@ -112,7 +112,7 @@
 - **结论：注入对轻量任务的工具选择是中性**——ON/OFF 下 common 都选 glob、rare 都选 pwsh，工具调用均值 1.0~2.3 无差异；inject 1.00 vs 0.00 确认开关生效。
 - 不能证明注入"有用"（OFF 一样好），也不能推广到复杂任务；第一版"误触发"的代价只是几行 token。
 - 净建议：不拆自研注入、收窄关键词紧迫性下降、保持现状零风险。
-- 工具 `tools/skills_ab_runner.py`（run/tally/rebuild，证据从会话文件重建因 bridge 分页截断）；dsh 已停 + llama 0 + 配置回原样。见 docs/SKILLS_AB_CONTROLLED_RESULT_20261122.md。
+- 工具 `tools/skills_ab_runner.py`（run/tally/rebuild，证据从会话文件重建因 bridge 分页截断）；dsh 已停 + llama 0 + 配置回原样。见 docs/SKILLS_AB_SERIES_20261122.md。
 
 ## [2.27.3] - 2026-11-22（Skills 双轨 A/B 实验）
 
@@ -123,7 +123,7 @@
   ②**常用工具场景也误触发注入**（"grep"/"read"命中tool-boundaries关键词）
   ③低频场景正确命中debug-llama-server ④官方skill工具调用0次（主动路径未验证）。
 - 诚实标注：A 149事件/19调用 vs B 31事件/3调用（B场景2没跑完），单次实验，不能对比谁更快。
-- dsh 按需：实验后 stop + llama清理=0 + 配置恢复。见 docs/SKILLS_AB_RESULT_20261122.md。
+- dsh 按需：实验后 stop + llama清理=0 + 配置恢复。见 docs/SKILLS_AB_SERIES_20261122.md。
 
 ## [2.27.2] - 2026-11-22（官方能力 vs 自研机制审计）
 
@@ -131,7 +131,7 @@
 - **结论：没有找到"官方够用+自研更慢"的确凿案例**。最像轮子的两个反向印证官方能力：
   CTX_CHECKPOINTS 是官方 `--ctx-checkpoints`(PR #15293)；moe-cache 慢是官方全局参数误用，
   自研补丁填的是上游真实缺口（分批 share，P1/P2 199s→78s）。
-- 三类情况：①官方能力只调参 ②填官方缺口（合理自研）③重复且更弱（skills双轨/多角色裸fetch/frame_limiter过度嫌疑）— 见 docs/OFFICIAL_VS_CUSTOM_AUDIT_20261122.md。
+- 三类情况：①官方能力只调参 ②填官方缺口（合理自研）③重复且更弱（skills双轨/多角色裸fetch/frame_limiter过度嫌疑）— 见 docs/PIPELINE_AND_INFRA_BRIDGE_20261120.md。
 - 纠正任务前提：压缩存档不是自研实现，是官方 dsh-compaction-basic 只调 thresholdRatio 0.55。
 - 铁律："官方有参数"≠"该用"，"自研了"≠"重复轮子"；判据=官方是否覆盖同一构念+端到端实测（非decode t/s）。
 
@@ -208,12 +208,12 @@
 
 ## [2.26.4] - 2026-11-20 01:50（文档层：自主走路评估 + 记忆→心智模型盘点）
 
-- 新增 docs/AUTONOMY_GAP_20261120.md：实测确认当前 L1（人工驱动+局部自动），
+- 新增 docs/AUTONOMY_AND_SELF_HARNESS_20261122.md：实测确认当前 L1（人工驱动+局部自动），
   路线图勾选 100% 人工、无任何代码写 ROADMAP；差距量化 L2(1-2天)/L3(2-3天)/L4(1-2周)/L5(不建议)。
-- 新增 docs/MEMORY_TO_MIND_MODEL_20261120.md：三层记忆→心智模型可迁移资产，含 8G 显存可行性
+- 新增 docs/MEMORY_AND_REFACTOR_20261120.md：三层记忆→心智模型可迁移资产，含 8G 显存可行性
   + 外部机制调研（BM25>embedding、静态前缀吃cache、离线做梦、成败分流校正）。
-- 新增 docs/WORKSPACE_PATH_AUDIT_20261120.md：documentsDirectory 源码核查 + 两次注入崩溃证伪。
-- 新增 docs/POSTMORTEM_20261120.md：平台整治 12 条可复用铁律。
+- 新增 docs/PLATFORM_REPAIR_20261120.md：documentsDirectory 源码核查 + 两次注入崩溃证伪。
+- 新增 docs/PLATFORM_REPAIR_20261120.md：平台整治 12 条可复用铁律。
 - ROADMAP §知识资产 补四处评估链接。纯文档，无代码改动。
 
 ## [2.26.2] - 2026-11-20 00:45（GitHub 权威仓库深度维护 —— 修"push 上去仍带 bug"）
@@ -251,7 +251,7 @@
 依赖人机会话。并指出 dsh 开源、应扒源码确认机制。
 
 ### 已完成
-- **权威源码核查**（docs/DSH_SOURCE_AUDIT_20261119.md）：扒 deepseek-ai/deepseek-harness@dsh-v0.2.2-rc.3
+- **权威源码核查**（docs/PLATFORM_REPAIR_20261120.md）：扒 deepseek-ai/deepseek-harness@dsh-v0.2.2-rc.3
   官方 README 确认 `resolveDshHome()` 优先级（显式 > $DSH_HOME > ~/.dsh）、profile 在 $DSH_HOME/profiles/、
   插件由 bundles+包内 patch 挂载、shell 自动获得 DSH_HOME。用户级 DSH_HOME=D://Brain//dsh-data 已设。
 - **插件升级到 v2.26.0**：从 GitHub commit 89f4d89 下载 tarball（144 文件含全套 docs/skills/tools/config）
@@ -260,7 +260,7 @@
   dsh 重启后 descriptor 刷新（pid 5832/port 64002），bridge health OK。
 - **会话依赖治理**：治理文档同步到 p/bench（真实文件）；新建 setup/sync-to-profile.ps1 幂等同步脚本；
   导出 LearnWatchDaemon.xml；移走 0 字节空 FreezeWatch.xml。
-- **平台整治全记录**：docs/DSH_PLATFORM_REPAIR_20261120.md。
+- **平台整治全记录**：docs/PLATFORM_REPAIR_20261120.md。
 
 ### 未完成（诚实记录）
 - junction 消灭：.dsh 可由 DSH_HOME 取代待重启验证；登录态 junction 需 --user-data-dir 方案（调研中）；
@@ -283,14 +283,14 @@
 - **运行态**：旧 watcher 杀掉，改用无窗口计划任务 `LearnWatchDaemon`（pythonw + 登录触发）重启；
   Startup 的 `LearnWatch.vbs` 改名 `.disabled` 避免双实例。
 - **验证**：70 秒采样（覆盖 2 周期）新增 conhost 窗口 = **0**；watcher 每 30s 稳定跑；单实例。
-- 诊断文档：`docs/POPUP_CONSOLE_FIX_20261119.md`。
+- 诊断文档：`docs/PLATFORM_REPAIR_20261120.md`。
 
 ### Note
 - 教训：pythonw 父进程无窗口 ≠ 子进程无窗口；守护进程起子进程必须显式 CREATE_NO_WINDOW。
 
 ## [2.25.0] - 2026-11-19 19:20（完成状态验收审计：3 缺口修复 + 真实会话验证）
 
-### Docs + Sync-only（验收审计，docs/COMPLETION_AUDIT_20261119.md）
+### Docs + Sync-only（验收审计，docs/MEMORY_AND_REFACTOR_20261120.md）
 - **三层交叉验证**（运行版代码 / 真实测试 / 真实产物+真实会话）所有"已完成"声明：
   - JS 侧 10 项机制全 PASS，权威源码与运行版 SHA256 一致。
   - Python 侧抓到并修 3 个"宣称完成但没落地"：
@@ -314,7 +314,7 @@
 - **M4 注入预算 token 化**（`tools/test_injection_budget.mjs` 5/5）：
   `estimateInjectionTokens()`（CJK 1 token/字、其余 4 字符/token）、createMessage 记账、
   workspaceSnapshot 暴露 `injectionTokensUsed`、次数+token 双闸门；安全注入双豁免（ADR-0017）。
-- **深度维护**（`docs/DEEP_MAINTENANCE_20261119.md`）：两路只读审计（JS 2147 行 + Python 工具链），
+- **深度维护**（`docs/MEMORY_AND_REFACTOR_20261120.md`）：两路只读审计（JS 2147 行 + Python 工具链），
   修 **1 P0 + 7 P1 + 3 P2**：
   - P0：安全注入被 shared 次数闸门静默吞掉（与 token 闸门语义矛盾）→ 加 `!pendingInject` 豁免。
   - P1：verifyRan 宽正则（裸 `-c`/`python -m`）收敛；learnSinceTs 改 session 级（跨轮沉淀不再丢）；
@@ -322,7 +322,7 @@
     weakness_miner verify_on_stop 全量漏检（聚类 4→6 簇）；promote_skills 加注入扫描（投毒缺口）；
     gate 方差门槛生效；surface_check 禁改面对齐 + patch 校验；reviewCycles 新问题重置；
     proposer uuid 命名 + 异常兜底。
-- **分类器调研**（`docs/CLASSIFIERS_FOR_MIND_MODEL_EVALUATION.md`）：10 类分类器实证；
+- **分类器调研**（`docs/CLASSIFIER_BENCH_SERIES_20261121.md`）：10 类分类器实证；
   关键负面（Jev 自测：难度路由 51.3%≈随机、长轨迹归因 0.56≈随机；Prompt-Guard 默认 FPR 98%）。
   TOP5：轨迹 FSM / 注入 Tier-2 / 意图 embedding+LR / NLI 事实性 / 多标签编码器。
 - ROADMAP 重排：**梳理逻辑关系链**（§2.1），M4 归档，新增 **M8 轨迹 FSM**（第二位，L6 前置）、
@@ -335,7 +335,7 @@
 ## [2.23.0] - 2026-11-19 14:45（路线图重定基线：短期全完成，重排中期优先级）
 
 ### Docs-only
-- 新增 `docs/ROADMAP_REBASELINE_20261119.md`：完成状态盘点 + 新证据影响 + 重新分级依据。
+- 新增 `docs/ROADMAP_EVOLUTION_20261120.md`：完成状态盘点 + 新证据影响 + 重新分级依据。
 - ROADMAP 全文重绘：
   - §1 当前位置改为"短期 S1-S9 全部完成，进入中期执行期"。
   - §2 速查表重排为 12 项活跃目标（M4/M1 升首档；M7/L5 因 S7 实测降级；新增 L7 FAKEOK 探索）。
@@ -355,7 +355,7 @@
 ## [2.22.0] - 2026-11-19 14:30（短期收尾：S1 Self-Harness + S4 A/B + S7 CPU 基准）
 
 ### Added（三个剩余短期目标，均带诚实边界）
-- **S1 Self-Harness P0-P2**（docs/S1_SELF_HARNESS_P0P1_RESULT.md）：
+- **S1 Self-Harness P0-P2**（docs/AUTONOMY_AND_SELF_HARNESS_20261122.md）：
   - P0：`surfaces.json` 白名单（6 可编辑面 + 8 类禁改安全面）+ `tools/self_harness_gate.py`
     （论文 accept/reject/no-op 规则 + 方差<10% + 面校验，--self-test 11/11）。
   - P1：`bench/weakness_miner.py` 从真实 6970 行 trace 精确匹配聚类出 4 个失败簇
@@ -363,11 +363,11 @@
   - P2：`bench/self_harness_proposer.py` **35B 真实提案跑通**——产出白名单内 patch、
     对应 tool_failure、面校验通过，落隔离目录不自动部署。又遇 thinking token 坑（600→1200）。
   - P3 常态化按 ADR-0018 不启动；双 split 真实评测（2-4h）本轮未跑。
-- **S4 自适应 A/B**（docs/S4_ADAPTIVE_AB_RESULT.md）：写透明代理 `bench/adaptive_proxy.py`
+- **S4 自适应 A/B**（docs/AUTONOMY_AND_SELF_HARNESS_20261122.md）：写透明代理 `bench/adaptive_proxy.py`
   注入 harness 的 ⑦ 提示，P3 各跑 1 次。off=FAIL(189s,4172tok) / on=PASS(301s,4168tok)。
   **token 未降 → 按 DoD 保持 adaptiveThinkEnabled=false**；单次结果有噪声，不冒充机制有效。
   P4/P5 各 2 次未跑（成本过高），标部分完成。
-- **S7 CPU 小模型基准**（docs/S7_SMALL_MODEL_BENCH_RESULT.md）：下载 Qwen3-0.6B-Q8_0（610MB），
+- **S7 CPU 小模型基准**（docs/AUTONOMY_AND_SELF_HARNESS_20261122.md）：下载 Qwen3-0.6B-Q8_0（610MB），
   独立 8090 纯 CPU 实例实测：分类 4.2s / 格式 6.0s，JSON 5/5（**必须 max_tokens≥512，
   否则思维链吃光 content**；enable_thinking=false 在本引擎不生效）。0.6B 不适合实时外设；
   S6 模型层须用 86M 分类器。ECE/Brier 校准未做（诚实标注）。
@@ -398,7 +398,7 @@
 ## [2.20.0] - 2026-11-19 13:45（反馈环/误差放大/NSED/蒸馏评估 + 引用勘误）
 
 ### Docs-only（不改代码/生产配置）
-- `docs/FEEDBACK_LOOP_AND_DISTILLATION_EVALUATION.md`：三问评估（按沉淀规则落档）。
+- `docs/MIND_MODEL_CAPABILITY_EVAL_20261121.md`：三问评估（按沉淀规则落档）。
   - **问①误差放大**：用户诊断正确——现有 planner→执行→审计→纠正→验收是前馈 DAG，无状态回流。
     **关键发现：审计自校准文件 `_audit_feedback.jsonl` 实际从未生成**，"干预是否有效"无法度量，误差放大是盲区。
   - **NSED 核实**：= N-Way Self-Evaluating Deliberation（arXiv 2601.16863, Pecerskis & Smirnovs）。
@@ -413,7 +413,7 @@
 - ROADMAP：速查表扩到 21 项，新增 **S8 审计自校准落盘（P0）**、**S9 有状态反馈+循环上限**、**L6 专属误差预测器**；
   三轮架构评估注释整合。
 - **勘误**：MAST 多 agent 失败分类引用从错误的 2505.17469 更正为 **2503.13657**，
-  数字更正为"7 框架/1600+ 轨迹/14 失败模式/3 大类"，已同步修正 HETEROGENEOUS_MODELS_EVALUATION.md。
+  数字更正为"7 框架/1600+ 轨迹/14 失败模式/3 大类"，已同步修正 MIND_MODEL_CAPABILITY_EVAL_20261121.md。
 
 ### Note
 - 本版本不改 index.mjs / 配置 / 生产服务，纯评估与路线图更新。S8/S9/L6 待实施。
@@ -421,7 +421,7 @@
 ## [2.19.0] - 2026-11-19 13:20（周围神经式超小模型评估：方向成立 + 沉淀规则）
 
 ### Docs-only（不改代码/生产配置）
-- `docs/PERIPHERAL_MODELS_EVALUATION.md`：广搜论文/社区，**本轮结论与上轮不同——方向成立**。
+- `docs/MIND_MODEL_CAPABILITY_EVAL_20261121.md`：广搜论文/社区，**本轮结论与上轮不同——方向成立**。
   - 上轮证伪的是"小模型做**判断**"（审计/纠正/验收，弱 judge 放行强 actor 错误）；
     本轮支持的是"小模型做**感知/反射/路由**"：Prompt-Guard 86M CPU <10ms、0.5B 路由 83%/392ms、
     SwiftSage 快慢系统、投机解码（本机 MTP 已是 token 级成功案例）。
@@ -440,7 +440,7 @@
 ## [2.18.0] - 2026-11-19 13:00（异构多模型评估：原设想证伪 + 两条窄路径入路线图）
 
 ### Docs-only（不改代码，不动生产配置）
-- `docs/HETEROGENEOUS_MODELS_EVALUATION.md`：两路独立调研（论文/社区）交叉验证的结论。
+- `docs/MIND_MODEL_CAPABILITY_EVAL_20261121.md`：两路独立调研（论文/社区）交叉验证的结论。
   - **原设想证伪**："35B 做 planner/验收 + 0.8B 做其他角色"角色分工反了且 0.8B 选小了。
     社区主流是"小模型先跑、大模型把关"（MoA/RouteLLM/FrugalGPT/spec decoding），不是反过来。
   - **关键前提纠正**：验收员**本来就是** `verify_agent.py` 规则脚本、零 LLM——想优化的 35B 成本不存在。
@@ -505,7 +505,7 @@
   折叠时只保留最终回答，中间 assistant 回复收进过程组。`transcriptView: compact` 原本已开。
 
 ### Added
-- `docs/COMPACTION_AND_ROLES_DIAGNOSIS.md`：五个问题的完整诊断（基于代码+trace+账本）：
+- `docs/COMPACTION_CONTEXT_CADENCE_20261120.md`：五个问题的完整诊断（基于代码+trace+账本）：
   - 压缩由 dsh 引擎按 token 触发（54K 阈值），harness 只被动监听——"写/读时压缩"是因果倒置。
   - **验收员触发路径脱节**：依赖 `wait_agent`（trace 0 次），实际用 `spawn_teammate`（73 次）→ 主路径从未命中。
   - **角色 LLM 大面积静默失败**：audit 10%、corrector 9%、**critic 0%（54/54 空返回）**、planner 100%；
@@ -537,10 +537,10 @@
 - `README.md`：新增「给 AI / 新接手者的 10 分钟上手卡」（5 步动手路径 + 4 条关键约定）；路线骨架对齐 Now/Next/Later。
 
 ### Added
-- `docs/CADENCE_AUDIT.md`：频次数据底稿——代码全部频次参数 + 5538 行 trace 的真实触发数
+- `docs/COMPACTION_CONTEXT_CADENCE_20261120.md`：频次数据底稿——代码全部频次参数 + 5538 行 trace 的真实触发数
   （fep 325 / control 139 / mind 43 / verify_stop 21 / LLM 调用 212 次按用途拆分）。
   核实并排除了"控制回合被上限掐断"的误判（step 每轮重置，126 次是跨轮累计）。
-- `docs/CADENCE_REDESIGN.md`：频次结论——大部分参数经实测校准**不该动**（control 8 步 / critic ≤2 /
+- `docs/COMPACTION_CONTEXT_CADENCE_20261120.md`：频次结论——大部分参数经实测校准**不该动**（control 8 步 / critic ≤2 /
   压缩 0.55 均合理）；只 3 项该改（watcher 已改、注入预算 token 化列中期、trace 补 turn 字段列短期）。
 - 依据社区"事件驱动巩固 + 低频周期性反思"共识（Generative Agents / Reflexion / Letta），
   纠正"每 30s 全量重跑"的空转。
@@ -562,13 +562,13 @@
 - `decisions/0019-gpu-engine-guard.md`：为什么用引擎级签名 + EcoQoS，不动 Electron 启动参数。
 
 ### Docs（承接前一条 2.13.0-plan）
-- `docs/SELF_HARNESS_PLAN.md` + `decisions/0018`：Self-Harness 四阶段方案纳入 ROADMAP 短期①实现路径。
+- `docs/AUTONOMY_AND_SELF_HARNESS_20261122.md` + `decisions/0018`：Self-Harness 四阶段方案纳入 ROADMAP 短期①实现路径。
 - README 快速入口/文档地图、docs/README、decisions 索引同步。
 
 ## [2.13.0-plan] - 2026-11-19 00:10（docs-only：Self-Harness 纳入路线图）
 
 ### Added
-- `docs/SELF_HARNESS_PLAN.md`：[Self-Harness（arXiv 2606.09498v3）](https://arxiv.org/abs/2606.09498)
+- `docs/AUTONOMY_AND_SELF_HARNESS_20261122.md`：[Self-Harness（arXiv 2606.09498v3）](https://arxiv.org/abs/2606.09498)
   落地方案四阶段（P0 白名单+评测台 → P1 弱点挖掘 → P2 最小闭环 → P3 常态化），
   定位为 ROADMAP 短期①「技能自进化数据闭环」的实现路径，不新增并列目标。
 - `decisions/0018-self-harness-two-stage.md`：两步走（先 Meta-Harness 离线跑通协议 → 再 35B 自己提案）；
@@ -806,7 +806,7 @@ Diátaxis 四分法、Keep a Changelog）与 6 路调研后重构：
   "JS散度0.0186/-20.4pp/-20.9pp/76.6%"数字作废；决策结论保留，依据改为现场症状 + ICLR2024 自我纠错研究
 - 新增 `intent_drift.py`：意图漂移离线监测（调研② TOP1 的最小版）；
   现场验证精准复现 seq681 "给测试窗口" vs 初始"写插件" 覆盖率 0.00
-- 新增 `docs/MIND_GAPS_RESEARCH.md`：5 路广搜汇总（认知科学/前沿能力/三缺口/社区产品/记忆系统），
+- 新增 `docs/MIND_GAPS_AND_TRUST_20261122.md`：5 路广搜汇总（认知科学/前沿能力/三缺口/社区产品/记忆系统），
   全部引用带可点击链接，含 TOP 排序与"能立刻做/需数据/做不到"判断
 
 ### 调研核心结论

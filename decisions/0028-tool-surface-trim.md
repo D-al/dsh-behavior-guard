@@ -11,7 +11,7 @@ M5 卡的三层治理原则已于 2026-11-22 07:30 拍板（记在 ROADMAP_GRAPH
 核心常驻 / 低频关键按需加载 / 已禁用入口移除。但"哪些进内核"的具体清单未定，
 闸门 P-USER-DECISION 一直未满足。本 ADR 落实具体清单。
 
-证据（docs/TOOL_SURFACE_EVIDENCE_20261122.md）：37 会话 / 1959 调用 / 17 工具，前 7 占 95.7%。
+证据（docs/PIPELINE_AND_INFRA_BRIDGE_20261120.md）：37 会话 / 1959 调用 / 17 工具，前 7 占 95.7%。
 关键纠正：**低频≠可砍**——read_image/ask_user_question 等是"场景少见但不可缺"。
 
 ## 核实发现（与旧认知的差异）

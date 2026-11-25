@@ -1,6 +1,6 @@
 # A6「验收可信度加固」最终方案（社区调研 + 本地证据综合，2026-11-22）
 
-> 缘起：两轮自动推卡复盘（docs/AUTOCARD_POSTMORTEM_20261122.md）发现 9 阻碍 5 盲区，
+> 缘起：两轮自动推卡复盘（docs/MEMORY_AND_REFACTOR_20261120.md）发现 9 阻碍 5 盲区，
 > 科技树覆盖审计 8 类教训 0 全 / 5 部分 / 3 空白。
 > 本文综合社区调研（2024-2026 一手实践）+ 本地已有方法论，重新设计 A6 并落地。
 
@@ -70,4 +70,4 @@
 
 ## 六、数据来源
 - 社区调研：agent general-purpose-1（2026-11-22），出处见第二节
-- 本地证据：docs/AUTOCARD_POSTMORTEM_20261122.md、VERIFY_DESIGN_STANDARD、MUTATION_AUDIT、门禁覆盖量化（py 1/12）、恒真断言扫描（4 处）
+- 本地证据：docs/MEMORY_AND_REFACTOR_20261120.md、VERIFY_DESIGN_STANDARD、MUTATION_AUDIT、门禁覆盖量化（py 1/12）、恒真断言扫描（4 处）

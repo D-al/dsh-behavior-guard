@@ -21,7 +21,7 @@
    Popper 不可证伪、Bridgman 不可操作化。
 2. 实测投入分布 48% 检查/9% 建设——目标里唯一可操作的是"可审计可回滚"。
 3. STRATEGY.md §2.1 六项能力指标中 4 项无基线（可追溯率实测 29.7% vs 目标 95%）。
-4. 提案 v3 经独立批判评审 13 项，全部处置（见 `docs/GOAL_STATEMENT_V3_1_20261122.md` 附录 A）。
+4. 提案 v3 经独立批判评审 13 项，全部处置（见 `docs/GOAL_STATEMENT_EVOLUTION_20261122.md` 附录 A）。
 5. 落地就绪度检查 `tools/landing_readiness.py` 实测 0/5 → 经本 ADR 与打点后应为 5/5。
 
 ## Evidence（引用依据）— 必填
@@ -33,8 +33,8 @@
 
 本决策依据（本地实测为主）：
 - `docs/SYSTEMIC_DECAY_ASSESSMENT_20261122.md` — ratchet 10.3%、热点 71%、投入 48%/9%
-- `docs/GOAL_STATEMENT_V3_1_20261122.md` — 13 项批判处置、6 个二值 KR、means-end 闭合
-- `docs/GOAL_LANDING_PLAN_20261122.md` — 5 条落地判据、6 前置工作量
+- `docs/GOAL_STATEMENT_EVOLUTION_20261122.md` — 13 项批判处置、6 个二值 KR、means-end 闭合
+- `docs/GOAL_STATEMENT_EVOLUTION_20261122.md` — 5 条落地判据、6 前置工作量
 - 本机实测：`goal_verify.py` KR1-6 全 N/M；`landing_readiness.py` 0/5 → 本 ADR 后 5/5
 
 ## Counter-evidence（反证）— 必填，对抗确认偏误

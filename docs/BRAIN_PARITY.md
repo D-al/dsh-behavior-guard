@@ -45,4 +45,4 @@
 - **杏仁核**：只有规则版危险分级 + CritBank 计数，无情绪显著性权重；与眶额价值系统一起是最大空白群。
 - 社区**没有**哪个主流方案把脑区补齐——Foundation Agents 也承认 L3 未开发。我们在元认知/规则治理上反而领先多数方案（确定性门控 vs LLM judge），落后的是**价值系统**与**记忆巩固（权重侧，受路线约束不做）**。
 
-相关：[ROADMAP](../ROADMAP.md) · [MIND_GAPS_RESEARCH](MIND_GAPS_RESEARCH.md) · [ADR-0017](../decisions/0017-gwt-first-then-fep.md)
+相关：[ROADMAP](../ROADMAP.md) · [MIND_GAPS_RESEARCH](MIND_GAPS_AND_TRUST_20261122.md) · [ADR-0017](../decisions/0017-gwt-first-then-fep.md)
