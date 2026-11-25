@@ -31,7 +31,8 @@ CHAT_TEMPLATE bench/chat_template_zh.jinja
 - ⚠ `.env` 覆盖 INI；`python tools/config_check.py` 查一致性 **+ 9 条硬值断言**（见 §2 门禁化块）。
   改任何本地配置前/后跑一次——违规会带"为什么"报出来，不必背规则
 - 硬件 i7-12650H / 64GB DDR4-3200 / RTX4060Laptop 8G（**空闲显存安全线 ≥450MiB**，186 必卡 WDDM 换页→1~2 t/s）
-- 当前空闲显存 ~509MiB；**别用聚合 util% 判推理是否在跑**——看 Copy 引擎 + 显存带宽 + 功耗（UI 渲染走 3D，推理走 Copy）
+- 当前 `nvidia-smi memory.free` **235MiB**（17:3x 实测，已在450安全线下、贴186必卡线）；
+  ⚠ 别用 `8188−memory.used` 当余量（WDDM 下口径不同，会高估到466）；**别用聚合 util% 判推理是否在跑**——看 Copy 引擎 + 显存带宽 + 功耗（UI 渲染走 3D，推理走 Copy）
 
 ---
 
@@ -110,7 +111,7 @@ CHAT_TEMPLATE bench/chat_template_zh.jinja
 
 **第二梯队（基础设施，有复利）**：真实任务 A/B 流水线（固定任务集+两臂自动跑+Wilson CI）、审计权锁定（版本钉住型已有，物理写保护未做）、leave-one-out 治理组件基线。
 
-**第三梯队（95%实验）**：`-tb` 独立线程（autostart 已内置开关 `LLAMA_35B_TB`，生产未启用）、KV FP8、MTP 头定向搬 GPU（余 509MiB<530MB 差临门一脚）、cache 1350→1900。
+**第三梯队（95%实验）**：`-tb` 独立线程（autostart 已内置开关 `LLAMA_35B_TB`，生产未启用）、KV FP8、~~MTP 头定向搬 GPU~~ **已关闭**：需腾≥450MiB净空闲(非差20MiB)、收益实测+0.7%噪声内、`-ot` 会被 `--cpu-moe` 静默抢先；cache 1350→1900 已证零收益。
 
 ⚠ 完整 40+ 方向与逐条证据 → [BACKLOG](docs/OPTIMIZATION_BACKLOG_20261125.md)（按需读）。
 
