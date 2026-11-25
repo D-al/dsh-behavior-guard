@@ -178,7 +178,7 @@ D3 冗余 todo 检测（index.mjs:787）本应捕获"连续写相同 todo"，但
 ## 自动化频次审计（数据底稿，2026-11-19）
 
 > 本文只记录**可核验的事实**（代码当前值 + `_trace.jsonl` 真实触发数）。
-> 科学依据与调整建议见 [CADENCE_REDESIGN.md](CADENCE_REDESIGN.md)（等社区/论文调研合并后写）。
+> 科学依据与调整建议见 [CADENCE_REDESIGN.md](#原报告CADENCE_REDESIGN)（等社区/论文调研合并后写）。
 > 数据来源：`index.mjs` DEFAULTS、10 个会话的 `_trace.jsonl`（5538 行，2026-11-17 17:26 ~ 11-18 16:41）。
 
 ### 一、代码里的全部频次参数（现状）
@@ -258,7 +258,7 @@ LLM 调用按用途：audit 82、corrector 72、critic 52、planner 6 —— **�
 4. **学习回注在最长会话里 0 次**：`learn_feedback` 全局仅 8 次且不在 s1——学习闭环对正在跑的长任务**没有实时反馈**，只有跨会话的沉淀。
 5. **FEP 每 9 步一次但只记 trace**：符合 ADR-0017"学习信号不占注入通道"的设计，但需确认 B 段 watcher 真的消费了这 325 条（目前 `new_hits=0 new_outcomes=0`，说明是消费后的稳定态）。
 
-> 待调研合并：社区/论文对反思、审计、巩固、压缩、注入频率的实验数据，见 [CADENCE_REDESIGN.md](CADENCE_REDESIGN.md)。
+> 待调研合并：社区/论文对反思、审计、巩固、压缩、注入频率的实验数据，见 [CADENCE_REDESIGN.md](#原报告CADENCE_REDESIGN)。
 
 ---
 
@@ -266,7 +266,7 @@ LLM 调用按用途：audit 82、corrector 72、critic 52、planner 6 —— **�
 
 ## 自动化频次重设：结论与依据（2026-11-19）
 
-> 数据底稿见 [CADENCE_AUDIT.md](CADENCE_AUDIT.md)（代码当前值 + 5538 行 trace 的真实触发数）。
+> 数据底稿见 [CADENCE_AUDIT.md](#原报告CADENCE_AUDIT)（代码当前值 + 5538 行 trace 的真实触发数）。
 > 本文给出**哪些该改、哪些不该动**，每条注明是"实测数据"还是"社区依据"还是"设计权衡"。
 
 ### 一、总原则：按"成本 × 边际收益"分层，不是拍脑袋定数字
@@ -350,7 +350,7 @@ llama.cpp #29307 未合并）方向是按 token 计量。
 4. learn_watcher 心跳日志：30s 一条，`[deep]` 每 10 分钟一次
 5. 真实长任务 trace：control_turn / audit 分布合理，无"整段空窗"
 
-相关：[CADENCE_AUDIT.md](CADENCE_AUDIT.md)（数据底稿）· [ROADMAP](../ROADMAP.md) · [ADR-0017](../decisions/0017-gwt-first-then-fep.md)
+相关：[CADENCE_AUDIT.md](#原报告CADENCE_AUDIT)（数据底稿）· [ROADMAP](../ROADMAP.md) · [ADR-0017](../decisions/0017-gwt-first-then-fep.md)
 
 ---
 

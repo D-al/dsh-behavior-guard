@@ -102,7 +102,7 @@
 - 把"Critic 轻量预警"记为**长期探索（L5）**，需先做 A/B：0.6B 预警的召回率 ≥ 80% 才值得上。
 - 记录为"已证伪的方向"：小模型做审计/纠正/验收。
 
-相关：[PEER_HARNESS_BENCHMARK](PEER_HARNESS_BENCHMARK.md) · [CADENCE_REDESIGN](CADENCE_REDESIGN.md) · [ROADMAP](../ROADMAP.md)
+相关：[PEER_HARNESS_BENCHMARK](#原报告PEER_HARNESS_BENCHMARK) · [CADENCE_REDESIGN](COMPACTION_CONTEXT_CADENCE_20261120.md) · [ROADMAP](../ROADMAP.md)
 
 ### 证据链接
 
@@ -232,7 +232,7 @@
 - **新增验证任务**：小模型 CPU 推理基准（吞吐/延迟/校准曲线），是所有后续决策的前置。
 - **不新增**：小模型做审计/纠正/验收/主推理。
 
-相关：[HETEROGENEOUS_MODELS_EVALUATION](HETEROGENEOUS_MODELS_EVALUATION.md)（上轮：判断类证伪）· [ROADMAP](../ROADMAP.md) · [PEER_HARNESS_BENCHMARK](PEER_HARNESS_BENCHMARK.md)
+相关：[HETEROGENEOUS_MODELS_EVALUATION](#原报告HETEROGENEOUS_MODELS_EVALUATION)（上轮：判断类证伪）· [ROADMAP](../ROADMAP.md) · [PEER_HARNESS_BENCHMARK](#原报告PEER_HARNESS_BENCHMARK)
 
 ### 证据链接
 - Prompt-Guard / Llama Guard / ShieldGemma / WildGuard 生产对比: https://www.llms.blog/posts/open-source-safety-and-moderation-classifiers-in-production-comparing-llama-guard-3-shieldgemma-wildguard-and-prompt-guard
@@ -449,7 +449,7 @@ Liquid AI 的 LFM2.5 用 QAD 让 4-bit checkpoint 保留 **96.5-97.4% 的 BF16 �
 ### 勘误记录
 - 初稿引用 MAST 为 arXiv 2505.17469（错误）→ 经原文核实更正为 **2503.13657**，
   且数字从"42 个系统"更正为"7 个框架 / 1600+ 轨迹 / 14 种失败模式 / 3 大类"。
-  已同步修正 [HETEROGENEOUS_MODELS_EVALUATION](HETEROGENEOUS_MODELS_EVALUATION.md)。
+  已同步修正 [HETEROGENEOUS_MODELS_EVALUATION](#原报告HETEROGENEOUS_MODELS_EVALUATION)。
 
 > 本文遵循知识资产沉淀规则：三问结论、证伪方向、修正的引用错误都留档。
 
@@ -642,7 +642,7 @@ verify-artifact / web-fetch / git-workflow。
 
 | 项目 | 定位 | 与我们相关的最有价值机制 |
 |---|---|---|
-| [qzzqzzb/Self-Harness](https://github.com/qzzqzzb/Self-Harness)（arXiv 2606.09498）| 让模型改进自己的 harness | 失败签名精确聚类 + 双 split 回归门禁 + 单 hook 最小改动；已纳入路线图（[方案](SELF_HARNESS_PLAN.md)）|
+| [qzzqzzb/Self-Harness](https://github.com/qzzqzzb/Self-Harness)（arXiv 2606.09498）| 让模型改进自己的 harness | 失败签名精确聚类 + 双 split 回归门禁 + 单 hook 最小改动；已纳入路线图（[方案](AUTONOMY_AND_SELF_HARNESS_20261122.md)）|
 | [jb-san/mini-harness](https://github.com/jb-san/mini-harness) | 极小内核的本地 coding agent | **7 个原生工具**（read/write/list/shell/web_search/web_scrape/discover_skills），其余全靠 skill + skill 内脚本 + repo hooks；`beforeToolCall/afterToolCall/onToolError/onContextIncrease` hook；工具调用被 hook 拦截时以普通 tool error 呈现 |
 | [nonentity303/dsh-browser-agent](https://github.com/nonentity303/dsh-browser-agent) | 浏览器里的 dsh mini harness（userscript）| **技能提示词永远排在固定安全规则之前**（无法覆盖安全底线）；跨域授权**仅本次任务有效**、不写持久白名单；工具默认关 + 逐次确认；插件在隔离沙箱跑（无 DOM/网络/存储）+ 死循环超时强杀；159 项自动化测试 |
 | [microsoft/agent-lightning](https://github.com/microsoft/agent-lightning) | 用 RL 优化 agent harness（含 Qwen3.5-35B-A3B 案例）| harness 作为可训练对象（我们路线不适用，但证明"harness 是关键变量"）；其 CLI harness 实现可作结构参考 |
@@ -682,4 +682,4 @@ verify-artifact / web-fetch / git-workflow。
 - **落后**：策略的**外部化/hook 化**（我们写死在 index.mjs）、工具面**刻意做小**的工程哲学、安全优先级的**显式声明与测试**。
 - **空位**：35B-A3B 族**没有专门 harness 产品**——我们在这条细分线上是最完整的实现之一（以本机单人场景为前提）。
 
-相关：[COMPETITIVE_ANALYSIS.md](COMPETITIVE_ANALYSIS.md)（宏观社区对比）· [SELF_HARNESS_PLAN.md](SELF_HARNESS_PLAN.md)（harness 自进化）· [ROADMAP](../ROADMAP.md)
+相关：[COMPETITIVE_ANALYSIS.md](MIND_GAPS_AND_TRUST_20261122.md)（宏观社区对比）· [SELF_HARNESS_PLAN.md](AUTONOMY_AND_SELF_HARNESS_20261122.md)（harness 自进化）· [ROADMAP](../ROADMAP.md)

@@ -128,7 +128,7 @@
 ### 6. 审计抓到的两个"宣称 vs 实际"缺口（自主化的隐藏地雷）
 
 1. **"35B 当 proposer" 是文档谎言**：`SELF_HARNESS_PLAN.md:53` / `S1_SELF_HARNESS_P0P1_RESULT.md:37` 都写"本地 35B 作 proposer"，但 `surfaces.json:3` 实际写 `proposer_model: workbuddy`，`self_harness_proposer.py:4` 注释亦承认"由 WorkBuddy agent 手工做"；真实候选 `candidate-1.json:7` 模型字段是 `WorkBuddy(claude-opus)`。本机 35B **从未担任过 proposer**——跑通协议 ≠ 35B 能自我改进。
-2. **"写入目标"缺端到端验证**（2026-11-20 审计按实物更正）：`surfaces.json` editable 实为 6 个**细粒度 target**（3 个 prompt 文案、2 个阈值、1 个 skill 草稿目录），`critbank.json` 在 `forbidden_always`，index.mjs 不是整文件可改。⚠️ 我原先"白名单含主脑与 critbank"的字面断言是错的。但**治理缺口仍真实**：`surface_check()`（gate 55-69）只做**字符串匹配**不做真实 diff 语义校验，`accept()`（31-52）纯统计、**不跑 e2e、无面分级、无回滚入口**。绕过字符串匹配或误改阈值仍可能改变 harness 行为而无人验证——这是"学会走路"前必须先补的安全地基，优先级高于 L2/L3 功能推进。详见 [WALKING_PLAN 阶3.5](WALKING_PLAN_20261120.md)。
+2. **"写入目标"缺端到端验证**（2026-11-20 审计按实物更正）：`surfaces.json` editable 实为 6 个**细粒度 target**（3 个 prompt 文案、2 个阈值、1 个 skill 草稿目录），`critbank.json` 在 `forbidden_always`，index.mjs 不是整文件可改。⚠️ 我原先"白名单含主脑与 critbank"的字面断言是错的。但**治理缺口仍真实**：`surface_check()`（gate 55-69）只做**字符串匹配**不做真实 diff 语义校验，`accept()`（31-52）纯统计、**不跑 e2e、无面分级、无回滚入口**。绕过字符串匹配或误改阈值仍可能改变 harness 行为而无人验证——这是"学会走路"前必须先补的安全地基，优先级高于 L2/L3 功能推进。详见 [WALKING_PLAN 阶3.5](#原报告WALKING_PLAN_20261120)。
 
 ---
 
@@ -138,7 +138,7 @@
 
 > 用户目标：把"让这个模型学会自己走路（自主按路线图更新自己）"作为目标，把路线图切成**以现有能力可逐步实现**的东西。
 > 设计原则：① 每一阶只用**已经存在**的器官（执行 harness / gate / watcher / CritBank / 控制回合），不依赖新智能；② 每一阶的完成判据**零 LLM 可验证**（文件/trace/退出码）；③ 每阶都保留人工闸门，只是闸门位置逐阶上移；④ 任一阶失败可独立回滚，不影响前面阶。
-> 依据：[自主走路现状评估](AUTONOMY_GAP_20261120.md)（当前 L1）、[Self-Harness 方案](SELF_HARNESS_PLAN.md)、[ADR-0018](../decisions/0018-self-harness-two-stage.md)。
+> 依据：[自主走路现状评估](#原报告AUTONOMY_GAP_20261120)（当前 L1）、[Self-Harness 方案](#原报告SELF_HARNESS_PLAN)、[ADR-0018](../decisions/0018-self-harness-two-stage.md)。
 
 ---
 
@@ -378,7 +378,7 @@ Self-Harness 定义：固定模型 `M` 与评估器 `ℰ`，只改进非参数�
 - 与 FEP 分工：FEP 做单步「预期→观察→偏差」，Self-Harness 做跨步「偏差聚类→改 harness→双 split 验证」。
 - 学习信号仍只进 trace / 学习队列，**不占运行时注入通道**（ADR-0017 红线不变）。
 
-相关：[ROADMAP](../ROADMAP.md) · [ADR-0017](../decisions/0017-gwt-first-then-fep.md) · [ADR-0018](../decisions/0018-self-harness-two-stage.md) · [MIND_GAPS_RESEARCH](MIND_GAPS_RESEARCH.md)
+相关：[ROADMAP](../ROADMAP.md) · [ADR-0017](../decisions/0017-gwt-first-then-fep.md) · [ADR-0018](../decisions/0018-self-harness-two-stage.md) · [MIND_GAPS_RESEARCH](MIND_GAPS_AND_TRUST_20261122.md)
 
 ---
 

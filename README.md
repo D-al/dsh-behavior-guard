@@ -140,9 +140,10 @@ git clone https://github.com/D-al/dsh-behavior-guard.git && cd dsh-behavior-guar
 | [docs/README.md](docs/README.md) | 全部文档的索引与分工 |
 | [docs/MANUALS.md](docs/MANUALS.md) | **说明书集合**：怎么装、怎么调、怎么查 |
 | [docs/history/](docs/history/README.md) | **历史说明书**：时间线 + 调优决策 + 经验证据 |
+| [docs/OPTIMIZATION_BACKLOG_20261125.md](docs/OPTIMIZATION_BACKLOG_20261125.md) | **优化方向活文档**：待验证方向 + 优先级 + 已证伪清单（2026-11-25 四组深挖）|
 | [decisions/](decisions/README.md) | **ADR 决策档案**：为什么这么决定（不可变） |
 | [docs/MIND_GAPS_AND_TRUST_20261122.md](docs/MIND_GAPS_AND_TRUST_20261122.md) | 6 路调研：心智还缺什么拼图 |
-| [docs/MIND_GAPS_AND_TRUST_20261122.md](docs/MIND_GAPS_AND_TRUST_20261122.md) | 社区对比：先进 / 落后 / 以为先进其实平凡 |
+| [docs/MIND_GAPS_AND_TRUST_20261122.md](docs/MIND_GAPS_AND_TRUST_20261122.md) | 社区对比 + 信任锚：先进/落后/以为先进其实平凡（已并入同卷）|
 | [docs/MD_SYSTEM_PLAN.md](docs/MD_SYSTEM_PLAN.md) | 文档分层原则（三层体系） |
 | [docs/GPU_ENGINE_GUARD.md](docs/GPU_ENGINE_GUARD.md) | 3D/Copy 引擎争抢诊断 + 主动降帧守护（tools/gpu_engine_guard.py）|
 

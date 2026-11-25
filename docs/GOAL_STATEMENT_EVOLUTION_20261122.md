@@ -857,7 +857,7 @@ Simon《Administrative Behavior》satisficing；McKinley《Choose Boring Technol
 ## 性价比排序方案决策：我的方案 vs 35B 的意见（2026-11-20）
 
 > 用户："如何衡量性价比，你不是说 35B 擅长分析和决策吗？看看它的意见和你的意见相比哪个更好。"
-> 两边方案原文：35B 见 [ROI_35B_OPINION_20261120.md](ROI_35B_OPINION_20261120.md)。
+> 两边方案原文：35B 见 [ROI_35B_OPINION_20261120.md](#原报告ROI_35B_OPINION_20261120)。
 
 ### 1. 两个方案摘要
 

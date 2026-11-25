@@ -492,7 +492,7 @@ SLOTS = "http://127.0.0.1:8081/slots?model=Qwen3.6-35B-A3B-UD-Q4_K_XL"
 
 **用户实证推翻了本节前提**：两窗口全开时推理正常——`n_decoded` 5 秒涨 145、
 带宽 22-29%、功耗 36-41W。我用的单帧 100%/1%/25W 是**相位间隙瞬态**，不是稳态。
-详见 [DIAGNOSIS_CORRECTION_20261120.md](DIAGNOSIS_CORRECTION_20261120.md)。
+详见 [DIAGNOSIS_CORRECTION_20261120.md](FUTURE_CLAIM_AND_CONSISTENCY_20261120.md)。
 
 本节保留作为错误记录，但"降帧无效导致推理卡死"的结论**不成立**，S10 卡已据此重定义。
 （SLOTS 缺 model 的 bug 本身是真的，修复保留。）
