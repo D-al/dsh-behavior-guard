@@ -768,3 +768,25 @@ reasoning Slot 契约、approval/sandbox 机制、channel/Worktree/SubAgents 的
 
 **结论**：项目已经把"该放内存的"放得差不多了（冷专家在内存、分档 share 调优）。
 `-amb` 解决的是 DeepSeek MLA + FA-off 的问题，与本项目架构正交，不跟进。
+
+### A2. 子任务补充核实（一手，修正/加强上述判断）
+1. **名称纠偏**：正确长选项是 `--attention-max-batch`（不是 `--attn-max-batch`，后者是中文转述误写）。
+   `common/common.cpp` 解析 `-amb` / `--attention-max-batch`，(0,128) 被强制抬到 128
+2. **作者权威否定（比源码注释更强）**：ikawrakow 原话（GLM-4.5-Air HF discussion）：
+   "the flag has no effect when using flash attention and not dealing with a DeepSeek model...
+   **So, this will not solve the OOM problem.**"
+   → FA + 非 DeepSeek 双重命中"无效果"
+3. **GQA 模型也会回退**：通用路径中 `k->ne[2] != q->ne[2]`（KV头数≠Q头数）时不走分块——
+   本项目 Qwen 是 GQA，即使强行移植 amb 也是空操作
+4. **"45GB→2GiB"的真相**：DeepSeek 163k ctx + 128 heads + **非FA** 的极端案例；
+   多个中文文章数字同源（都转述 PR #237/issue #263），**不是独立实测**
+5. **upstream 三年前已解决同类问题**：PR #6122（2024-03）把 logits 输出 buffer 从"按 n_ubatch 预留"
+   改成"按实际 output ids 动态分配"；ik 到 2026-03 的 `-wgt`（PR #1560）才补上同样能力——
+   **不需要移植**（已核实 b12244 的 arg.cpp 中 amb 出现 0 次）
+6. **FA 本身就是解法**：FA 不物化完整 K*Q 分数矩阵，长上下文 compute buffer 不随 n_ctx 线性膨胀
+   ——`-amb` 要压的 buffer 在 upstream 默认路径根本不存在
+
+**真正该做的（替代方案）**：先抓启动日志的 `CUDA0 compute buffer size = ... MiB` 看 235MiB 缺口归属；
+若确实 compute buffer 大，upstream 杠杆是 `-ub`（1536→1024/768，代价 PP 变慢）、`-b`（4096→2048）、
+`-ngl` 少卸 1-2 层。不是 `-amb`。
+
