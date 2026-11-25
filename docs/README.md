@@ -7,6 +7,7 @@
 
 | 文档 | 类型 | 职责 |
 |---|---|---|
+| **[../AGENT_BRIEF.md](../AGENT_BRIEF.md)** | **⭐唯一必读** | **11.3KB 决策速查：生产配置/16铁律/已证伪/优先级/已落地机制。读完它才按需读下面这些** |
 | [../README.md](../README.md) | 入口 | 定位 + 路线骨架 + 导航（薄，不放细节）|
 | [../TECH_TREE.html](../TECH_TREE.html) | 活视图 | 交互科技树：依赖/完成/ROI/上下游高亮 |
 | [../ROADMAP_GRAPH.md](../ROADMAP_GRAPH.md) | 机器权威 | 状态/依赖/preconditions |

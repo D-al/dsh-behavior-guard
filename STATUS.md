@@ -1,6 +1,7 @@
 # 现状总览（STATUS）
 
 > 最后更新：2026-11-22 15:35 · 判据状态以 `tools/goal_verify.py --json` 为准，本文件是快照。
+> ⚠ **KR 状态可能已过时**：当前生产配置/已落地机制/优先级以 [AGENT_BRIEF.md](AGENT_BRIEF.md)（每次会话必读）为准。
 > 结构视图见 [TECH_TREE.html](TECH_TREE.html)（点"按 KR 视图"）；方向见 [STRATEGY.md](STRATEGY.md)。
 
 ## 一、我们在哪：一句话

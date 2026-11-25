@@ -17,6 +17,7 @@
 
 | 你是谁 | 从哪读起 |
 |---|---|
+| **⭐ Agent / 第一次来（必读）** | **[AGENT_BRIEF.md](AGENT_BRIEF.md)** — 11.3KB 一页纸：生产配置+25条铁律+已证伪清单+当前优先级。**读完这份再决定要不要深挖，不要通读 docs/（1.25MB 必漏）** |
 | **只想用** | [一键开箱](#一键开箱) → [说明书](docs/MANUALS.md) |
 | **想接手开发** | [文档地图](docs/README.md) → [科技树](TECH_TREE.html) → [决策档案](decisions/README.md) |
 | **想知道为什么这么做** | [说明书 §8 心智拼图](docs/MANUALS.md) → [调研汇总](docs/MIND_GAPS_AND_TRUST_20261122.md) → [社区对比](docs/MIND_GAPS_AND_TRUST_20261122.md) → [同族 harness 对标](docs/MIND_MODEL_CAPABILITY_EVAL_20261121.md) |
