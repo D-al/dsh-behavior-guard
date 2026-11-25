@@ -719,3 +719,52 @@ sessionController API / prompt() 签名 / events 结构、inject 声明机制、
 reasoning Slot 契约、approval/sandbox 机制、channel/Worktree/SubAgents 的 session 数据结构——
 **13 commit 无一触及**。reasoning Slot 变更发生在 0.2.1-rc.5（远早于 rc.3），别混。
 
+
+
+---
+
+## 十四、ik_llama -amb 参数调研 + "哪些该放内存"清单（2026-11-25 22:3x）
+
+### A. -amb / --attn-max-batch 结论：❌ 对项目不适用
+
+**参数语义（一手：ik README / common/common.h / PR #237）**：
+- 全称 `--attn-max-batch`，默认 **256 MiB**，限制**单个 K*Q 张量的最大尺寸**（MiB）
+- 传入 (0,128) 强制抬到 128；0 = 不限
+- **关键限制：源码注释明确"仅适用于 flash_attn=false 路径"**
+- 机制：按头分组、多步执行 + `ggml_concat` 拼接，把注意力 K*Q 峰值从"随上下文线性增长"变成显式封顶
+- 正确用法：`-amb` 锁住 K*Q 峰值后**尽量调大 `-ub`**（别反过来把 -ub 调太小——64 会让 prefill 慢 3×）
+- 典型目标值 1024–2048 MiB；社区案例 DeepSeek V3/R1 163k 上下文把 buffer 从 42.7GB 降到 2GiB
+
+**为什么不适用于本项目（三条独立理由，任一条即足够）**：
+1. **FA 冲突**：项目 `b12244` 编译时开了 `-DGGML_CUDA_FA_QUANTS=...`，KV 用 `CTK q8_0 / CTV q4_0`
+   ——这是 Flash Attention 量化路径。而 `-amb` **只在 FA 关闭时生效**。开了 FA 就没这个 buffer 问题
+2. **架构不匹配**：`-amb` 针对的是 **MLA 注意力**（DeepSeek V3/R1 那种压缩 KV 在线展开的 K*Q buffer）。
+   本项目 Qwen3.6-35B-A3B 是 **31 层 DeltaNet + 10 层吃 KV**，不是 MLA 架构
+3. **引擎已移除**：ik_llama.cpp 已于 2026-11-16 从项目移除（env.llama:87-89：实测 decode 24.1 vs 27.3、
+   prefill 513 vs 950 全面落后）。upstream llama.cpp 无 `attn-max-batch` 等价参数（源码 grep 为空）
+
+**项目真正的 attention 显存**：DeltaNet 状态 377 MiB（不可压）+ KV 780 MiB（已 q8_0/q4_0 量化）
+——没有"随上下文线性膨胀的 K*Q buffer"这个问题，`-amb` 解决的痛点不存在。
+
+### B. 哪些值得放内存而非显存（基于项目 8G 卡 / 64G 内存 / 余量 235MiB）
+
+判据：**每 token 都要随机访问的 → 留显存；能用带宽换容量且不频繁访问的 → 放内存**。
+项目已有"随机访问局部性"实证（LEVERS:870：有效带宽只有峰值 28%，瓶颈是 256 专家随机挑 8 个）。
+
+| 组件 | 大小 | 当前位置 | 该放哪 / 理由 |
+|---|---:|---|---|
+| **冷专家权重** | 大部分 21.28GiB | **内存**（N_CPU_MOE=40） | ✅已在做。专家随机访问但只用 8/256，冷的长尾放内存是对的 |
+| **视觉编码器 mmproj-F16** | 858 MiB | **显存**（MMPROJ_OFFLOAD=1） | ⚠**反直觉但不能改**：放内存 CPU 编码 **141s/张**（ADR-0005），是已证伪项 |
+| **prompt cache / KV** | 780 MiB | 显存（q8_0/q4_0） | 留显存。已量化到最低；`cache-ram=0` 当前关闭，开 O(上下文) 访问会击穿 PCIe |
+| **DeltaNet 状态** | 377 MiB | 显存 | 不可压、每步读写，必须留显存 |
+| **MTP draft 层** | ~600 MiB | 显存 | 投机解码每 token 用，放内存会让 draft 变慢、接受率跌——留显存 |
+| **非专家权重** | 2326 MiB | 显存 | 每 token 都过，留显存 |
+
+**已证伪/别重试**：
+- ❌ `MOE_CACHE_CPU_SHARE=1.0` 单一值：端到端慢 2.4×（每步增量 prefill 慢 4-5×）。
+  现在的分档配置（解码批 share=1.0 CPU 算 miss 省 PCIe / 预填充批 share=0）是另一回事，是引擎补丁支持的
+- ❌ 视觉编码器放内存：141s/张
+- ❌ 整层挪 GPU（n-cpu-moe=39）：decode -9.5%（env.llama:161）
+
+**结论**：项目已经把"该放内存的"放得差不多了（冷专家在内存、分档 share 调优）。
+`-amb` 解决的是 DeepSeek MLA + FA-off 的问题，与本项目架构正交，不跟进。
