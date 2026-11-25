@@ -129,6 +129,48 @@ def check_bundle_name(patch: Path, expected: str, dry_run: bool) -> list[str]:
     return issues
 
 
+def check_profile_bundles(dry_run: bool) -> list[str]:
+    """规则4（2026-11-26 事故补充）：profile 的 bundles 数组不得重复。
+
+    事故：dsh 把 @deepseek-ai/dsh-base（本已在第一行）又追加到末尾，
+    下一步模型空流 → turn/end aborted/disposed → 会话自己停了。
+    重复核心 bundle 会让 dsh bundle loader 冲突，必须机械检出并去重。
+    """
+    pf = PROFILE / 'package.json'
+    issues = []
+    if not pf.exists():
+        return issues
+    try:
+        obj = json.loads(pf.read_text(encoding='utf-8'))
+        bundles = (obj.get('dsh') or {}).get('profile', {}).get('bundles', [])
+    except Exception as e:
+        return [f'PROFILE_PKG_PARSE_FAIL {e}']
+    if not isinstance(bundles, list):
+        return [f'PROFILE_BUNDLES_NOT_LIST {type(bundles).__name__}']
+
+    seen, dup = set(), []
+    for b in bundles:
+        if b in seen and b not in dup:
+            dup.append(b)
+        seen.add(b)
+    if not dup:
+        return issues
+
+    issues.append(f'DUPLICATE_BUNDLES {dup}')
+    if not dry_run:
+        try:
+            before = sha(pf)
+            # 保留每个 bundle 的首次出现，去掉后续重复（顺序不变）
+            obj['dsh']['profile']['bundles'] = list(dict.fromkeys(bundles))
+            pf.write_text(json.dumps(obj, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+            log('AUTO_DEDUP_BUNDLES', path=str(pf), before=before, after=sha(pf), dup=dup)
+        except Exception as e:
+            issues.append(f'  DEDUP_FAIL {e}')
+    else:
+        log('DRY_DEDUP_BUNDLES', path=str(pf), dup=dup)
+    return issues
+
+
 def check_critical_files(plugin: str, dry_run: bool) -> list[str]:
     """规则2：核心文件消失 -> 从权威源恢复。"""
     issues = []
@@ -198,6 +240,9 @@ def check_once(dry_run: bool, prev: dict | None) -> tuple[list[str], dict]:
     # 规则2：核心插件关键文件
     for plugin in CRITICAL_FILES:
         issues.extend(check_critical_files(plugin, dry_run))
+
+    # 规则4：profile bundles 数组不得重复（2026-11-26 会话自停事故）
+    issues.extend(check_profile_bundles(dry_run))
 
     return issues, cur
 
