@@ -491,3 +491,60 @@ decode/LLM 语义判断不宜再压（有质量底线）；显存路已到硬约
 ### 元结论
 用户的直觉（"把生成变成选择"）是对的，但实现层选错了：**不是在模型层塞词表，而是在工具层给真实候选**。
 这也符合项目第一性原理——规则驱动、确定性优先，不押注模型生成能力。
+
+
+---
+
+## 十、可外包确定性工作调研 + S24-ctx 接线（2026-11-25 17:5x）
+
+**用户问**："还有什么确定的东西可以外包？"（把确定工作从模型转给机制）
+
+### 判据（业界共识 + 项目铁律）
+一句话：**"能写 if/else 保证每次正确的，就不该待在模型上下文里"**。
+但三条红线：①语义判断不外包；②schema 只锁形状不锁真值（validity≠correctness）；
+③不用模型自评当守卫（循环论证）。
+
+### 扫描结论：项目已基本外包完，只剩 2 项
+权威源 index.mjs 2821 行逐段扫（子任务+我交叉核实）：
+
+| 类别 | 状态 | 证据 |
+|---|---|---|
+| 约束解码 / JSON解析重试 | ✅已做 | `index.mjs:284,1568-1574,1600-1614,1632-1637` |
+| 硬值门禁 / 高信号守门 / 注入扫描 | ✅已做 | config_check + `index.mjs:1304-1332,2201-2222` |
+| 配置/路径从环境读 | ✅已做 | `index.mjs:105-114` resolvePathEnv + `:990-993` probe |
+| 固定文本模板化（安全提示/收尾/状态板/todo回灌） | ✅已做 | `index.mjs:258-259,2099-2103,2323-2351` |
+| 计数/查表/规则信号（D1/D2/D3/FSM/CritBank） | ✅已做 | 全零 LLM，`:1114-1148,1478-1492,2492-2533` |
+| 工具参数 JSON.parse | ✅已做 | `:845,1185,1210,1279,1378` 脚本做，模型不参与 |
+| **S24 healHint 的 ctx** | ❌**缺口→本次接线** | 设计支持 `fileContent`/`nearFiles`（`tools/tool_failure_healer.mjs:35,48-59`），
+  但调用点传 `{}`（`index.mjs:2358`）——33% 锚点失配 + 30% 猜路径仍靠模型自己重读 |
+| **`pathMissing` 设置点** | ⚠️仍缺 | `index.mjs:85-88` 有判断无设置；但与 S24 的 FS_NOT_FOUND 分支功能重叠，须先去重再接线 |
+
+**负向结论**：Planner/Critic/Audit/Vote/Corrector 都是语义判断，不外包（延续第八节实测2）。
+
+### 本次落地：S24-ctx 接线
+- 新增 `buildHealCtx(failure)`（`index.mjs`，在 `executeReadOnly` 之后）：
+  - `FS_EDIT_NOT_FOUND` → 用 `executeReadOnly({tool:'read'})` 取真实文件内容（带 allowedRoots 安全边界、2MB 限制、executorMaxChars 截断）
+  - `FS_NOT_FOUND` → 取父目录单层列表，按文件名前缀匹配给 nearFiles
+  - 铁律遵守：失败静默、不改检测逻辑、不改变自愈提示本身
+- 调用点 `index.mjs:2358` 从 `healHint(f, {})` 改为 `healHint(f, buildHealCtx(f))`
+- 同步权威源→运行版（INV-3 曾正确拦住未同步，复制后 sha 一致 ecadc2fc）
+
+**实测（诚实标注证据等级）**：
+- ✅ L2 单测：链路两端通过——真实文件 800 字 clip 回灌进 hint、含"直接从中复制锚点"；
+  相近文件 ROADMAP_GRAPH.md 正确回灌
+- ✅ 门禁：INV-3 PASS、8/8 invariants HEALTHY、82/0、node --check 语法通过
+- ⚠️ **L4 真实会话证据待补**：dsh 未重启，新代码未在运行进程生效；且需要模型真的犯 edit 错误才触发。
+  按项目铁律"机制生效≠有效"，**不宣称已提升成功率**——待下次真实会话观察
+  `tool_failure_heal` trace 的 hint 是否带 fileContent/nearFiles，再测锚点失败率是否下降。
+
+### 业界调研：5 类常见遗漏（本项目对照）
+1. **时间/新鲜度真源**：`requireFreshMtime: false`（`index.mjs:883`）关掉了 mtime 硬校验，
+   而 `fileState()` 的新鲜度判定已写（`:808-813`）——低垂果实但开前需验证不误报
+2. **覆盖度而非合法性**：D1 只管重复探测，不检查"期望集合 vs 实际集合的差集"
+3. **状态转移硬门禁**：stateBoard 偏提醒，未把"未 PASS 不得交付"变成结构化硬转移
+4. **可 replay 判定账本**：steer 拦截缺"输入快照+规则ID+规则版本+结论"结构化记录，守卫本身无法回归测试
+5. **运行时 exact 缓存**：benchmark 有 cache，harness 运行时对确定性子任务缺幂等去重
+
+### 判定
+"还能外包什么"的答案：**大部分已外包完，剩余不是加守卫层数，而是把已写机制接上线**（S24-ctx 是第一个）。
+下一步优先级：真实会话补 L4 证据 > pathMissing 去重接线 > requireFreshMtime 验证 > 判定账本。

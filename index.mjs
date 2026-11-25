@@ -1961,6 +1961,36 @@ function formatExecutorResult(pkg, exec) {
 
 
   // ── turn-guard L0-L3：turn-stopping 时机判定（合并自 dsh-turn-continuation-guard）──
+  // S24-ctx（2026-11-25）：把"重读目标区/列相近路径"从模型外包给确定性执行器。
+  // 设计依据：tool_failure_healer.mjs 早已支持 fileContent/nearFiles，但调用点传 {}(:2358)——
+  // 33% FS_EDIT_NOT_FOUND(锚点失配) + 30% FS_NOT_FOUND(猜路径) 两类错误因此仍靠模型自己重读。
+  // 铁律：带安全边界(executeReadOnly)、失败静默、不改变自愈提示本身。
+  function buildHealCtx(failure) {
+    const ctx = {}
+    if (!failure) return ctx
+    try {
+      const path = String(failure.path || '')
+      if (failure.code === 'FS_EDIT_NOT_FOUND' && path) {
+        const r = executeReadOnly({ tool: 'read', args: { file_path: path } })
+        if (r && r.ok && r.content) ctx.fileContent = r.content
+      } else if (failure.code === 'FS_NOT_FOUND' && path) {
+        // 取父目录单层列表（executeReadOnly 的 glob 分支）
+        const parent = path.replace(/[\\/][^\\/]*$/, '') || '.'
+        const r = executeReadOnly({ tool: 'glob', args: { pattern: parent } })
+        if (r && r.ok && r.kind === 'list' && r.content) {
+          const needle = String(path).split(/[\\/]/).pop().toLowerCase()
+          const all = r.content.split('\n').filter(Boolean)
+          const near = all.filter(n => {
+            const l = n.toLowerCase()
+            return l.includes(needle.slice(0, 6)) || needle.includes(l.slice(0, 6))
+          })
+          ctx.nearFiles = (near.length ? near : all).slice(0, 8)
+        }
+      }
+    } catch { /* 取 ctx 失败不影响自愈提示 */ }
+    return ctx
+  }
+
   function guardDecide(state) {
     try { writeFileSync('D:/llama.cpp/_dbg.log', 'guardDecide: last=' + JSON.stringify(state.last) + ' toolCalls=' + state.toolCalls + ' wC=' + state.writeCalls + ' cont=' + state.continuations + ' maxC=' + cfg.maxContinuationsPerTurn + ' blockEmpty=' + cfg.blockEmptyFinish + '\n') } catch (e) { try { writeFileSync('D:/llama.cpp/_dbg.log', 'trace-err ' + e + '\n', {flag:'a'}) } catch {} }
     const last = state.last
@@ -2355,7 +2385,7 @@ function formatExecutorResult(pkg, exec) {
       if (cfg.toolFailureHealEnabled && s.pendingHeal) {
         try {
           if (shouldInject(s.pendingHeal, s)) {
-            const hint = healHint(s.pendingHeal, {})
+            const hint = healHint(s.pendingHeal, buildHealCtx(s.pendingHeal))
             if (hint) {
               s.healInjectedThisTurn = (s.healInjectedThisTurn || 0) + 1
               s.healInjectedTotal = (s.healInjectedTotal || 0) + 1
