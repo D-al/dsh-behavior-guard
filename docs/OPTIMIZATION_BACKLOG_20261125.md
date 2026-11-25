@@ -445,3 +445,49 @@ M9 审计成本核算、H2 harness 机制开关 A/B runner（有 lever_effect_re
 真正可复制的提速模式 = **高信号守门 + 确定性门禁**（已验证 100-150× 且质量更稳）。
 decode/LLM 语义判断不宜再压（有质量底线）；显存路已到硬约束。
 继续优化的下一步应是工具面收敛（需干净数据先），而非再压注入或硬改引擎。
+
+
+---
+
+## 九、参数词表化调研（2026-11-25 17:3x，用户提议）
+
+**用户想法**："把 es.exe 全盘文件列表做成词表，让工具参数（尤其长路径）变成一个 token，降低填错风险。"
+
+### 目标对，手段错：先纠正靶子
+参数错误分布（PIPELINE 卷 §三，54 次失败）：
+- `FS_EDIT_NOT_FOUND` **18 次(33%)**：`old_string` 内容锚点失配（拿旧内容当锚点）——**路径词表对此无效**
+- `FS_NOT_FOUND` **16 次(30%)**：猜路径（如 `D://publish//...` 少 `Brain`）——**这是词表想解决的**
+即：即使做成单 token，只能覆盖 30% 的错误，且没覆盖更大的 33%。
+
+### 路径 A：动态扩展 tokenizer 词表 → ❌ 不可行
+- 正确名词：vocabulary extension + `resize_token_embeddings` + **continued pretraining**
+- 要同时改 tokenizer merge 表、embedding 行、LM head 行、vocab_size、GGUF tensor shape
+- 新 token 必须训练才"长出语义"：业界公开案例是 600B+400B tokens 训练量
+- 本项目：不能重训、显存仅 235MiB、GGUF 固定 → **直接排除**
+- 关键论证：未训练的新 token logits 是随机的，模型不会自发选中正确路径——选对也是碰运气；若靠 grammar 强制，词表扩展就是多余复杂度
+
+### 路径 B：grammar 枚举候选 → ⚠️ 方向对但三重硬墙
+- 机制：llama.cpp GBNF 把输出锁定在候选内（`json-schema-to-grammar.cpp:960-964` enum 编译成 choice 交替）
+- **墙1 基数墙**：OpenAI enum ≤1000、Gemini ≈120 就失败、Anthropic 180s 编译超时≈几百值；es.exe 实测索引 **1,678,947 条**，差 2-3 个数量级
+- **墙2 词表放大税**：同族模型 Qwen3-30B-A3B(151,936词表)实测 GBNF 200token 输出 6.7s→7.9s(**+18%**)；路径 string 正落在"开放字符串"最坏情况（全词表线性扫描）
+- **墙3 决定性**：`D:/llama-master-src/tools/server/server-common.cpp:1619-1623`——
+  `if (!inputs.tools.empty() && tool_choice != NONE) { if (body.contains("grammar")) throw "Cannot use custom grammar constraints with tools." }`
+  **走 tools API 时根本不能传自定义 grammar**。dsh 工具调用正是 autoparser 吃 tools schema（项目有两行补丁修 `chat-auto-parser-generator.cpp`）→ 子任务推荐的"请求级 grammar 锁 Top-N"在当前路径上不可用
+- 补充：`preserved_tokens` 只保护已存在的单 token（`sampling.cpp:1067 ids.size()==1`），不能新增词表
+
+### 路径 C：让模型检索真实路径，而非生成路径 → ✅ 业界主流
+- DSH 生态已有插件（`@zhourenke/dsh-tool-everything`、`fishdivinity/dsh-local-search`、`dsh-at-file-everything`）：
+  暴露 `search_files({query, max_results})`，模型查出**真实路径字符串**再用，不在模型层生成路径
+- 项目已有雏形：短路径别名 `p/ bench/ memory/`（config/AGENTS.md:117/141）+ es.exe 搜索指令
+- es.exe 实测可用：`D:/Everything/es.exe`，索引 1,678,947 条，`es.exe -n 3 "index.mjs"` 秒级返回
+- ⚠ 注意：项目 `episodicSearchEnabled`(index.mjs:208/2450) 是**历史经验检索**（trace/日志），与"全盘文件索引"是两回事，别混用
+
+### 推荐方案（按 ROI）
+1. ✅ **立即可做：edit 前强制 read**（治 33% 的 old_string 锚点失配）——本就是 backlog H14，比词表方案收益大
+2. ✅ **低成本：路径白名单预注入**（治 30% 的猜路径）——把当前任务涉及的高频真实路径（≤几十条）由 harness 在工具结果里返回，模型引用而非猜测；复用现有短路径机制，零 grammar 成本
+3. ⚠ **中成本：加 `search_files` 工具走 es.exe**——模型先检索拿真实路径；但工具面已 28 个，增一个要先过工具面收敛决策（M6）
+4. ❌ **不做：百万级 grammar 枚举 / 词表扩展 / 重编 llguidance**——收益被三重墙吃掉
+
+### 元结论
+用户的直觉（"把生成变成选择"）是对的，但实现层选错了：**不是在模型层塞词表，而是在工具层给真实候选**。
+这也符合项目第一性原理——规则驱动、确定性优先，不押注模型生成能力。
