@@ -23,7 +23,7 @@ BASE = ['-m', MODEL, '-ngl', '99', '--n-cpu-moe', '40', '-c', '98304', '-np', '1
         '--cache-type-k', 'q8_0', '--cache-type-v', 'q4_0', '-t', '8', '-b', '4096', '-ub', '2048', '-lm', 'none',
         '--mmproj', MMPROJ, '--mmproj-offload', '--moe-cache-mib', '1350', '--moe-cache-cpu-share', '1.0',
         '--port', str(PORT), '--host', '127.0.0.1', '--spec-type', 'draft-mtp',
-        '--spec-draft-n-max', '5', '--spec-draft-p-min', '0.8', '--ctx-checkpoints', '2',
+        '--spec-draft-n-max', '3', '--spec-draft-p-min', '0.8', '--ctx-checkpoints', '2',
         '--cache-ram', '0', '--temp', '0.7', '--top-p', '0.95']
 # t 分布 95% 双尾临界值
 T95 = {1:12.706,2:4.303,3:3.182,4:2.776,5:2.571,6:2.447,7:2.365,8:2.306,9:2.262,

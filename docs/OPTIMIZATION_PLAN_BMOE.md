@@ -434,3 +434,51 @@ watchdog 10:28 自动重启恢复（日志：util 100%/功耗 23.2W/prompt_proc=
   （配对 n=10，ABBA，CI 不跨 0）
 - **生产 router 裸 20K 冻死：与 nmax 无关**，是既有问题（11-24 两次），watchdog 已自动恢复
 - 生产配置已改为 nmax3，门禁 81/0，config_check 全栈一致
+
+
+## 16. 全 host 布局 95% 配对实验（2026-11-25 10:3x）
+
+### 16.1 前置修正
+`tools/paired_ab.py` BASE 已同步当前生产基线 **nmax3**（原写死 nmax5，会导致测旧配置）。
+两变体唯一差异 = expert 放置：
+- A = `!--n-cpu-moe -ot exps=CPU`（全部 256 专家留 host RAM）
+- B = `--n-cpu-moe 40`（当前生产，40 层专家 CPU + GPU cache）
+
+### 16.2 预先声明判定规则（防事后挑数据）
+1. 主判据 = **端到端 e2e** 配对差值的 95% CI；CI 不含 0 才显著
+2. prefill 作协变量：同 pair 内两变体 pf 差异 >10% 标记为"受干扰 pair"，单独报告敏感性
+3. 若 e2e 显著且 A 更快 → 落地全 host；否则 **保持 NCMOE40**
+4. 无论结果如何，跑完重启 dsh 恢复生产（实验会 taskkill 生产 server）
+
+### 16.3 已知干扰源（沿用 14.5）
+WorkBuddy 自身进程 + Steam++ 抢 CPU，prefill 呈双峰（~625 / ~960 t/s）。
+ABBA 顺序 + 每请求重启 server 抵消；如 pair 内 pf 不一致需敏感性分析。
+
+
+## 17. 全 host 布局 95% 实验与落地（2026-11-25 10:5x）
+
+### 17.1 严格配对结果（n=10 对，ABBA，每请求重启 server，BASE=nmax3 当前生产）
+`python tools/paired_ab.py layout95 "!--n-cpu-moe -ot exps=CPU|--n-cpu-moe 40" 10`
+
+| 指标 | A=全 host | B=NCMOE40 | 差值 95%CI | 判定 |
+|---|---|---|---|---|
+| **e2e 20K** | **14.51s** | 20.67s | **[−10.328, −2.762]s** | ✅ 显著，A 快 2.8-10.3s |
+| decode t/s | 32.02 | 32.97 | [−2.150, +0.180] | ❌ 不显著（跨 0）|
+| prefill | **962 t/s** | 622 t/s | [+176, +438] | ✅ 显著，A 快 |
+
+**主判据 e2e CI 不跨 0 → 95% 把握全 host 更优。**
+decode t/s 不显著再次印证"decode t/s 是误导性指标"。
+机制同 nmax3：全 expert 留 host → GPU cache 策略更干净/显存更宽裕 → op_offload 让 prefill 跑 GPU。
+
+### 17.2 落地（已执行）
+- `.env.llama`: `CPU_MOE 0→1`、`N_CPU_MOE 40→` 清空（注释说明实验依据）
+- `llama-router-preset.ini`: `n-cpu-moe = 40` → `cpu-moe = true`
+- 备份：`D:/Brain/_cleanup_20261118/pre_fullhost_backup/`
+- config_check 全栈一致；重启 dsh（10:50:40）
+- **实际参数确认**：模型实例 `cpu-moe=ON, n-cpu-moe=NONE, nmax=3`
+- 门禁 81/0；dsh 真实会话创建 fullhost_ok.txt 内容 OK 成功；health ok
+
+### 17.3 两次 95% 落地的最终生产配置
+- **nmax 5→3**（15 节，e2e CI[−6.97,−3.06]s）
+- **NCMOE40→全 host cpu-moe**（17 节，e2e CI[−10.33,−2.76]s）
+- 其余不变：CTX98304/NGL99/cache1350/share1.0/UBATCH2048/THREADS8
