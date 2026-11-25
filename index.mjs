@@ -880,7 +880,7 @@ const TURN_GUARD_DEFAULTS = {
   writeTools: DEFAULT_WRITE_TOOLS,
   checkFileClaims: true,
   blockEmptyFinish: true,
-  requireFreshMtime: false,
+  requireFreshMtime: true,  // 2026-11-25 启用：L1声称写入必须本轮真改过(fileState:808判定5/5+claim边界6/6实测)
   blockCodeWithoutWrite: true,
   minCodeLines: 20,
   message: '上一步没有产生任何动作（正文只有一个确认词，也没有调用工具）。任务还没有完成。现在直接执行下一步：调用一个与之前不同的工具，或者写出完整结论；不要只回复确认词。',
