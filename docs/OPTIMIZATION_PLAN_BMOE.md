@@ -294,3 +294,14 @@ prefill 实测 577-585 t/s（低于 fa_prefill.log 的 806 t/s，因槽内有 11
 - UBATCH 2048 << CTX → 已满足，不改
 - 冷启动 11.7s / 首字 4.94s@4.6k → 已核实，无瓶颈
 - A5/A3/A4 → 调研已否（不适用/冲突/需重编译收益低），不落地
+
+
+### 13.4 A1：专家布局（全 host `-ot exps=CPU` vs 当前 NCMOE40）
+**短 prompt A/B**（2K×6 次/档，交叉）：
+- 全 host+ot: median **32.74** t/s (sd 2.88)
+- NCMOE40: median **30.34** t/s (sd 4.49)
+- 全 host 略优 +8% 且方差更小
+
+**20K 确认**：进行中（关键判据，短测台已骗过一次 nmax）
+- 风险：全 expert CPU 时 MTP 层专家也在 CPU，GPU cache 覆盖不到，长 prompt 可能暴露问题
+- 判定规则：20K 端到端若未明显优于 NCMOE40 → **不改生产**（保持已调优的 40）
