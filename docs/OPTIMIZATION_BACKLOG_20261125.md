@@ -746,3 +746,21 @@ decode/LLM 语义判断不宜再压（有质量底线）；显存路已到硬约
 ### 元结论
 又一次"不看标题看 diff"：rc.5 的标题（搜索免收费）对用本地模型的项目毫无意义。
 逐 commit 核实比读 release notes 更可靠。
+
+### ⚠️ 真正值得盯的未来变更（子任务深挖，已核实）
+**master 分支有 session-controller 重构尚未进 rc.5 发布线**——不在 rc.3→rc.5 的 13 commit 内，
+所以**不影响本次升级**，但未来跟随 master/nightly 或跳版本升级时必须重评 bridge 插件：
+- `bf58ff25`（已核实：25 文件 / 218+196 行，带升级指南）：`SessionRetainInfo` 新增 `retainedFacets`，
+  owner 从 retainInfo 而非 SessionBinding 派生 facet；"SessionBinding stays unchanged"
+- `fix(session-controller): adopt a named Session requested through a symlinked directory`——
+  **直接命中项目 D:/Brain/workspace 的 junction 机制**（session-bridge create 具名会话若走 junction 路径）
+- `feat(session)!` fork source 传递（**破坏性标记**）
+- `refactor(session): move list metadata to sessionQuery`（`Workspace.sessionHeaders` → `getSessionHeaders()`）
+
+**行动**：这些列入"未来升级必查项"，不是现在做的事。当前 rc.3 稳定，不动。
+
+### 插件契约逐项核实（rc.3→rc.5 全无变化）
+sessionController API / prompt() 签名 / events 结构、inject 声明机制、cordis schema/bundle、
+reasoning Slot 契约、approval/sandbox 机制、channel/Worktree/SubAgents 的 session 数据结构——
+**13 commit 无一触及**。reasoning Slot 变更发生在 0.2.1-rc.5（远早于 rc.3），别混。
+
