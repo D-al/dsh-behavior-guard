@@ -154,6 +154,7 @@ CHAT_TEMPLATE bench/chat_template_zh.jinja
 | 工具面证据/失败分析 | `docs/PIPELINE_AND_INFRA_BRIDGE_20261120.md` |
 | harness 治理/自主化 | `docs/AUTONOMY_AND_SELF_HARNESS_20261122.md` 等 |
 | 插件安全防线方案 | `docs/GUARD_PLAN_PLUGIN_SAFETY_20261126.md`（profile 默认 full-access，护栏必须外置）|
+| 三道防线落地与验证 | `docs/GUARD_DEPLOYMENT_20261126.md`（plugin_guard 随 dsh 起停；两套幂等补丁）|
 | 路线图状态（机器权威）| `ROADMAP_GRAPH.md`（不要手改，agent 读写靠工具）|
 | 文档总索引 | `docs/README.md` |
 | 决策档案 | `decisions/*.md`（accepted 不可改原文）|

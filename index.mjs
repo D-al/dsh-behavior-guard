@@ -328,6 +328,7 @@ const DANGER_BLOCK = [
   [/format\s+[a-z]:/i, '格式化磁盘'],
   [/shutil\.rmtree\s*\(/i, 'shutil.rmtree'],
   [/Stop-Process[^|;]*-Name\s+\*?\w/i, '批量 Stop-Process'],
+  [/(?=.*Copy-Item)(?=.*-Recurse)(?=.*-Force)(?=.*node_modules)[^|;]*/i, '覆盖式复制进 node_modules（可能污染插件源码）'],
 ]
 const DANGER_WARN = [
   [/\brm\s+[^\s-]/i, '删除文件（rm）'],
@@ -336,6 +337,30 @@ const DANGER_WARN = [
   [/\btruncate\b|>\s*\S+\.(py|json|md|yml)/i, '覆盖写入现有文件'],
   [/moe-cache|n-cpu-moe|--ctx-size|--ngl/i, '改动引擎关键参数'],
 ]
+
+// SIDE_EFFECT_GUARD-PATCHED (2026-11-26)
+
+
+// ── 防线3：识别"工具报成功但内部有破坏性副作用" ──
+// 只扫结构化字段和确定性错误特征，不读正文语义（避免误报）。
+const SIDE_EFFECT_ERROR_RE = /(ERR_PNPM_EPERM|EPERM:[^\n]{0,80}rename|_tmp_\d+\s*->|application:\s*\\?['"]?failed|changed:\s*true[^\n]{0,40}application)/i;
+function detectSideEffectDamage(event, s) {
+  if (!s || !event?.data?.message?.content) return
+  const blocks = Array.isArray(event.data.message.content) ? event.data.message.content : []
+  const txt = blocks.map(b => (b && typeof b.text === 'string') ? b.text : '').join('\n')
+  if (!SIDE_EFFECT_ERROR_RE.test(txt)) return
+  // 同一工具结果可能重放多次（compaction），按文本前 120 字去重
+  const key = txt.slice(0, 120)
+  s._sideEffectSeen = s._sideEffectSeen || new Set()
+  if (s._sideEffectSeen.has(key)) return
+  s._sideEffectSeen.add(key)
+  try {
+    trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'side_effect_damage', step: s.step, tool: s.toolNamesById?.[event.data?.message?.toolCallId] || '?', text: key.slice(0, 100) })
+  } catch { /* trace 失败不影响 */ }
+  s.pendingInject = (s.pendingInject || '') + '[harness 副作用告警] 刚执行的工具内部出现 pnpm/rename 类错误（EPERM）或 application:failed/changed:true。'
+    + '不要把它当成普通"权限问题"忽略——它可能已经清空或改动了无关插件/配置文件。'
+    + '下一步先核对现场文件状态（关键文件是否还在、bundle 名是否被改），再继续。\n'
+}
 
 function classifyDanger(name, argsText) {
   const text = String(argsText || '')
@@ -771,13 +796,46 @@ function summarizeAssistant(message) {
   const blocks = Array.isArray(message?.content) ? message.content : []
   let body = ''
   let toolCalls = 0
+  let reasoning = ''
   for (const block of blocks) {
     if (block === null || typeof block !== 'object') continue
     if (block.type === 'text' && typeof block.text === 'string') body += block.text
     else if (block.type === 'tool-call') toolCalls += 1
+    // 防线2：reasoning 里常有"我发现 X 错了，应该修"——事故中被丢弃导致纠错线索丢失
+    else if ((block.type === 'reasoning' || block.type === 'thinking') && typeof block.text === 'string') reasoning += block.text
   }
-  return { body: body.trim(), toolCalls }
+  return { body: body.trim(), toolCalls, reasoning: reasoning.trim() }
 }
+
+
+
+
+// ── 防线2：从 reasoning 抓取"自我发现但未修复"的线索 ──
+// 事故依据：seq 481 "改成 @local 可能是问题……我应该恢复成 dsh-hardware-monitor"，
+// 但 compaction 抹掉后 seq 646 仍用坏源码覆盖。检测要保守：宁可漏报不可误报。
+const CORRECTION_RE = /(?:应该|需要|必须|应当|我要|我得)(?:把它|将其|把|将)?(?:改回|恢复|撤销|撤回|还原|修正|改回去|改成|换回|删掉)|(?:可能是?个?问题|是个错误|搞错了|不对劲|这是错的|猜错了|写错了)/;
+const CORRECTION_RESOLVED_RE = /(?:已(?:经)?[^。！\n]{0,20}?(?:改回|恢复|撤销|撤回|还原|修正|修复|改成|改好)|已完成修复|now fixed|已改好|已修正)/;
+function captureOpenCorrection(s) {
+  if (!s || !s.last || !s.last.reasoning) return
+  const reasoning = String(s.last.reasoning)
+  if (!Array.isArray(s.openCorrections)) s.openCorrections = []
+  // 先看是否已解决：后续 reasoning 明确说"已修复"则把现存条目标记 resolved（保留历史供审计）
+  if (CORRECTION_RESOLVED_RE.test(reasoning)) {
+    for (const c of s.openCorrections) if (!c.resolved) c.resolved = true
+    return
+  }
+  if (!CORRECTION_RE.test(reasoning)) return
+  // 同一线索只记一次（用后 240 字去重）
+  const key = reasoning.slice(-240).trim()
+  if (s.openCorrections.some(c => c.key === key)) return
+  s.openCorrections.push({ key, text: key, resolved: false, at: Date.now() })
+  if (s.openCorrections.length > 20) s.openCorrections = s.openCorrections.slice(-20)
+  try {
+    trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'open_correction_captured', step: s.step, text: key.slice(0, 120) })
+  } catch { /* trace 失败不影响 */ }
+}
+
+// OPEN_CORRECTION-PATCHED (2026-11-26)
 const CLAIM_PATTERNS = [WRITE_CLAIM, FUTURE_CLAIM, WILL_CLAIM]
 
 function claimedPaths(body) {
@@ -1009,6 +1067,7 @@ export function apply(ctx, config) {
         // continuity 状态（initial 复用上面的字段）
         latest: '', pendingArchive: false, pendingTodoEcho: false, lastTodos: null, todoCalls: 0, sinceLastTodo: 0,
         lastArchiveSig: '', archiveRepeatCount: 0,  // P0 存档去重：相同存档只完整注入一次（实测 82 次重复）
+        openCorrections: [],  // 防线2：模型自我发现但未修复的问题（compaction 不得抹掉）
         reviewState: null, reviewCycles: 0,  // S9：审计/纠正有状态反馈 + 循环上限（防前馈误差放大）
         turnTodoInjections: 0, sessionTodoInjections: 0, remindedNoTodo: false, rejectedItems: [],
         // 学习闭环 A 段：appenders + 本会话已注入的沉淀反馈计数
@@ -1083,6 +1142,8 @@ export function apply(ctx, config) {
       if (event.type === 'assistant/message') {
         // turn-guard：记录本轮最后的 assistant 正文与工具调用数（L0-L3 判定依据）
         s.last = summarizeAssistant(event.data?.message)
+        // 防线2：抓取 reasoning 里"发现问题但未修复"的线索，供压缩存档强制保留
+        try { captureOpenCorrection(s) } catch { /* 纠错抓取失败不影响主流程 */ }
         // D5 无进展计数：上一步没有生产性调用（write/edit/todo_write）则 +1，否则清零
         s.noProgressSteps = s.lastStepProductive ? 0 : (s.noProgressSteps || 0) + 1
         s.lastStepProductive = false
@@ -1284,6 +1345,10 @@ export function apply(ctx, config) {
         return
       }
       if (event.type === 'tool/result') {
+        // ── 防线3：副作用型破坏识别（零 LLM）──
+        // 事故依据：remove_bundle 返回 isError:false + kind:permission，实际 pnpm EPERM
+        // 已清空无关插件目录。harness 不能只看 isError，要看 application/changed/pnpm 错误。
+        try { detectSideEffectDamage(event, s) } catch { /* 副作用检测绝不阻断主流程 */ }
         // S24 执行层失败自愈：只认结构化 isError/data.error，绝不扫结果正文
         if (cfg.toolFailureHealEnabled) {
           try {
@@ -2318,8 +2383,17 @@ function formatExecutorResult(pkg, exec) {
             if (doneItems.length) parts.push('【已验证决策】' + doneItems.slice(0, 8).map((t) => String(t.content).slice(0, 40)).join('；'))
             if (openItems.length) parts.push('【开放问题】' + openItems.slice(0, 8).map((t) => (t?.status === 'in_progress' ? '◐' : '☐') + String(t.content).slice(0, 40)).join('；'))
             if (Array.isArray(s.rejectedItems) && s.rejectedItems.length) parts.push('【已排除】' + s.rejectedItems.slice(-5).join('\n'))
-            // 存档签名：初始任务 + todo 状态 + 已排除项。内容不变则视为"同一份存档"。
-            archiveSig = JSON.stringify([s.initial, todos.map((t) => [t?.content, t?.status]), (s.rejectedItems || []).slice(-5)])
+            // 防线2：未闭环的自我纠错——必须在去重分支之前 push（去重会 parts.length=0 清空）
+            if (Array.isArray(s.openCorrections) && s.openCorrections.length) {
+              const unresolved = s.openCorrections.filter(c => !c.resolved).slice(-5)
+              if (unresolved.length) {
+                parts.push('【未闭环的自我纠错】模型曾发现以下问题但尚未修复，继续前先处理：'
+                  + unresolved.map((c, i) => (i + 1) + '. ' + c.text.slice(0, 90)).join('；'))
+                trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'open_correction_survived_compaction', count: unresolved.length, step: s.step })
+              }
+            }
+            // 存档签名：初始任务 + todo 状态 + 已排除项 + 未闭环纠错。纠错状态变化必须视为"新存档"。
+            archiveSig = JSON.stringify([s.initial, todos.map((t) => [t?.content, t?.status]), (s.rejectedItems || []).slice(-5), (s.openCorrections || []).map(c => [c.text, c.resolved])])
             const repeats = archiveSig === s.lastArchiveSig ? (s.archiveRepeatCount || 0) + 1 : 0
             s.lastArchiveSig = archiveSig
             s.archiveRepeatCount = repeats
