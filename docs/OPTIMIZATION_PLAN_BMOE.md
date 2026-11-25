@@ -262,3 +262,35 @@ prefill 实测 577-585 t/s（低于 fa_prefill.log 的 806 t/s，因槽内有 11
 ### 唯一仍未测的
 20K prompt 的 TTFT（约 25s）——但那是 prompt 长度的客观结果，
 按 bmoe 1212 t/s 换算也要 16.5s，差距 8.5s 且硬件不同，不值得为它改配置。
+
+
+## 13. 落地执行结果（2026-11-25 09:5x）
+
+### 13.1 测速基础设施（已交付）
+- `tools/param_ab.py`：短 prompt(2K)+64tok+每变体重启 server+交叉顺序，单请求 <5s（原 43s）
+- `tools/confirm_ab.py`：20K 长 prompt 单发确认，wall clock + t/s 双指标
+- `tools/build_fingerprint.py`：A/B 前置 build 一致性守卫
+- `tools/ttft_probe.py`：冷启动/首字三段测量
+- 全部用**生产 build**（D:/llama.cpp/build/bin），commit `4971906`
+
+### 13.2 A7：nmax 3 vs 5 —— 不改生产（短测台误导的铁证）
+
+**短 prompt A/B**（2K×8 次/档，交叉）：
+- nmax3: median **34.25** t/s (sd 4.47)
+- nmax5: median **28.76** t/s (sd 6.95)
+- 看似 nmax3 赢 19%
+
+**20K 长 prompt 确认**（各 2 次）：
+- nmax3: tps_med 29.76 / **e2e_med 21.3s** / prefill 577-583 t/s
+- nmax5: tps_med 34.72 / **e2e_med 13.2s** / prefill 970-985 t/s
+- **完全反转：nmax5 端到端快 40%**
+
+**判定：保持生产 nmax5 不变。** 这正是项目经验"短任务测试台覆盖不到真实场景"的又一实证。
+注意混淆变量：prefill 577 vs 970（nmax 不该影响 prefill 40%），说明短/长测的槽位状态不同，
+但方向明确——生产现值在真实场景更优，无需变更。
+
+### 13.3 其他项的落地判定（无需执行）
+- `op_offload` 默认 true → 收益 0，不改
+- UBATCH 2048 << CTX → 已满足，不改
+- 冷启动 11.7s / 首字 4.94s@4.6k → 已核实，无瓶颈
+- A5/A3/A4 → 调研已否（不适用/冲突/需重编译收益低），不落地
