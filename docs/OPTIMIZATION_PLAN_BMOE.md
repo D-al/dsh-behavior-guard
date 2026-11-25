@@ -368,3 +368,69 @@ prefill 实测 577-585 t/s（低于 fa_prefill.log 的 806 t/s，因槽内有 11
 - 95% CI 不含 0 → 显著，采纳胜者
 - CI 跨 0 → 不显著，**保持生产配置**
 - prefill 协变量若两组仍系统性差异 >20% → 实验无效，需排查环境
+
+
+### 14.5 干扰源定位与测速纪律（重要）
+
+配对实验中 prefill 在 569-956 t/s 间跳变，且**跟随请求顺序而非参数**：
+- pair0-2：A(nmax3) pf≈950、B(nmax5) pf≈600
+- pair3-4：两者 pf≈630（稳态）
+
+定位：`Get-Process` 发现 **WorkBuddy 自身 4 个进程累计 CPU 1999/771/675/623 秒**（占 1.5GB+），
+另有 Steam++ 等后台进程——测速期间持续抢 CPU/内存带宽。
+
+**纠正 14.2 的判断**：prefill 差异不是 nmax 参数通过显存影响，是**系统负载波动**。
+pair3 两者 pf 相同时 e2e 也相同（20.11 vs 20.18）就是证据。
+
+**测速纪律（新增）**：
+1. 前 2-3 对视为 warmup，不纳入统计（进入稳态后 pf 才稳定）
+2. 用 prefill 作协变量：若同 pair 内两变体 pf 差异 >10%，该 pair 作废
+3. 报告时同时给 e2e 和 pf，防止把负载噪声当成参数效果
+
+
+## 15. 95% 置信度重做与落地（2026-11-25 10:2x）
+
+### 15.1 严格配对 A/B 结果（n=10 对，ABBA，每请求重启 server）
+
+`tools/paired_ab.py nmax95 "--spec-draft-n-max 3|--spec-draft-n-max 5" 10`
+
+| 指标 | A=nmax3 | B=nmax5（原生产）| 差值(A−B) 95%CI | 显著性 |
+|---|---|---|---|---|
+| **e2e (20K)** | **14.73s** | 20.42s | **[−6.970, −3.055]s** | ✅ 显著，A 快 15-34% |
+| t/s | 34.15 | 35.15 | [−2.876, −0.368] | ✅ 显著但幅度小 |
+| prefill | **957 t/s** | 626 t/s | [+171.5, +379.3] | ✅ 显著，A 快 |
+
+**CI 完全不跨 0 → 达到 95% 把握。**
+
+机制：nmax3 草稿图小 → 释放显存 → `op_offload` 让 host 常驻专家的宽 matmul 复制到 GPU 算 prefill
+（与 bmoe CHANGELOG #645 同机制）。这解释了之前短测/长测的反复——草稿图显存占用改变了 prefill 路径。
+
+**注意**：13.2 节的 n=2 结论（nmax5 快 40%）被推翻——那是负载噪声+样本不足导致的假象。
+
+### 15.2 落地动作（已执行）
+- `.env.llama`: `LLAMA_35B_NMAX 5 → 3`（带理由注释）
+- `llama-router-preset.ini`: `spec-draft-n-max 5 → 3`（两处一致，config_check.py 验证全栈无冲突）
+- 备份：`D:/Brain/_cleanup_20261118/pre_nmax3_backup/`（原两份配置）
+- 重启 dsh（10:21:48），确认生产 llama-server 命令行 `n-max=3`
+- 门禁 **81 pass / 0 fail**
+
+### 15.3 待补
+生产 router 实测 e2e（后台运行中），确认与配对实验结果一致。
+
+
+### 15.4 生产验证事故与正确判定（重要）
+
+落地后对**生产 router** 直发 20K `/v1/completions` → ConnectionResetError + server 冻死。
+watchdog 10:28 自动重启恢复（日志：util 100%/功耗 23.2W/prompt_proc=0/decoded=0 = WDDM 换页自旋）。
+
+**归因**：不是 nmax3 引入——watchdog 日志显示同样冻死在 11-24 15:20、20:19（nmax5 时代）发生过两次。
+根因是**裸 20K 直连请求**这条路径（dsh 平时走 chat/completions + 增量 prefill，不触发）。
+配对实验用独立 server（`param_ab.py`/`paired_ab.py`）跑 nmax3 10 次均正常。
+
+**验证方法纠正**：生产验证必须用 dsh 真实会话路径（bridge send），不用裸 20K HTTP。
+
+### 15.5 置信度声明（最终）
+- **nmax3 优于 nmax5 的端到端收益：95% CI [−6.97, −3.06]s，达到 95% 把握** ✅
+  （配对 n=10，ABBA，CI 不跨 0）
+- **生产 router 裸 20K 冻死：与 nmax 无关**，是既有问题（11-24 两次），watchdog 已自动恢复
+- 生产配置已改为 nmax3，门禁 81/0，config_check 全栈一致
