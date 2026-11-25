@@ -70,7 +70,8 @@ def one_request(extra, prompt, idx, LOG):
     p=subprocess.Popen([EXE]+args,stdout=lf,stderr=subprocess.STDOUT)
     if not health():
         log(f'  req{idx}: START FAIL',LOG);p.kill();lf.close();return None
-    b={'model':MODEL,'prompt':prompt,'n_predict':96,'ignore_eos':True,
+    import os as _os
+    b={'model':MODEL,'prompt':prompt,'n_predict':int(_os.environ.get('PAIR_N_PREDICT','96')),'ignore_eos':True,
        'temperature':0.7,'seed':12345,'stream':False,'cache_prompt':False}
     req=urllib.request.Request(f'http://127.0.0.1:{PORT}/completion',data=json.dumps(b).encode(),
                                headers={'Content-Type':'application/json'})

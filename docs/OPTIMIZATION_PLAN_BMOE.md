@@ -482,3 +482,70 @@ decode t/s 不显著再次印证"decode t/s 是误导性指标"。
 - **nmax 5→3**（15 节，e2e CI[−6.97,−3.06]s）
 - **NCMOE40→全 host cpu-moe**（17 节，e2e CI[−10.33,−2.76]s）
 - 其余不变：CTX98304/NGL99/cache1350/share1.0/UBATCH2048/THREADS8
+
+
+## 18. 假阴性重估：从第一性原理出发（2026-11-25 12:3x）
+
+用户问："之前哪些优化方向被**偶然证伪**？做到95%置信度，从第一性原理想。"
+
+### 18.1 核心推理：瓶颈迁移使旧判据失效
+
+两次95%落地（nmax3、全host）**都没有提升 decode t/s**（CI 跨 0 或不显著），
+提升的是 **prefill（957→626 t/s 反向、962→622）→ e2e**。机制：
+`少占显存 → op_offload 生效 → host 常驻专家的宽 matmul 复制到 GPU 算`。
+
+**结论：系统瓶颈已从 decode（DDR4 内存延迟）迁移到 prefill（CPU 算力 + 显存调度）。**
+
+推论：**任何在"decode 瓶颈时代"用 decode t/s 判据证伪的方向，都是可疑的假阴性。**
+必须按新判据（端到端 e2e + 95% CI）重测。
+
+### 18.2 已知硬矛盾（证据级别最高）
+
+**ngram 投机**：
+- 已证伪清单："ngram 投机已证伪"
+- 但 autostart/index.mjs:74 明确写："35B cpu-moe 重测: ngram-simple 解码 **+17%**(22.4→26.1)，
+  因 CPU 瓶颈下减少目标模型前向次数即赚"
+- bmoe 也证伪 ngram，但那是 **flash-bound 流式场景**（我们 RAM 常驻，不适用）
+- **我们现在正是全 host cpu-moe** —— 恰好是 +17% 那个场景
+- `--spec-type` 支持逗号分隔多值，可能可与 draft-mtp 叠加（待实测）
+
+### 18.3 候选筛选原则
+
+按"假阴性可能性"排序，三个条件全中者优先重测：
+1. 原证伪用 **decode t/s** 而非 e2e（decode t/s 已三次证明误导）
+2. 原证伪在 **b12244 旧引擎 / NCMOE40 旧布局 / 短 prompt** 时代
+3. 新瓶颈下**机理指向可能反转**（如 CPU 瓶颈 → 减少前向次数的 ngram；显存宽裕 → KV 精度）
+
+调研进行中，稍后补候选排名与实测结果。
+
+
+### 18.4 ngram 95% 重测（进行中，2026-11-25 12:3x）
+变体：A=当前 draft-mtp+nmax3；B=纯 ngram-simple(size-n12/m32)。
+依据：autostart/index.mjs:74 记录"35B cpu-moe ngram-simple 解码+17%"，
+而我们的已证伪清单写"ngram 已证伪"——**硬矛盾**，且当前正是全host cpu-moe场景。
+
+pair 0 初步（**单对，不作结论**）：
+- A(mtp): e2e 29.26s / tps 27.05 / pf 431 acc 62/64
+- B(ngram): e2e **15.61s** / tps 20.67 / pf **1011** acc 24/54
+- ngram 接受率虽低（44%），但**prefill 快 2.3x**（不占MTP草稿显存→op_offload生效），e2e 反快近一倍
+- 注意：本轮系统负载高（WorkBuddy 自身 3494s CPU 抢资源），绝对 e2e 比前几轮慢，
+  但 ABBA 配对相对比较仍有效。**待 10 对统计判定。**
+
+
+### 18.5 ngram 95% 重测结果（2026-11-25 12:4x）—— 假阴性确认，但**暂不落地**
+
+`tools/paired_ab.py ngram95 "...mtp..." "...ngram..." 10`，三指标全显著：
+
+| 指标 | A=当前MTP | B=ngram | 差值95%CI | 判定 |
+|---|---|---|---|---|
+| e2e 20K/96tok | 20.64s | **14.93s** | [+4.446,+8.615]s | ✅ ngram 快 4-9s |
+| decode t/s | **33.15** | 23.29 | [+0.901,+11.471] | ❌ MTP 快 30% |
+| prefill | 626 | **1025** | [−483,−298] | ✅ ngram 快 65% |
+
+**假阴性确认**：旧"ngram 已证伪"结论（b12244/短 prompt/decode 判据）在
+当前全 host cpu-moe + e2e 判据下**反转**——e2e 显著更快，与 autostart 注释的 +17% 方向一致。
+
+**但暂不落地**：decode t/s 慢 30%，96-token 测试 prefill 主导才让 ngram 赢；
+真实 agent 每步生成几百 token，decode 权重上升可能反转。
+已启动 **300-token 长生成确认**（PAIR_N_PREDICT=300, n=6），按结果定夺。
+注意 prefill 快 65% 的机制是"ngram 不占 MTP 草稿图显存 → op_offload 生效"，与前两次落地同源。
