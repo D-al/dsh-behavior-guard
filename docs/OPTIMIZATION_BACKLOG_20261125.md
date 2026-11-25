@@ -590,3 +590,73 @@ decode/LLM 语义判断不宜再压（有质量底线）；显存路已到硬约
 - ⚠️ L4 真实会话：**两处新增机制（S24-ctx / requireFreshMtime）均未完成真实会话验证**——
   dsh 未重启、需模型真的触发错误/假完成。按"机制生效≠有效"铁律，
   **不宣称成功率已提升**，待下次真实会话观察 trace 证据。
+
+
+---
+
+## 十二、外部跟进调研：Strata 0.2.21 + Marco-Mini-Instruct（2026-11-25 18:4x）
+
+### A. Strata 0.2.21（2026-11-24 发布，GitHub Niko1221/Strata，48k★/MIT）
+
+**0.2.21 关键变化（官方 release notes 一手）**：
+- **Agent sessions reuse prompt on every backend**——长 agent 会话不再每轮重读整个 prompt
+- **单请求路由到 drafter 所在 slot**：RTX5090 Laptop 2-3 slots 下 agent 会话 85→142-152 tok/s、chat 87→120
+- **启动时短测试自动决定 drafter 是否开启**（首次启动 +3 分钟）
+- Inkling 2 Mini 性能暴涨（3060Ti 8GB SQ-10: 11→43 tok/s；5090 prompt 3923→6967 tok/s）
+- 长 prompt + 多 slot 陷阱：3K+ token @32 slots 首 token 等数分钟；≤24GB 卡 64K@32slot 可能加载失败
+- 已知回退：RX7900 XT SQ-20 decode -7%（workaround `--vram-experts-gb 13.2 --ram-experts-gb 2.5`）
+
+**⚠️ 最关键的判断：核心优化我们已具备，不用换引擎**
+- Strata 的"agent prompt 复用"对应 llama.cpp **PR #30137**（reference-counted checkpoints 替代 deep-copy）
+- **该 PR 已于 2026-11-05 合并进 master**（WebFetch 核实）
+- **项目源码 94f3af3 已包含**：`server-context.cpp:2822` `std::list<std::shared_ptr<common_prompt_checkpoint>> checkpoints`、
+  `server-slot-sched.h:18/25` `shared_ptr<const common_prompt_checkpoint>`
+- 上游实测收益：cache update -52.6%~76.4%、首 token -34.7%~60.5%、峰值内存 -12%~33%
+- 项目已有 `CTX_CHECKPOINTS=2`（承重墙，降到1慢23%）——机制在，只是没量化过 PR 的实际增益
+
+**可借鉴（思路级，不需换引擎）**：
+1. ⭐ **drafter 启动时自测再决定开关**：当前项目 MTP draft 恒开（nmax=3）；
+   Strata 的"启动短测试决定 drafter 是否值得开"可避免弱硬件上 draft 反而拖慢——
+   但项目已有 D5 MTP 接受率<0.65 审计门控（`specAcceptanceMin`），方向类似，只是是运行时而非启动时
+2. ⭐ **单请求 pin 到 drafter slot**：项目 router `--models-max 1`，本来就是单 slot，这条天然满足
+3. ⭐ **长 prompt 少 slot**：项目已 `models-max 1`，与 Strata 的 8GB/长文档建议一致
+
+**不适用/别跟进**：
+- ❌ **换 Strata 引擎（子任务深查纠正）**：**Strata 从 0.2.16 起已完全脱离 llama.cpp**——
+  官方 release notes 原文 "Strata is no longer built on llama.cpp. It still uses GGUF files and supports the same features,
+  but none of the llama.cpp matrix kernels remain"，其 source tree 无 `ggml/`/`llama.cpp` 的 matrix kernels 目录。
+  虽然 `strata-engine` 仍有自己的 0.1.67 版本号，但**不是 llama.cpp 的 fork**，无 cherry-pick 路径。
+  项目自编 b12244 含 autoparser 2 行补丁 + MTP/共享/FA 定制 + harness 深度集成；换引擎要重做全部补丁与集成，成本远超收益
+- ❌ **Inkling 2 Mini 当主力**：26.4B 总参、20GB checkpoint，8G 卡放不下；
+  且官方自承短板"agentic reliability 弱于大模型、可能未经确认删改文件、中文有截断与混语"——正撞项目痛点
+
+### B. Marco-Mini-Instruct（注意拼写：Marco 非 macro；阿里 AIDC-AI，Apache 2.0）
+
+**身份**：Qwen3-0.6B-Base 经细粒度切分+Drop-Upcycling 升级的多语言 MoE instruct；
+17.3B 总参 / 0.86B 激活(5%) / 256 专家取 8 / 28 层 / 29 语言；arXiv:2604.25578。
+
+**官方表现（Avg@8）**：
+- English 7 项平均 **75.5** > Qwen3-4B 73.3 > Gemma3-12B 65.8（MMLU 83.4、GSM8K 93.1）
+- Multilingual General **50.8** > Qwen3-4B 47.9（长尾语言优势明显）
+- Cultural & Regional **71.0** > Qwen3-4B 69.1
+- **诚实边界**：中文 CMMLU/C-Eval、希腊/阿拉伯语、翻译 BLEU 弱于对照；GPQA-D/MATH 略输 Qwen3-4B。
+  优势在**低资源长尾语言**，不是全面最强
+
+**对本项目：❌ 不引入**
+- **显存硬冲突**：0.86B 激活≠0.86B 显存——需加载全部 17.3B 权重；最低 Q2_K 量化仍 6.5GB，
+  无法与 35B 主模型在 8G 卡共存（当前余量仅 235MiB）
+- **延迟数量级差距**：MoE 5% 激活只省 FLOPs，不省权重带宽与 256 专家路由开销。
+  项目已证伪"0.6B 做实时守卫需 4-6s vs 要求 <10ms"——换 Marco 只会更慢
+- **场景错配**：卖点是多语言/长尾语言知识，不是分类/守卫/高速路由
+- **方法可借鉴但不可复用**：0.6B→MoE+级联蒸馏做到接近 4B dense，但需 SFT 24h/64GPU + OPD 110h/64GPU
+- **巧合澄清**：项目"小模型 critic 50.9%≈随机"与 Marco-Mini-Base 多语言均分 50.9 数值相同但**完全无关**
+
+### 总结
+- **Strata**：值得跟的不是它的引擎，而是"prompt 复用"这个方向——**我们已经有了**（PR #30137 已在源码）。
+  这条避免了代价极高的引擎迁移。真正可做的是量化 CTX_CHECKPOINTS 的实际增益（待 95% 实验）
+- **Marco-Mini-Instruct**：表现确实不错（同规模 SOTA），但与本项目 8G 显存 + 实时守卫场景根本不匹配
+- **术语边界澄清（子任务纠正）**：`--vram-experts-gb` / `--ram-experts-gb` 是 Strata 独有的手动显存分区旋钮
+  （RX7900 回退 workaround），**llama.cpp/我们无法照搬**（项目用 `--cpu-moe` 全 host）。
+  "ClassLRU" 是**项目自己的术语**（llama.cpp PR #31233，本机 94f3af3 已含；`LEVERS:772`），
+  Strata 官方用的词是 profile 排名 + decayed-count——两者不是同一机制，别混
+- 两条都遵循同一判据：**不看榜单看约束**（显存/延迟/集成成本）
