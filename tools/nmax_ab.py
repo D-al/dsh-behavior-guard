@@ -49,8 +49,8 @@ def start(nmax):
     p = subprocess.Popen(args, stdout=lf, stderr=subprocess.STDOUT)
     if not wait_health():
         p.kill(); lf.close(); return None
-    for _ in range(2):
-        post({'model': MODEL, 'prompt': FILLER[:14000], 'n_predict': 128, 'ignore_eos': True,
+    for i in range(2):
+        post({'model': MODEL, 'prompt': ('warm%d ' % i) + FILLER[:14000], 'n_predict': 128, 'ignore_eos': True,
               'temperature': 0.7, 'stream': False, 'cache_prompt': False})
     return p, lf
 
@@ -62,7 +62,10 @@ def bench(nmax, runs):
     p, lf = r
     tps = []
     for k in range(runs):
-        b = {'model': MODEL, 'prompt': FILLER[:20000], 'n_predict': 200, 'ignore_eos': True,
+        # 随机前缀避免 LCP 相似触发宿主 prompt 缓存同步 save/load（实测会卡死）
+        import random, string
+        tag = ''.join(random.choice(string.ascii_lowercase) for _ in range(64))
+        b = {'model': MODEL, 'prompt': tag + ' ' + FILLER[:20000], 'n_predict': 200, 'ignore_eos': True,
              'temperature': 0.7, 'stream': False, 'cache_prompt': False}
         try:
             resp = post(b)

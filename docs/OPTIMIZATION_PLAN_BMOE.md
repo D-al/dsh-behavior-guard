@@ -113,3 +113,76 @@ ep_speed.py 加 `--exe`，默认指向生产 build。
 - 每次 A/B 固定同一 build、同一 prompt、≥5 次中位 + 端到端 agent 步耗时
 - 判优必须看端到端，不看 decode t/s 单点（share=1.0 历史反转的教训）
 - 生产配置一个字不动，直到 P0/P1 全部有数据
+
+## 7. SSD/内存管理核实（2026-11-25 08:15）
+
+### 7.1 本机存储实况（纠正过时记忆）
+- **只有一块 NVMe**：Intel SSDPEKNU512GZ 477GB，逻辑盘 C:249GB + D:226GB
+- **E: 盘不存在**（记忆里"E: 1.9T NVMe"过时）
+- 模型在 D:/GGUF_Download（NVMe）；实测 D 盘：读 **2420 MB/s**、写 **1183 MB/s**（256MiB + fsync）
+- 结论：用户说"SSD 很快"**成立**，比旧记录 394 MB/s 快 6 倍
+
+### 7.2 bmoe 的 SSD 管理机制逐项判定
+
+| 机制 | 源码 | 我们适用？ | 理由 |
+|---|---|---|---|
+| `--release-mmap`（+46% decode）| session.cpp:1854-1872 | ❌ | unmap 文件 view + close section；我们 load_mode=none 无 mmap view 可释放 |
+| `choose_io_lanes` / O_DIRECT | planner.cpp:3672-3705 | ❌ | 针对 expert slice 流式读取测速；我们 expert 全在 RAM，decode 不读 SSD |
+| storage probe / headroom probe | hardware-planning.md:567/1076 | 部分 | 算法思想可借鉴（按实测定参数），具体实现针对流式 |
+| memory ledger | hardware-planning.md:602 | ✅ 可借鉴 | 算"进程可持有内存"比静态 64GB 估算准，用于定 cache 上限 |
+| GPU cache → RAM → flash 分层 | moe-streaming.md | ❌ | 模型 21GB < 64GB RAM，不走 flash 层 |
+
+### 7.3 关键结论：SSD 快无法转化为 decode 提升
+
+**decode 阶段完全不碰 SSD**（21GB 专家常驻 RAM + GPU cache），所以 NVMe 再快也不影响 token 生成速度。
+bmoe 的 flash 路径是为"模型 > RAM"（手机/16GB Mac/125B 模型）设计的，我们场景不适用。
+
+**SSD 唯一可能有收益**：一次性加载时间（21GB/2.4GB/s ≈ 9s 理论下限，实测 10-30s 已接近下限）
+→ 优化空间很小，不值得投入。
+
+### 7.4 可借鉴的残余项
+- **memory ledger 思想**：cache 大小从手调 1350 改成按实测可用内存 + 安全余量算（做成脚本，不改引擎）
+- 不做：release-mmap、O_DIRECT、io-lanes、flash 分层（全部流式专属）
+
+
+## 8. A/B 执行中的坑：prompt 缓存卡死（2026-11-25 08:15）
+
+第一次跑 `tools/nmax_ab.py` 卡死：server 日志停在 `f_sim_best=0.701, f_keep=0.985` + 
+`prompt processing progress=0.37`，7 分钟无进展；GPU util 100% 但功耗 **25.8W**、显存 7851MiB
+—— 记忆里记录的 WDDM 换页自旋症状（假 100%，实际空转）。
+
+**根因**：`--cache-ram 0` 只关了"新任务启动时存空闲槽"，**没关 LCP 相似触发的宿主 prompt 缓存同步 save/load**
+（记忆 2026-11-06 已记录此坑，本次复现）。测速脚本每次用同样的 `FILLER[:20000]` → 前缀相似 → 触发。
+
+**修复**：`tools/nmax_ab.py` 每个请求加 64 字符随机前缀，预热也用不同前缀，避免 LCP 相似。
+
+**纪律**：后续所有 A/B 测速必须：
+1. 每次请求用不同前缀（防缓存复用路径）
+2. 监控 GPU 功耗（<30W + util 100% = 卡死，立即终止）
+3. 设外层 timeout，不让卡死任务挂着占 22GB 内存
+
+
+## 9. 新增指标维度：首字延迟 / 冷启动（用户 2026-11-25 08:15 强调）
+
+用户指出：**首次加载、首字响应（TTFT）、冷启动也是性能指标**，不能只看 decode t/s。
+这个批评成立——bmoe 的核心卖点之一就是"长 prompt 首字 5s vs colibri 近 2 分钟"，
+而我们项目此前**从未专门测过 TTFT**（搜索日志/文档零命中），只有 prefill 吞吐（~800 t/s）和加载时间的零散记录。
+
+### 9.1 现状估算
+- 20K prompt ÷ 800 t/s ≈ **25 秒冷首字**（不含进程启动）
+- 进程启动→health 就绪：历史记录 10-30s（21GB 从 NVMe 读入 RAM，理论下限 21GB÷2.4GB/s≈9s）
+- 合计冷启动+首字约 35-55 秒——**这确实是值得优化的指标**
+
+### 9.2 测量能力（本次新增）
+`tools/ttft_probe.py`：把冷启动拆成三段分别测
+1. 进程启动 → health 就绪（模型加载）
+2. 请求发出 → 首个 token 到达（TTFT，含 prefill）
+3. 64 token 生成总耗时
+- 用流式 `/completion` 抓首 token，随机前缀避开 prompt 缓存卡死坑
+- **待 A/B 完成后运行**（当前 8081 被 nmax A/B 占用）
+
+### 9.3 与 SSD 的关系（修正 7.3 的结论）
+7.3 说"SSD 快无法转化为 decode 提升"——对 decode 成立，
+但**冷启动阶段完全受 SSD 读速约束**。D 盘实测读 2420MB/s 已接近 NVMe 上限，
+21GB 加载理论下限 9s，实测 10-30s 有优化空间但不大。
+真正可能的大头是 **prefill 阶段**（25s），需看 bmoe 的 prefill-device 机制能否借鉴（调研中）。
