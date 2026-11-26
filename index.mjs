@@ -1385,6 +1385,7 @@ export function apply(ctx, config) {
         // 2026-11-27：硬中断判据每轮重置（跨轮累积会误判正常探索）
         s.readFileCounts = new Map()
         s.ambiguousPaths = []
+        s.ambiguityInjected = false
         s.ambiguousName = ""
         s.disambigDenied = 0
         s.hardStepWarned = 0
@@ -3106,6 +3107,23 @@ function formatExecutorResult(pkg, exec) {
         } catch { /* ignore */ }
       }
 
+      // ── 歧义告知（2026-11-27）：把候选清单交给模型，让它先消歧 ──
+      // 依据：SAGE-Agent EVPI 触发澄清 + Ask-before-Plan 的 before execution。
+      if (cfg.disambiguationEnabled && s.ambiguousPaths?.length && !s.ambiguityInjected) {
+        try {
+          s.ambiguityInjected = true
+          s.sharedInjections += 1
+          const list0 = s.ambiguousPaths.map((p, i) => '  ' + (i + 1) + '. ' + p).join('\n')
+          trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'ambiguity_injected',
+            file: s.ambiguousName, step: s.step })
+          const t0 = '[harness 任务理解] 我看到多个同名 ' + s.ambiguousName + '：\n' + list0
+            + '\n先确认这次要改的是哪一个：看内容判断哪个包含目标配置，'
+            + '然后用带目录的完整路径操作。不需要反复读文件。'
+          const m0 = createMessage(t0, 'behavior-guard', s)
+          const msgs0 = Array.isArray(decision?.messages) ? [...decision.messages, m0] : [m0]
+          return { ...decision, messages: msgs0 }
+        } catch { /* 注入失败不影响主流程 */ }
+      }
       // ── step 层硬中断（2026-11-27 实测驱动）─────────────────────
       // 背景：所有闸门挂在 turn-stopping（模型"想结束"时）。但空转的特征恰恰是
       // "从不想结束"（read→read→read），闸门一次都轮不到。实测：改 1 个数值 55 次调用。
