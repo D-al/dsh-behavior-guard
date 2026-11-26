@@ -1287,7 +1287,9 @@ export function apply(ctx, config) {
         if (a.offset !== undefined && a.offset !== null && Number(a.offset) > 0) return next()
         // 自包含计数（不依赖 states 的 key 匹配——实测 exec 的 sid 与 states key 不一致）
         const sidey = sid0.replace(/^session-/, '')
-        const k = sidey + '|' + fp
+        // key 用 basename：同一文件会有相对/绝对两种写法，完整路径会把计数切碎
+        const _base0 = String(fp).split(/[\\/]/).pop() || fp
+        const k = sidey + '|' + _base0
         const n = readCounts.get(k) || 0
         trace({ ts: new Date().toISOString(), sid: sidey.slice(0, 8), kind: 'diag_preexec',
           tool: 'read', fp: fp.split(/[\\/]/).pop(), n })
