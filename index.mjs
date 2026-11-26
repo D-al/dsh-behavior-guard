@@ -2566,7 +2566,9 @@ function formatExecutorResult(pkg, exec) {
         try {
           if (state.ambiguityInjected && (state.writeCalls || 0) === 0) {
             const b0 = String(state.last?.body || '')
-            if (/(已|都|已经)(修改|改好|改完|改为)|完成修改|修改完成/.test(b0)) {
+            const claim0 = /(已|都|已经)(修改|改好|改完|改为)|完成修改|修改完成/.test(b0)
+            const present0 = !!state.presentCalled || /present/.test(String(state.last?.body || ''))
+            if (claim0 || present0) {
               hardFlags.push('声称改了文件但本轮零写入')
               trace({ ts: new Date().toISOString(), sid: String(sessionId || '').slice(0, 8),
                 kind: 'zero_write_claim', step: state.step })
@@ -3148,7 +3150,7 @@ function formatExecutorResult(pkg, exec) {
             const matched = pats0.filter(q => body0.toLowerCase().includes(String(q).toLowerCase()))
             if (matched.length) {
               const ln = body0.split('\n').findIndex(l => pats0.some(q => l.toLowerCase().includes(String(q).toLowerCase()))) + 1
-              hits0.push({ p: p0, line: ln, pat: matched[0] })
+              hits0.push({ p: abs0, line: ln, pat: matched[0] })
             } else misses0.push({ p: p0, why: 'no-target-string' })
           }
           trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'ambiguity_resolved',
