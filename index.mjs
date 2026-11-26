@@ -220,6 +220,9 @@ const DEFAULTS = {
   // verify-on-stop：改了文件却没有验证证据就否决退出（Hermes/OpenHands /goal，纯规则 0 LLM）
   // 2026-11-18 实测：抽象措辞被模型忽略 → 保留运行版的命令式 + 二次升级（优于 GitHub 软版）
   verifyOnStopEnabled: true,
+  // 全部修好：fsmSignalEnabled 此前从未声明 → FSM_SIGNAL 恒 falsy 死代码。
+  // 显式声明 false（保留代码供未来启用；不直接启用，避免未验证行为改变）。
+  fsmSignalEnabled: false,
   maxVerifyOnStopSteers: 2,   // 命令式 steer 最多 2 次（第 2 次升级措辞），防死循环
   // mind_state：跨步重复动作的中性事实注入（调研：质疑式措辞会让 76.6% 正确答案被推翻）
   mindStateEnabled: true,
@@ -660,10 +663,14 @@ function checkDualCopy(filePath) {
   const issues = []
   try {
     const prod = String(filePath || '').replace(/\\/g, '/')
-    const m = prod.match(/^(.*\/default-workspace\/[^/]+)\/(.*)$/)
-    if (!m || !prod.includes('/hardware-monitor-plugin/')) return issues
-    const src = m[1] + '/' + m[2]
-    const dst = 'D:/Brain/dsh-data/profiles/desktop/node_modules/dsh-hardware-monitor/' + m[2]
+    const m = prod.match(/^(.*\/default-workspace\/([^/]+))\/(.*)$/)
+    if (!m) return issues
+    const pluginName = m[2]
+    const rel = m[3]
+    const src = m[1] + '/' + rel
+    // 全部修好：泛化——不再硬编码 hardware-monitor-plugin，
+    // 从路径自动推断插件名，按 node_modules/<插件名>/<相对路径> 推断安装副本。
+    const dst = 'D:/Brain/dsh-data/profiles/desktop/node_modules/' + pluginName + '/' + rel
     if (!existsSync(src) || !existsSync(dst)) return issues
     const sh = (f) => { try { return createHash('sha256').update(readFileSync(f)).digest('hex').slice(0, 16) } catch { return '' } }
     const a = sh(src), b = sh(dst)
@@ -837,11 +844,33 @@ try {
   CRITBANK = JSON.parse(readFileSync(`${BENCH_DIR}/critbank.json`, 'utf8'))
 } catch { /* 缺失则静默不启 */ }
 
+// CritBank 状态表（2026-11-26）：crit_decay.py 会把有害教训标 retired，
+// 但 matchCritbank 此前只读数组不读状态 → retired 教训照样注入。
+// 缓存 + mtime 失效，避免每条 trail 都读磁盘。
+let _critbankStateCache = { mtime: 0, data: null }
+function critbankState() {
+  const p = 'D:/Brain/workspace/bench/_critbank_state.json'
+  try {
+    const st = statSync(p, { throwIfNoEntry: false })
+    if (!st) return null
+    const mt = st.mtimeMs
+    if (_critbankStateCache.data && _critbankStateCache.mtime === mt) return _critbankStateCache.data
+    const data = JSON.parse(readFileSync(p, 'utf8'))
+    _critbankStateCache = { mtime: mt, data }
+    return data
+  } catch { return null }
+}
+// CRITBANK_STATE-PATCHED (2026-11-26)
 function matchCritbank(s) {
   if (!Array.isArray(CRITBANK) || CRITBANK.length === 0) return []
   const trail = Array.isArray(s?.trail) ? s.trail.slice(-8) : []
   const hay = trail.map((x) => `${x?.name || ''} ${x?.result || ''} ${x?.status || ''}`).join(' ').toLowerCase()
+  const cstate = critbankState()
   return CRITBANK
+    .filter((c) => {
+      const st = cstate?.[c.id]
+      return !st || (st.status || 'active') === 'active'   // retired/superseded 不再注入
+    })
     .map((c) => ({ c, score: (c.tags || []).filter((t) => hay.includes(String(t).toLowerCase())).length }))
     .filter((x) => x.score > 0)
     .sort((a, b) => b.score - a.score)
@@ -1178,6 +1207,7 @@ export function apply(ctx, config) {
   const states = new Map()
   // 目标锚定（2026-11-26）：模块级持久化最初用户目标——state 在压缩后会重建，
   // 存在 s 上的 anchorInitial 会丢失，实测存档【初始任务】漂移了三次。
+  // ALL_REMAINING-PATCHED (2026-11-26)
   // WARGAME_GAPS-PATCHED (2026-11-26)
   // WARGAME_FIXES-PATCHED (2026-11-26)
   const goalAnchors = new Map()
@@ -1253,12 +1283,13 @@ export function apply(ctx, config) {
         s.toolCalls = 0
         s.healInjectedThisTurn = 0  // S24 每轮重置(会话累计不清)
         s.writeCalls = 0
+        s.e2eVerifiedThisTurn = false
         s.continuations = 0
         s.last = undefined
         s.sharedInjections = 0
         // 实验修复：硬闸门标记每轮重置（否则一个 turn 的 forceStop 污染后续所有 turn）
         s.forceStop = false; s.criticRejected = false; s.handoffBlocked = false
-        s.hardGateInjected = false
+        // hardGateInjected 死字段已删除（safetyBlock 用 safetyBlockCount/safetyFlags 取代）
         // gap 补修：safetyFlags 跨轮持久（不清），只清本轮计数
         s.safetyBlockCount = 0
         // S9：上轮未解决的审计问题 → 本轮开头回灌（有状态反馈，非前馈重新开始）
@@ -1447,6 +1478,8 @@ export function apply(ctx, config) {
           // P1-1：去掉裸 `-c\s` 与 `python -m`（装包/数据处理会误判为已验证）；
           // 只认明确的验证子命令（python -m pytest/unittest）或验证脚本/关键词。
           if (cmdTools.includes(callName) && /(verify_agent|pytest|npm test|python -m\s+(pytest|unittest)|test_|回归|语法检查|编译)/i.test(fullArgs)) s.verifyRan = true
+          // 全部修好：端到端性能验证标记（speed_probe / P4 / P5 / projectlab）
+          if (cmdTools.includes(callName) && /(speed_probe|projectlab|agentlab|replay_good|P[1-5]\b|端到端)/i.test(fullArgs)) s.e2eVerifiedThisTurn = true
           // S13-收紧：废弃 write+read 宽松规则（A1_6 假绿源头）。
           // 仅当 read 参数包含真实验证证据标记时才置位 verifyEvidence：
           //   - 含 [VERIFY] 关键词（todo 验收项标准写法）
@@ -1669,6 +1702,16 @@ export function apply(ctx, config) {
                       s.repeatedWriteCount = (s.repeatedWriteCount || 0) + 1
                       if (s.repeatedWriteCount >= 2) semIssues.push('连续 ' + (s.repeatedWriteCount + 1) + ' 次写入完全相同内容——重复写入不是进展，停止空转')
                     } else { s.repeatedWriteCount = 0; s.lastProductHash = h }
+                  }
+                } catch { /* ignore */ }
+                // 全部修好：性能伪优化硬规则——检测 assistant 正文的加速主张，
+                // 若无端到端验证工具调用证据 → semanticFail（防止 moe-cache-cpu-share 式伪加速复发）
+                try {
+                  const ab = String(s.last?.body || '')
+                  const perfClaim = /(?:加速|快了?|提升|优化后|speedup|\d+\s*%\s*(?:快|提升)|t\/s.*(?:涨|提升))/i.test(ab)
+                  if (perfClaim && !s.e2eVerifiedThisTurn) {
+                    semIssues.push('回答含性能加速主张但本轮无端到端验证证据（speed_probe/P4/P5/实测对比）——'
+                      + '项目铁律：任何加速必须用 P4/P5 端到端验证，decode t/s 是误导性指标')
                   }
                 } catch { /* ignore */ }
                 if (semIssues.length) {
@@ -3101,6 +3144,10 @@ function formatExecutorResult(pkg, exec) {
               if (consumedFeedback.has(key)) continue
               // 只注入本会话生成之后的新反馈
               if (f.ts && s.learnSinceTs && f.ts < s.learnSinceTs) continue
+              // 全部修好：消费端过滤测试 sid —— _pending_learn 86% 是 s1 压测假数据，
+              // 消费它等于"从假数据学习"。生产 sid 才进校准。
+              const fsid = String(f.sid || '')
+              if (/^(s1|s2|budget-|test-)/i.test(fsid)) continue
               const msg = createMessage(`[harness 经验沉淀] ${f.text}（来源：${f.source || '离线沉淀'}，仅供参考，不覆盖当前指令）`, 'learning-loop', s)
               const messages = Array.isArray(decision?.messages) ? [...decision.messages, msg] : [msg]
               s.learnedInjected = (s.learnedInjected || 0) + 1
