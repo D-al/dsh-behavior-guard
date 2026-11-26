@@ -3120,18 +3120,45 @@ function formatExecutorResult(pkg, exec) {
         } catch { /* ignore */ }
       }
 
-      // ── 歧义告知（2026-11-27）：把候选清单交给模型，让它先消歧 ──
-      // 依据：SAGE-Agent EVPI 触发澄清 + Ask-before-Plan 的 before execution。
+      // ── 确定性消歧（2026-11-27 早）：harness 自己选，把答案当既定事实注入 ──
+      // 根因：纠正器给 grep（代执行白名单只有 read/glob）→ 退化成"请抄参数"→ 主模型不抄。
       if (cfg.disambiguationEnabled && s.ambiguousPaths?.length && !s.ambiguityInjected) {
         try {
           s.ambiguityInjected = true
           s.sharedInjections += 1
-          const list0 = s.ambiguousPaths.map((p, i) => '  ' + (i + 1) + '. ' + p).join('\n')
-          trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'ambiguity_injected',
-            file: s.ambiguousName, step: s.step })
-          const t0 = '[harness 任务理解] 我发现两个同名的 ' + s.ambiguousName + '，需要先二选一：\n' + list0
-            + '\n这次任务只针对其中一个，不是两个都改。我得看内容挑出唯一真正含目标配置的那一个，'
-            + '然后用它的完整路径改一次。另一个不要动。'
+          const goal0 = String(s.initial || '')
+          const pats0 = []
+          const mm = goal0.match(/\b(\d{3,5})\s*px\b/i)
+          if (mm) pats0.push(mm[1])
+          if (/宽度|width/i.test(goal0)) pats0.push('min(', 'width')
+          const hits0 = []
+          const misses0 = []
+          for (const p0 of s.ambiguousPaths.slice(0, 6)) {
+            const ex0 = executeReadOnly({ tool: 'read', args: { file_path: p0 } })
+            if (!ex0 || !ex0.ok) { misses0.push({ p: p0, why: ex0?.error || 'red' }); continue }
+            const body0 = String(ex0.content || '')
+            const matched = pats0.filter(q => body0.toLowerCase().includes(String(q).toLowerCase()))
+            if (matched.length) {
+              const ln = body0.split('\n').findIndex(l => pats0.some(q => l.toLowerCase().includes(String(q).toLowerCase()))) + 1
+              hits0.push({ p: p0, line: ln, pat: matched[0] })
+            } else misses0.push({ p: p0, why: 'no-target-string' })
+          }
+          trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'ambiguity_resolved',
+            file: s.ambiguousName, hits: hits0.length, pats: pats0.join('|'), step: s.step })
+          let t0 = null
+          if (hits0.length === 1) {
+            const h = hits0[0]
+            const other = misses0.map(m => String(m.p).split(/[\\/]/).pop()).join('、')
+            t0 = '[harness 环境事实] 目标已确定：' + h.p + '（第 ' + h.line + ' 行含 ' + h.pat + '）。'
+              + (other ? '另一个同名文件 ' + other + ' 不含该配置，不要动它。' : '')
+              + '直接改这一处即可，不需要再搜索或确认。'
+          } else if (hits0.length > 1) {
+            t0 = '[harness 环境事实] 多个候选都含目标配置，需要你判断：' + hits0.map(h => h.p).join('、')
+              + '。请选一个用完整路径操作，不要全部改。'
+          } else {
+            t0 = '[harness 环境事实] 候选里没找到目标串（' + pats0.join('/') + '）。'
+              + '先用完整路径读一个候选确认内容，不要反复读。'
+          }
           const m0 = createMessage(t0, 'behavior-guard', s)
           const msgs0 = Array.isArray(decision?.messages) ? [...decision.messages, m0] : [m0]
           return { ...decision, messages: msgs0 }
