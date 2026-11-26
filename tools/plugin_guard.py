@@ -171,6 +171,44 @@ def check_profile_bundles(dry_run: bool) -> list[str]:
     return issues
 
 
+def check_ui_injection(dry_run: bool) -> list[str]:
+    """规则5（2026-11-26 白屏事故）：客户端 UI 注入守卫。
+
+    事故：dsh 为做"左侧可点进去看"，把 width:100% + height:100vh 的 iframe
+    注入到 `conversation.composer.dock`（输入框停靠区，本应放小按钮），
+    order:-100 抢占最前 → 整个会话窗口被撑成全屏 iframe（src='/ui/' 还 404）→ 白屏。
+    这是"dsh 改自己宿主 UI"的自我修改危险，配置层规则（bundle/文件）看不见。
+
+    检测：client.js 若同时出现"高危 slot + 全屏尺寸"→ 自动替换为停用版。
+    """
+    issues = []
+    disabled_template = Path(__file__).with_name('client-disabled.js')
+    for cjs in sorted(NODE_MODULES.glob('*/client.js')):
+        try:
+            text = cjs.read_text(encoding='utf-8')
+        except Exception:
+            continue
+        if '__ModuleLoader__' not in text:
+            continue
+        # 去掉注释行再判断——停用模板的注释里会提到危险 slot 名，不能误判自己
+        code = '\n'.join(l for l in text.splitlines() if not l.strip().startswith('//'))
+        # 高危 slot：输入框停靠区（本应小按钮，塞全屏组件会撑爆布局）
+        high_risk_slot = 'conversation.composer.dock' in code or 'conversation.input.dock' in code
+        # 全屏尺寸信号
+        fullscreen = bool(re.search(r"100vh|position\s*:\s*['\"]fixed", code))
+        if not (high_risk_slot and fullscreen):
+            continue
+        issues.append(f'DANGEROUS_UI_INJECTION {cjs.parent.name}: {cjs.name} '
+                      f'(dock slot + 100vh/fixed -> 白屏风险)')
+        if not dry_run and disabled_template.exists():
+            before = sha(cjs)
+            shutil.copy2(disabled_template, cjs)
+            log('AUTO_DISABLE_UI', path=str(cjs), before=before, after=sha(cjs))
+        elif dry_run:
+            log('DRY_DISABLE_UI', path=str(cjs))
+    return issues
+
+
 def check_critical_files(plugin: str, dry_run: bool) -> list[str]:
     """规则2：核心文件消失 -> 从权威源恢复。"""
     issues = []
@@ -243,6 +281,9 @@ def check_once(dry_run: bool, prev: dict | None) -> tuple[list[str], dict]:
 
     # 规则4：profile bundles 数组不得重复（2026-11-26 会话自停事故）
     issues.extend(check_profile_bundles(dry_run))
+
+    # 规则5：UI 注入守卫（2026-11-26 client.js 白屏事故）
+    issues.extend(check_ui_injection(dry_run))
 
     return issues, cur
 
