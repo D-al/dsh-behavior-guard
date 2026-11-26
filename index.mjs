@@ -240,9 +240,6 @@ const DEFAULTS = {
   // 实测触发场景：改 1 个数值时同一文件被 read 37 次。
   readGuardEnabled: true,
   readDenyThreshold: 3,   // 同一文件第 N 次 read 起拒绝（带 offset 的放行）
-  // ── read 结果有界视图（2026-11-27，SWE-agent ACI 原版做法）──
-  readSliceEnabled: true,
-  readSliceLines: 100,    // 首次 read 只给前 N 行，避免"再看一遍"的念头
   maxMindStateInjections: 6,     // 与 GitHub v2.8 对齐：覆盖长会话 140+ 事件空窗
   // ── Observability（2026-11-18）：per-step trace（零 LLM，追加写 jsonl）──
   // 社区共识（Keyhole/Praison/ZOOZ）：没有 trace 就无法度量，没有度量就无法优化。
@@ -1296,6 +1293,7 @@ export function apply(ctx, config) {
         const n = readCounts.get(k) || 0
         if (n >= cfg.readDenyThreshold) {
           const base = String(fp).split(/[\\/]/).pop() || fp
+          readCounts.delete(k)   // 节流：deny 后重新计数，避免永久禁止
           trace({ ts: new Date().toISOString(), sid: sidey.slice(0, 8), kind: 'read_denied',
             file: base, reads: n })
           info('[read-guard] deny ' + base + ' reads=' + n)
@@ -1307,35 +1305,7 @@ export function apply(ctx, config) {
       return next()
     }, { global: true })
     info('behavior-guard: read 门控已注册（tools/pre-execute）')
-  // ── read 结果裁剪（2026-11-27）：把超长 read 变成有界视图 ──
-  // 源码依据：dsh-tools/src/pipeline.ts:494 postExecute waterfall；
-  // PostToolDecision = {kind:'accept',content} | {kind:'accept',value} | {kind:'block',feedback}
-  // 与 pre-execute 的 deny 配合：先看有界视图 → 想看更多就用 offset（放行）→ 反复读才 deny。
-  try {
-    ctx.on('tools/post-execute', async (exec, result, next) => {
-      if (!cfg.readSliceEnabled || exec?.name !== 'read' || result?.isError) return next()
-      try {
-        const a = exec.arguments || {}
-        if (a.offset !== undefined && a.offset !== null && Number(a.offset) > 0) return next()
-        const blocks = Array.isArray(result?.content) ? result.content : []
-        const ti = blocks.findIndex(b => b?.type === 'text' && typeof b.text === 'string')
-        if (ti < 0) return next()
-        const text = blocks[ti].text
-        const lines = text.split('\n')
-        if (lines.length <= cfg.readSliceLines) return next()
-        const shown = lines.slice(0, cfg.readSliceLines).join('\n')
-        const extra = '\n\n[... 只显示前 ' + cfg.readSliceLines + ' 行（全文共 ' + lines.length + ' 行）。'
-          + '要看其他部分请用 offset/limit 指定范围，不必重复读整个文件 ...]'
-        const content = blocks.map((b, i) => i === ti ? { ...b, text: shown + extra } : b)
-        trace({ ts: new Date().toISOString(), sid: String(exec?.agent?.session?.id || '').replace(/^session-/, '').slice(0, 8),
-          kind: 'read_sliced', lines: lines.length, shown: cfg.readSliceLines })
-        info('[read-slice] ' + lines.length + ' -> ' + cfg.readSliceLines + ' lines')
-        return { kind: 'accept', content }
-      } catch { /* 裁剪失败按原样返回 */ }
-      return next()
-    }, { global: true })
-    info('behavior-guard: read 结果裁剪已注册（tools/post-execute）')
-  } catch (e) { info('behavior-guard: read 裁剪注册失败 ' + (e?.message || e)) }
+
 
   } catch (e) { info('behavior-guard: read 门控注册失败 ' + (e?.message || e)) }
 
@@ -1390,7 +1360,6 @@ export function apply(ctx, config) {
         s.controlCount = 0
         // 2026-11-27：硬中断判据每轮重置（跨轮累积会误判正常探索）
         s.readFileCounts = new Map()
-        readCounts.clear()
         s.hardStepWarned = 0
         s.phaseBoundaryInjected = false
         s.remindedNoTodo = false
