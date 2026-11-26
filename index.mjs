@@ -240,6 +240,9 @@ const DEFAULTS = {
   // 实测触发场景：改 1 个数值时同一文件被 read 37 次。
   readGuardEnabled: true,
   readDenyThreshold: 3,   // 同一文件第 N 次 read 起拒绝（带 offset 的放行）
+  // ── 消歧门控（2026-11-27，Plan Mode 最小版）──
+  disambiguationEnabled: true,
+  disambiguationMaxDeny: 2,   // 最多拒绝 2 次，防死循环
   maxMindStateInjections: 6,     // 与 GitHub v2.8 对齐：覆盖长会话 140+ 事件空窗
   // ── Observability（2026-11-18）：per-step trace（零 LLM，追加写 jsonl）──
   // 社区共识（Keyhole/Praison/ZOOZ）：没有 trace 就无法度量，没有度量就无法优化。
@@ -1277,6 +1280,27 @@ export function apply(ctx, config) {
   // 设计：同文件第 N 次读且未带 offset → deny，把"别再读了"变成接口行为而非劝说。
   try {
     ctx.on('tools/pre-execute', async (exec, next) => {
+      const st0 = String(exec?.agent?.session?.id || '').replace(/^session-/, '')
+      const s0 = states.get(String(exec?.agent?.session?.id || '')) || {}
+      // ── 消歧门控（2026-11-27）：写操作前必须先明确目标文件 ──
+      if (cfg.disambiguationEnabled && s0.ambiguousPaths?.length) {
+        try {
+          const wp = ['write', 'edit', 'apply_patch', 'multi_edit', 'create_file', 'str_replace', 'write_file']
+          if (wp.includes(exec?.name)) {
+            const fp0 = String(exec.arguments?.file_path || exec.arguments?.path || '')
+            const hasDir = /[\\/]/.test(fp0.replace(/^[A-Za-z]:/, ''))
+            if (!hasDir && (s0.disambigDenied || 0) < cfg.disambiguationMaxDeny) {
+              s0.disambigDenied = (s0.disambigDenied || 0) + 1
+              const list = s0.ambiguousPaths.map((p, i) => '  ' + (i + 1) + '. ' + p).join('\n')
+              trace({ ts: new Date().toISOString(), sid: st0.slice(0, 8), kind: 'ambiguity_denied',
+                file: s0.ambiguousName, n: s0.disambigDenied, step: s0.step })
+              return { kind: 'deny', reason: '我发现了多个同名 ' + s0.ambiguousName + '：\n' + list
+                + '\n在动手前需要先明确：你要改的是哪一个的完整路径？直接用带目录的完整路径重试即可。' }
+            }
+            if (hasDir) { s0.ambiguousPaths = []; s0.ambiguousName = '' }
+          }
+        } catch { /* 门控失败按放行处理 */ }
+      }
       if (!cfg.readGuardEnabled || exec?.name !== 'read') return next()
       try {
         const sid0 = String(exec?.agent?.session?.id || '')
@@ -1360,6 +1384,9 @@ export function apply(ctx, config) {
         s.controlCount = 0
         // 2026-11-27：硬中断判据每轮重置（跨轮累积会误判正常探索）
         s.readFileCounts = new Map()
+        s.ambiguousPaths = []
+        s.ambiguousName = ""
+        s.disambigDenied = 0
         s.hardStepWarned = 0
         s.phaseBoundaryInjected = false
         s.remindedNoTodo = false
@@ -1635,6 +1662,33 @@ export function apply(ctx, config) {
         return
       }
       if (event.type === 'tool/result') {
+        // ── 消歧检测（2026-11-27）：glob 返回同名文件 → 标记待消歧 ──
+        if (cfg.disambiguationEnabled) {
+          try {
+            const c0 = s.trail.filter((x) => x.kind === 'call').pop()
+            if (c0?.name === 'glob') {
+              const paths = event.data?.meta?.paths || []
+              const byName = new Map()
+              for (const p0 of paths) {
+                const b = String(p0).split(/[\\/]/).pop() || ''
+                if (!b) continue
+                if (!byName.has(b)) byName.set(b, [])
+                byName.get(b).push(String(p0))
+              }
+              for (const [b, arr] of byName) {
+                if (arr.length >= 2) {
+                  s.ambiguousPaths = arr
+                  s.ambiguousName = b
+                  s.disambigDenied = 0
+                  trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'ambiguity_detected',
+                    file: b, candidates: arr.length, step: s.step })
+                  info('[disambig] ' + arr.length + ' candidates named ' + b)
+                  break
+                }
+              }
+            }
+          } catch { /* 检测失败不影响主流程 */ }
+        }
         // ── 防线3：副作用型破坏识别（零 LLM）──
         // 事故依据：remove_bundle 返回 isError:false + kind:permission，实际 pnpm EPERM
         // 已清空无关插件目录。harness 不能只看 isError，要看 application/changed/pnpm 错误。
