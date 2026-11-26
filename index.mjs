@@ -3129,10 +3129,29 @@ function formatExecutorResult(pkg, exec) {
           s.ambiguityInjected = true
           s.sharedInjections += 1
           const goal0 = String(s.initial || '')
+          // ── 泛化目标串提取（2026-11-27 早·场景化）──
+          // 原来只认 \d{3,5}px / width —— 换个场景(颜色/文案/布尔)就瞎。
+          // 现在从指令里抽所有可定位 token，按长度降序匹配文件内容。
           const pats0 = []
-          const mm = goal0.match(/\b(\d{3,5})\s*px\b/i)
-          if (mm) pats0.push(mm[1])
-          if (/宽度|width/i.test(goal0)) pats0.push('min(', 'width')
+          const addPats = (arr) => { for (const q of arr) { if (q && String(q).length >= 2 && !pats0.includes(q)) pats0.push(String(q)) } }
+          // 1) 十六进制颜色（#1f2937 / #fff）
+          addPats(goal0.match(/#[0-9a-fA-F]{3,8}\b/g) || [])
+          // 2) 带单位数值（2300px / 12px / 60vh）
+          addPats(goal0.match(/\b\d+(?:\.\d+)?(?:px|vh|vw|rem|em|%)\b/gi) || [])
+          // 3) 纯数字（z-index 10001 / opacity 0.5）——至少 2 位避免噪音
+          addPats((goal0.match(/\b\d{2,}\b/g) || []))
+          // 4) 引号内字符串（文案/常量）
+          addPats(goal0.match(/['"]([^'"]{2,40})['"]/g)?.map(s => s.slice(1, -1)) || [])
+          // 5) 标识符（camelCase / snake_case / 带连字符的 CSS 属性）
+          addPats(goal0.match(/\b[a-zA-Z][a-zA-Z0-9_-]{3,30}\b/g) || [])
+          // 去噪：常见动词/代词不作为定位串
+          const STOP0 = /^(把|改|将|为|的|了|和|这个|那个|里面|一个|please|change|set|the|to|in|file|client|js|宽度|颜色|文案|开关|这个)$/i
+          const patsFiltered = pats0.filter(q => !STOP0.test(q))
+          pats0.length = 0; addPats(patsFiltered)
+          // 长度降序：更具体的串优先（'2300px' 优于 'width'）
+          pats0.sort((a, b) => b.length - a.length)
+          trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'ambiguity_pats',
+            pats: pats0.slice(0, 8).join('|'), step: s.step })
           const hits0 = []
           const misses0 = []
           for (const p0 of s.ambiguousPaths.slice(0, 6)) {
