@@ -3134,7 +3134,15 @@ function formatExecutorResult(pkg, exec) {
           const hits0 = []
           const misses0 = []
           for (const p0 of s.ambiguousPaths.slice(0, 6)) {
-            const ex0 = executeReadOnly({ tool: 'read', args: { file_path: p0 } })
+            // workspaceRoot 配置与实际 agent cwd 不一致 → 多根试探找真实文件
+            let abs0 = null
+            for (const r0 of [cfg.workspaceRoot, 'D:/Brain/dsh-data/profiles/desktop',
+              'D:/Brain/workspace/default-workspace', 'D:/Brain/dsh-data/profiles/default-workspace']) {
+              const cand0 = path.resolve(r0, p0)
+              try { if (existsSync(cand0)) { abs0 = cand0.replace(/\\/g, '/'); break } } catch {}
+            }
+            if (!abs0) { misses0.push({ p: p0, why: 'unresolvable' }); continue }
+            const ex0 = executeReadOnly({ tool: 'read', args: { file_path: abs0 } })
             if (!ex0 || !ex0.ok) { misses0.push({ p: p0, why: ex0?.error || 'red' }); continue }
             const body0 = String(ex0.content || '')
             const matched = pats0.filter(q => body0.toLowerCase().includes(String(q).toLowerCase()))
