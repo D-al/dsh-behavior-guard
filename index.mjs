@@ -568,10 +568,82 @@ print(json.dumps(missing))`
   return issues
 }
 
+
+// ── 行为根因 P0：语义检查（2026-11-26）──
+// 语法检查（node --check）抓不到 slot 名不存在、URL 404 这类语义错误——
+// 今天的失败全是语义级。这里做"能机械验证"的部分：slot 存在性 + 本地 URL 目标。
+const WORKSPACE_ROOT_FOR_CHECK = (() => {
+  const cands = [
+    process.env.WORKSPACE_ROOT, 'D:/Brain/workspace/default-workspace',
+    'C:/Users/Ad/Documents/deepseek-harness/default-workspace',
+  ].filter(Boolean)
+  return cands.find((c) => { try { return statSync(c, { throwIfNoEntry: false })?.isDirectory() } catch { return false } })
+    || 'D:/Brain/workspace/default-workspace'
+})()
+const ASAR_PATH = 'D:/Deepseek Harness/resources/app.asar'
+let _slotNamesCache = null
+function knownSlotNames() {
+  if (_slotNamesCache) return _slotNamesCache
+  try {
+    // 字节级扫描 asar 二进制，抽 slot 名（如 sidebar.right.pane.tab），不解压 asar。
+    const buf = readFileSync(ASAR_PATH)
+    const txt = buf.toString('latin1')
+    const found = new Set()
+    const re = /[a-z][a-z0-9]*(?:\.[a-z0-9]+){2,}/g
+    let m
+    while ((m = re.exec(txt))) {
+      const s = m[0]
+      if (s.startsWith('sidebar.') || s.startsWith('conversation.')) found.add(s)
+    }
+    _slotNamesCache = found
+    return found
+  } catch { _slotNamesCache = new Set(); return _slotNamesCache }
+}
+function checkSemanticIssues(filePath, content) {
+  const issues = []
+  const text = String(content || '')
+  // ① slot 存在性：ctx.slots.inject('X') 的 X 必须在 asar 里出现
+  const injectRe = /ctx\.slots\.inject\(\s*['"]([^'"]+)['"]/g
+  let m
+  const slots = knownSlotNames()
+  while ((m = injectRe.exec(text))) {
+    const slot = m[1]
+    if (slots.size && !slots.has(slot)) {
+      issues.push(`slot '${slot}' 在 DSH 中不存在（注册会被静默忽略）。可用 slot 示例：${[...slots].slice(0, 3).join(', ')}`)
+    }
+  }
+  // ② 本地 URL：'/ui' 这类绝对路径若 curl 404，提示（只对明确写在代码里的做检查）
+  const urlRe = /(?:src|href|window\.open)\s*[:=]\s*['"](\/[a-z0-9/_-]+)['"]/gi
+  while ((m = urlRe.exec(text))) {
+    const url = m[1]
+    // 只检查 /ui 这类已知易错路径，避免误报
+    if (/^\/ui(\/|$)/i.test(url)) issues.push(`URL '${url}' 可能 404（服务端未必注册该路由）——请用 / 或 /api/stats 等已确认路径`)
+  }
+  return issues
+}
+function checkWrittenSemantics(filePath) {
+  try {
+    const p = path.isAbsolute(String(filePath)) ? String(filePath) : path.join(WORKSPACE_ROOT_FOR_CHECK, String(filePath))
+    if (!existsSync(p)) return []
+    if (!/client\.js$/i.test(p)) return []
+    return checkSemanticIssues(p, readFileSync(p, 'utf8'))
+  } catch { return [] }
+}
+
+// BEHAVIOR_ROOTS-PATCHED (2026-11-26)
 // ── verify-on-edit：确定性语法检查（0 LLM 成本，仅 .py/.json/.yml/.yaml）──
 function checkSyntax(filePath) {
   if (!filePath) return null
-  const p = String(filePath)
+  let p = String(filePath)
+  // 行为根因P0-0（2026-11-26）：模型写相对路径（如 hardware-monitor-plugin/client.js），
+  // 文件真实在 workspace，但此前按 harness cwd 解析 → 5 次假"Cannot find module"，
+  // 模型反复 read 不存在的路径形成伪循环。修复：相对路径先按 workspace 根解析。
+  if (!path.isAbsolute(p)) {
+    for (const root of [WORKSPACE_ROOT_FOR_CHECK, path.dirname(WORKSPACE_ROOT_FOR_CHECK)]) {
+      const cand = path.join(root, p)
+      if (existsSync(cand)) { p = cand; break }
+    }
+  }
   const lower = p.toLowerCase()
   try {
     if (lower.endsWith('.json')) {
@@ -813,7 +885,7 @@ function summarizeAssistant(message) {
 // ── 防线2：从 reasoning 抓取"自我发现但未修复"的线索 ──
 // 事故依据：seq 481 "改成 @local 可能是问题……我应该恢复成 dsh-hardware-monitor"，
 // 但 compaction 抹掉后 seq 646 仍用坏源码覆盖。检测要保守：宁可漏报不可误报。
-const CORRECTION_RE = /(?:应该|需要|必须|应当|我要|我得)(?:把它|将其|把|将)?(?:改回|恢复|撤销|撤回|还原|修正|改回去|改成|换回|删掉)|(?:可能是?个?问题|是个错误|搞错了|不对劲|这是错的|猜错了|写错了)/;
+const CORRECTION_RE = /(?:应该|需要|必须|应当|我要|我得)(?:把它|将其|把|将)?(?:改回|恢复|撤销|撤回|还原|修正|改回去|改成|换回|删掉)|(?:可能是?个?问题|是个错误|搞错了|不对劲|这是错的|猜错了|写错了|不存在|静默忽略|(?:注册|注入)被忽略|这个[\w.]+无效|没有这个[\w.]+)/;
 const CORRECTION_RESOLVED_RE = /(?:已(?:经)?[^。！\n]{0,20}?(?:改回|恢复|撤销|撤回|还原|修正|修复|改成|改好)|已完成修复|now fixed|已改好|已修正)/;
 function captureOpenCorrection(s) {
   if (!s || !s.last || !s.last.reasoning) return
@@ -1050,7 +1122,12 @@ export function apply(ctx, config) {
     catch { /* ignore */ }
   }
 
+  // BEHAVIOR_REFINE-PATCHED (2026-11-26)
+  // GOAL_ANCHOR-PATCHED (2026-11-26)
   const states = new Map()
+  // 目标锚定（2026-11-26）：模块级持久化最初用户目标——state 在压缩后会重建，
+  // 存在 s 上的 anchorInitial 会丢失，实测存档【初始任务】漂移了三次。
+  const goalAnchors = new Map()
   const consumedFeedback = new Set() // 学习回注：进程内已消费的 feedback 行（避免重复注入）
 
   function stateOf(id) {
@@ -1144,6 +1221,30 @@ export function apply(ctx, config) {
         s.last = summarizeAssistant(event.data?.message)
         // 防线2：抓取 reasoning 里"发现问题但未修复"的线索，供压缩存档强制保留
         try { captureOpenCorrection(s) } catch { /* 纠错抓取失败不影响主流程 */ }
+        // 行为根因 P1：目标锚定——从模块级 Map 恢复（跨 state 重建不丢）
+        try {
+          const sk = String(s.sid || '')
+          if (sk) {
+            // 首次：以当前 s.initial 为准写入 Map（此时它还是最初的 user message）
+            if (!goalAnchors.has(sk) && s.initial) goalAnchors.set(sk, String(s.initial))
+            // 恢复：state 重建后 s.initial 可能已被污染，用 Map 里的原始目标覆盖回来
+            const anchored = goalAnchors.get(sk)
+            // 叠加语义：合法新增目标（崩溃/连接失败）不该被抹掉——加进 goalStack 而非覆盖。
+            if (anchored) {
+              if (!goalAnchors.has(sk + ':stack')) goalAnchors.set(sk + ':stack', [anchored])
+              const stack = goalAnchors.get(sk + ':stack')
+              // 新增目标在 s.latest（每条 user message 更新），s.initial 只首次赋值不覆盖。
+              // 用 latest 才能把"崩溃/连接失败"这类用户后续明确目标加进栈。
+              const cur = String(s.latest || s.initial || '').slice(0, 100)
+              if (cur && !stack.some((g) => String(g).slice(0, 100) === cur) && !/^(?:<system-reminder>|harness)/i.test(cur)) {
+                stack.push(cur)
+                if (stack.length > 4) stack.shift()
+              }
+              // 存档里显示完整目标栈（原始 + 新增），不丢合法新目标
+              s.goalStack = stack.slice()
+            }
+          }
+        } catch { /* ignore */ }
         // D5 无进展计数：上一步没有生产性调用（write/edit/todo_write）则 +1，否则清零
         s.noProgressSteps = s.lastStepProductive ? 0 : (s.noProgressSteps || 0) + 1
         s.lastStepProductive = false
@@ -1465,6 +1566,17 @@ export function apply(ctx, config) {
                 s.pendingInject = '[harness 语法检查] 刚写入的文件有语法错误：' + syntaxErr +
                   '\n修复该语法错误后继续（不要跳过——后续步骤都会基于坏文件）。'
                 info(`behavior-guard: verify-on-edit 发现语法错误 ${s.lastProduct}: ${String(syntaxErr).slice(0, 60)}`)
+              } else {
+                // 行为根因 P0：语法过了再做语义检查（slot/URL 存在性）
+                const semIssues = checkWrittenSemantics(s.lastProduct)
+                if (semIssues.length) {
+                  s.semanticFailCount = (s.semanticFailCount || 0) + 1
+                  s.pendingInject = '[harness 语义检查] 刚写入的文件存在语义问题：' + semIssues.join('；') +
+                    '\n这不是语法错误，node --check 查不出来。先修正再继续。'
+                  trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'semantic_check_fail',
+                    step: s.step, file: s.lastProduct, issues: semIssues.slice(0, 2) })
+                  info(`behavior-guard: 语义检查失败 ${s.lastProduct}: ${semIssues.join(';').slice(0, 100)}`)
+                }
               }
             }
             // ② FEP：比对预期 vs 观察 → 偏差驱动学习（纯规则零 LLM）
@@ -1549,8 +1661,15 @@ export function apply(ctx, config) {
           const sameArgsDoubleFail = tail.length === 2 &&
             tail.every((x) => x.status === 'FAIL' && x.name === c.name && x.args === c.args)
           if (sameNameCalls.length >= 3 && sameNameBad >= 2 && !s.pendingInject) {
-            s.pendingInject = `[harness 系统修正] 检测到 ${c.name} 已调用 ${sameNameCalls.length} 次、其中 ${sameNameBad} 次超时或无结果。重复探测不是进展——请停止该循环：若在等子智能体结论，其完成后会自动回注（可先输出阶段性报告结束本轮）；若是查询类，换方法（es.exe / 精确短路径）或问用户。`
+            // 行为根因 P1（2026-11-26）：D1 今天触发5次，每次只"换工具"不停止（read→grep→read→pwsh…），
+            // 长窗口 repeated probe 直到 step47。第3次起升级为"强制结束本轮"指令（零 LLM）。
+            const probeN = sameNameCalls.length
+            s.pendingInject = probeN >= 3
+              ? `[harness 强制停止] ${c.name} 已调用 ${probeN} 次（${sameNameBad} 次无结果）。重复探测不是进展。立即结束本轮，输出阶段性报告说明卡点与已确认事实——不要再调用任何工具继续探测。`
+              : `[harness 系统修正] 检测到 ${c.name} 已调用 ${sameNameCalls.length} 次、其中 ${sameNameBad} 次超时或无结果。`
             info(`audit-loop: D1 重复探测命中 (${c.name} x${sameNameCalls.length}, bad=${sameNameBad})`)
+            trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'd1_probe_guard',
+              tool: c.name, count: probeN, step: s.step, escalated: probeN >= 3 })
           } else if (sameArgsDoubleFail && !s.pendingCorrector) {
             s.pendingCorrector = true
             info(`audit-loop: D2 同参数双重失败命中 (${c.name})`)
@@ -2111,6 +2230,45 @@ function formatExecutorResult(pkg, exec) {
       if (state.continuations >= cfg.maxContinuationsPerTurn) return
       if (state.totalContinuations >= cfg.maxContinuationsPerSession) return
 
+      // ── 行为根因 P0：放弃式完成闸门（零 LLM）──
+      // 检测"让用户去 F12 粘代码/手动执行"但没有对应工具调用 → 未完成交付，不允许 completed。
+      try {
+        const body = String(state.last?.body || '')
+        // 收紧（2026-11-26 复核）：三条件——指令性移交 + 代码/控制台证据 + JS全局对象证据。
+        // 避免把"请确认走哪个方案"这类正常提问误判为放弃式交付。
+        const handoffRe = /(?:打开|按|去|请).{0,8}(?:F12|控制台)|(?:粘贴|复制).{0,12}(?:代码|脚本|到.*控制台)|(?:手动|自行)(?:执行|运行)/i
+        const jsEvidenceRe = /(?:window\.|document\.|Object\.keys\(|console\.log|querySelector|__ModuleLoader__)/i
+        const isHandoff = handoffRe.test(body) && jsEvidenceRe.test(body) && state.toolCalls === 0
+        if (isHandoff) {
+          agent.steer(createSteeringMessage(
+            '[harness 交付闸门] 检测到把工作甩给用户手动执行（F12/粘贴代码）且本轮无工具调用。'
+            + '这不是完成交付。要么自己调用工具完成验证，要么明确说明具体卡点并请求用户指示——'
+            + '不要以"让用户手动执行"收尾。', 'behavior-guard'))
+          return
+        }
+        trace({ ts: new Date().toISOString(), sid: sessionId.slice(0, 8), kind: 'handoff_gate',
+          step: state.step, blocked: isHandoff })
+      } catch { /* 闸门失败不影响主流程 */ }
+
+      // ── 行为根因 P0：让 Critic/深检真触发──
+      // 原设计所有闸门挂 presentCalled===true，但模型可能全程不调 present 就直接收尾。
+      // 修复：产物存在（lastProduct）但没 present 时，视为已 present，触发深检/Critic。
+      try {
+        if (!state.presentCalled && state.lastProduct && taskProfile(state).needsDeepReview) {
+          let verified = false
+          try {
+            const p = path.isAbsolute(state.lastProduct) ? state.lastProduct : path.join(WORKSPACE_ROOT_FOR_CHECK, state.lastProduct)
+            verified = statSync(p, { throwIfNoEntry: false })?.isFile() === true
+          } catch { verified = false }
+          if (verified && !state.autoPresented) {
+            state.presentCalled = true
+            state.autoPresented = true
+            trace({ ts: new Date().toISOString(), sid: sessionId.slice(0, 8), kind: 'auto_present_for_gate',
+              step: state.step, product: state.lastProduct })
+          }
+        }
+      } catch { /* ignore */ }
+
       // ── present 前确定性深检（独立于 Critic 开关：~0.3s，0 LLM）──
       if (cfg.deepCheckEnabled && taskProfile(state).needsDeepReview && state.presentCalled === true && state.deepChecked !== true) {
         state.deepChecked = true
@@ -2235,7 +2393,8 @@ function formatExecutorResult(pkg, exec) {
         }
       }
 
-      // ── verify-on-stop（合并补漏：改了文件没验证证据就否决退出，纯规则 0 LLM）──
+      // BEHAVIOR_ROOTS2-PATCHED (2026-11-26)
+// ── verify-on-stop（合并补漏：改了文件没验证证据就否决退出，纯规则 0 LLM）──
       // 依据：Hermes verify-on-stop / OpenHands /goal——验证从"循环内一步"移到"停止条件"。
       // 收尾验证门（无 present 声明时触发）。最多 cfg.maxVerifyOnStopSteers 次，避免死循环。
       // 2026-11-18 实测：steer 消息确实进了 inbox（seq30 spliced + seq34 user/message），
@@ -2261,6 +2420,17 @@ function formatExecutorResult(pkg, exec) {
             '单纯 read 刚写的普通文件不计入验证。'
         agent.steer(createSteeringMessage(text, 'behavior-guard'))
         return
+      }
+      // 行为根因 P1（2026-11-26）：verify_on_stop 到上限后完全放行 →
+      // 今天 14:57 第3次结束尝试（放弃式完成）畅通无阻。
+      // 修复：超限但本轮写过文件仍未验证时，不再重复 steer（避免死循环），
+      // 但打 trace 供 D5 门控识别，并让交付闸门（part1）兜底。
+      if (cfg.verifyOnStopEnabled && state.writeCalls > 0 && !state.verifyRan &&
+          (state.verifyOnStopCount || 0) >= cfg.maxVerifyOnStopSteers && !state.verifyOnStopOverflowLogged) {
+        state.verifyOnStopOverflowLogged = true
+        trace({ ts: new Date().toISOString(), sid: sessionId || '', kind: 'verify_on_stop_overflow',
+          step: state.step, count: state.verifyOnStopCount })
+        info(`behavior-guard: [verify-on-stop] 已达上限 ${state.verifyOnStopCount} 次仍未验证——交 D5/交付闸门兜底`)
       }
 
       const verdict = guardDecide(state)
@@ -2371,7 +2541,20 @@ function formatExecutorResult(pkg, exec) {
         // P0：压缩后重注入任务存档（最高优先级）
         if (s.pendingArchive && s.initial) {
           const parts = [cfg.archiveHeader]
-          parts.push('【初始任务】' + s.initial)
+          // 目标锚定（叠加）：原始目标 + 合法新增目标都显示，避免压缩把目标漂移固化
+          try {
+            const ak = String(s.sid || '')
+            const anchored = goalAnchors.get(ak)
+            const stack = goalAnchors.get(ak + ':stack') || (anchored ? [anchored] : [])
+            if (stack.length > 1) {
+              parts.push('【初始任务（原始）】' + String(stack[0]).slice(0, 300))
+              parts.push('【后续新增目标（均为用户明确提出）】' + stack.slice(1).map((g, i) => (i + 1) + '. ' + String(g).slice(0, 120)).join('；'))
+            } else if (anchored) {
+              parts.push('【初始任务】' + anchored)
+            } else {
+              parts.push('【初始任务】' + s.initial)
+            }
+          } catch { /* ignore */ parts.push('【初始任务】' + s.initial) }
           if (s.latest && s.latest !== s.initial) parts.push('【最新用户指令】' + s.latest)
           let archiveSig = ''
           try {
