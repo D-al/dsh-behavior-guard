@@ -1270,6 +1270,7 @@ export function apply(ctx, config) {
         lastIntentDriftStep: -99 }  // M3: 漂移时机（StepShield: 时机随机=没用）
       states.set(id, s)
     }
+  const readCounts = new Map()
   // ── read 门控（2026-11-27）：dsh tools/pre-execute waterfall 拦截 ──
   // 源码依据：dsh-tools/src/pipeline.ts:200 `ctx.waterfall(carrier,'tools/pre-execute',exec,...)`
   // 决策类型：{kind:'allow'} | {kind:'deny',reason} | {kind:'cancel'} | {kind:'ask'}
@@ -1278,27 +1279,30 @@ export function apply(ctx, config) {
     ctx.on('tools/pre-execute', async (exec, next) => {
       if (!cfg.readGuardEnabled || exec?.name !== 'read') return next()
       try {
-        const sid0 = exec?.agent?.session?.id ? String(exec.agent.session.id) : ''
-        if (!sid0) return next()
-        const st = states.get(sid0) || stateOf(sid0)
+        const sid0 = String(exec?.agent?.session?.id || '')
         const a = exec.arguments || {}
         const fp = String(a.file_path || a.path || '')
-        if (!fp) return next()
+        if (!sid0 || !fp) return next()
         // 带 offset 说明想看特定片段，放行
         if (a.offset !== undefined && a.offset !== null && Number(a.offset) > 0) return next()
-        const counts = st.readFileCounts instanceof Map ? st.readFileCounts : new Map()
-        const n = counts.get(fp) || 0
+        // 自包含计数（不依赖 states 的 key 匹配——实测 exec 的 sid 与 states key 不一致）
+        const sidey = sid0.replace(/^session-/, '')
+        const k = sidey + '|' + fp
+        const n = readCounts.get(k) || 0
+        trace({ ts: new Date().toISOString(), sid: sidey.slice(0, 8), kind: 'diag_preexec',
+          tool: 'read', fp: fp.split(/[\\/]/).pop(), n })
         if (n >= cfg.readDenyThreshold) {
           const base = String(fp).split(/[\\/]/).pop() || fp
-          trace({ ts: new Date().toISOString(), sid: sid0.slice(0, 8), kind: 'read_denied',
-            file: base, reads: n, step: st.step })
+          trace({ ts: new Date().toISOString(), sid: sidey.slice(0, 8), kind: 'read_denied',
+            file: base, reads: n })
           info('[read-guard] deny ' + base + ' reads=' + n)
           return { kind: 'deny', reason: '这个文件已经读过 ' + n + ' 次，内容不会因为再读一遍而变化。'
             + '如果只想看某一段，用 offset/limit 读指定范围；否则请直接改文件，或结束本轮说明卡在哪。' }
         }
+        readCounts.set(k, n + 1)
       } catch { /* 门控失败按放行处理 */ }
       return next()
-    })
+    }, { global: true })
     info('behavior-guard: read 门控已注册（tools/pre-execute）')
   } catch (e) { info('behavior-guard: read 门控注册失败 ' + (e?.message || e)) }
 
