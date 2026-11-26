@@ -24,7 +24,7 @@
 // ── S12: patch applied evidence marker (applyEvidence / 补丁应用标记) ──
 const PATCH_EVIDENCE_DIR = 'docs/archive/a16-patch-scripts'; // _apply_*.py targets live here
 
-import { randomUUID } from 'node:crypto'
+import { randomUUID, createHash } from 'node:crypto'
 import { writeFileSync, readFileSync, readdirSync, statSync, existsSync, appendFileSync, openSync, readSync, closeSync, renameSync } from 'node:fs'
 import path from 'node:path'
 import { execFile, execFileSync } from 'node:child_process'
@@ -1124,6 +1124,7 @@ export function apply(ctx, config) {
 
   // BEHAVIOR_REFINE-PATCHED (2026-11-26)
   // GOAL_ANCHOR-PATCHED (2026-11-26)
+  // EXPERIMENT_FIXES-PATCHED (2026-11-26)
   const states = new Map()
   // 目标锚定（2026-11-26）：模块级持久化最初用户目标——state 在压缩后会重建，
   // 存在 s 上的 anchorInitial 会丢失，实测存档【初始任务】漂移了三次。
@@ -1197,6 +1198,9 @@ export function apply(ctx, config) {
         s.continuations = 0
         s.last = undefined
         s.sharedInjections = 0
+        // 实验修复：硬闸门标记每轮重置（否则一个 turn 的 forceStop 污染后续所有 turn）
+        s.forceStop = false; s.criticRejected = false; s.handoffBlocked = false
+        s.hardGateInjected = false
         // S9：上轮未解决的审计问题 → 本轮开头回灌（有状态反馈，非前馈重新开始）
         if (cfg.reviewFeedbackEnabled && s.reviewState && !s.reviewState.resolved) {
           s.pendingReviewEcho = true
@@ -1667,6 +1671,9 @@ export function apply(ctx, config) {
             s.pendingInject = probeN >= 3
               ? `[harness 强制停止] ${c.name} 已调用 ${probeN} 次（${sameNameBad} 次无结果）。重复探测不是进展。立即结束本轮，输出阶段性报告说明卡点与已确认事实——不要再调用任何工具继续探测。`
               : `[harness 系统修正] 检测到 ${c.name} 已调用 ${sameNameCalls.length} 次、其中 ${sameNameBad} 次超时或无结果。`
+            // 硬标记（2026-11-26 实验）：原"强制停止"只是文本，模型继续跑到 step44。
+            // 置位后 turn-stopping 层会硬拦 completed，直到模型输出阶段性报告。
+            if (probeN >= 3) s.forceStop = true
             info(`audit-loop: D1 重复探测命中 (${c.name} x${sameNameCalls.length}, bad=${sameNameBad})`)
             trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'd1_probe_guard',
               tool: c.name, count: probeN, step: s.step, escalated: probeN >= 3 })
@@ -2230,6 +2237,28 @@ function formatExecutorResult(pkg, exec) {
       if (state.continuations >= cfg.maxContinuationsPerTurn) return
       if (state.totalContinuations >= cfg.maxContinuationsPerSession) return
 
+      // ── 硬闸门（2026-11-26 实验）：soft steer 被忽略的兜底 ──
+      // D1 forceStop / Critic REJECT / handoff 任一置位，且最后一条消息是纯文本收尾 →
+      // 不允许 completed，强制注入"输出阶段性报告"指令。
+      try {
+        const hardFlags = []
+        if (state.forceStop) hardFlags.push('重复探测已达上限')
+        if (state.criticRejected) hardFlags.push('产物评审未通过')
+        if (state.handoffBlocked) hardFlags.push('上一轮甩锅未被修正')
+        const lastMsgTC = state.last?.toolCalls ?? 0
+        if (hardFlags.length && lastMsgTC === 0 && !state.hardGateInjected) {
+          state.hardGateInjected = true
+          state.sharedInjections += 1
+          trace({ ts: new Date().toISOString(), sid: sessionId.slice(0, 8), kind: 'hard_gate_block',
+            step: state.step, flags: hardFlags })
+          agent.steer(createSteeringMessage(
+            '[harness 硬闸门] 本轮不能结束：' + hardFlags.join('；') + '。'
+            + '请输出一段阶段性报告说明已确认事实与卡点，不要说"已完成"——'
+            + '硬闸门会在这些标记清除前持续阻止 completed。', 'behavior-guard'))
+          return
+        }
+      } catch { /* 硬闸门失败不影响主流程 */ }
+
       // ── 行为根因 P0：放弃式完成闸门（零 LLM）──
       // 检测"让用户去 F12 粘代码/手动执行"但没有对应工具调用 → 未完成交付，不允许 completed。
       try {
@@ -2238,12 +2267,20 @@ function formatExecutorResult(pkg, exec) {
         // 避免把"请确认走哪个方案"这类正常提问误判为放弃式交付。
         const handoffRe = /(?:打开|按|去|请).{0,8}(?:F12|控制台)|(?:粘贴|复制).{0,12}(?:代码|脚本|到.*控制台)|(?:手动|自行)(?:执行|运行)/i
         const jsEvidenceRe = /(?:window\.|document\.|Object\.keys\(|console\.log|querySelector|__ModuleLoader__)/i
-        const isHandoff = handoffRe.test(body) && jsEvidenceRe.test(body) && state.toolCalls === 0
+        // 修复（2026-11-26 受控实验）：原条件 state.toolCalls===0（本轮累计）在"干了一堆活后甩锅"
+        // 场景永远不成立（实验 step44 toolCalls=44）。改为判断**最后一条 assistant 消息本身**
+        // 是否纯文本（toolCalls=0）——甩锅消息必然是纯文本。
+        const lastMsgToolCalls = state.last?.toolCalls ?? 0
+        const isHandoff = handoffRe.test(body) && jsEvidenceRe.test(body) && lastMsgToolCalls === 0
         if (isHandoff) {
+          state.handoffBlocked = true
+          state.sharedInjections += 1
+          trace({ ts: new Date().toISOString(), sid: sessionId.slice(0, 8), kind: 'handoff_gate',
+            step: state.step, blocked: true, lastMsgToolCalls })
           agent.steer(createSteeringMessage(
-            '[harness 交付闸门] 检测到把工作甩给用户手动执行（F12/粘贴代码）且本轮无工具调用。'
-            + '这不是完成交付。要么自己调用工具完成验证，要么明确说明具体卡点并请求用户指示——'
-            + '不要以"让用户手动执行"收尾。', 'behavior-guard'))
+            '[harness 交付闸门] 检测到把工作甩给用户手动执行（F12/粘贴代码/控制台）。'
+            + '这是未完成交付——即使前面做了很多步，最后一步甩锅不算完成。'
+            + '要么自己调用工具完成验证，要么明确说明具体卡点并请求用户指示。', 'behavior-guard'))
           return
         }
         trace({ ts: new Date().toISOString(), sid: sessionId.slice(0, 8), kind: 'handoff_gate',
@@ -2274,6 +2311,21 @@ function formatExecutorResult(pkg, exec) {
         state.deepChecked = true
         try {
           const deepIssues = checkArtifactDeep(state.lastProduct)
+          // 双副本一致性硬检查（2026-11-26 实验）：它声称"双位置同步 ✅"但实际不同步。
+          // 对 workspace 下的插件文件，比对 workspace 源与 node_modules 安装副本的 sha。
+          try {
+            const prod = String(state.lastProduct || '').replace(/\\/g, '/')
+            const m = prod.match(/^(.*\/default-workspace\/[^/]+)\/(.*)$/)
+            if (m && prod.includes('/hardware-monitor-plugin/')) {
+              const src = m[1] + '/' + m[2]
+              const dst = 'D:/Brain/dsh-data/profiles/desktop/node_modules/dsh-hardware-monitor/' + m[2]
+              if (existsSync(src) && existsSync(dst)) {
+                const sh = (f) => { try { return createHash('sha256').update(readFileSync(f)).digest('hex').slice(0, 16) } catch { return '' } }
+                const a = sh(src), b = sh(dst)
+                if (a && b && a !== b) deepIssues.push('双副本不同步：workspace 源(' + a + ') 与安装目录(' + b + ') 不一致——改了不生效，必须同步')
+              }
+            }
+          } catch { /* 比对失败不阻断 */ }
           // 交付物清单对照：todo 里未完成的 [VERIFY] 项（声明了验收却没做）
           try {
             const pendingVerify = (Array.isArray(state.todos) ? state.todos : [])
@@ -2319,6 +2371,7 @@ function formatExecutorResult(pkg, exec) {
             info(`behavior-guard: [Critic] ACCEPT session=${sessionId}`)
           } else if (critic && critic.verdict === 'REJECT') {
             state.sharedInjections += 1
+            state.criticRejected = true
             agent.steer(createSteeringMessage(
               '[harness 产物评审 C-REJECT] 独立评审员（只看产物不看过程）判定产物未达验收要求：' +
               (Array.isArray(critic.reasons) ? critic.reasons.join('；') : String(critic.reasons || '')) +
