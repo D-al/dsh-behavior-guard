@@ -2560,6 +2560,19 @@ function formatExecutorResult(pkg, exec) {
         if (sf.handoffBlocked || state.handoffBlocked) hardFlags.push('甩锅未被修正')
         if (sf.semanticFail) hardFlags.push('产物语义问题未修正')
         if (sf.verifyFail) hardFlags.push('收尾验证缺失')
+        // ── 零写入假完成守卫（2026-11-27 实测）──
+        // 实测：歧义告知后模型声称"两个 client.js 都已修改完成"，但 writeCalls=0，
+        // 产物一字未改。verify-on-stop 只在 writeCalls>0 时触发，漏掉这种幻觉。
+        try {
+          if (state.ambiguityInjected && (state.writeCalls || 0) === 0) {
+            const b0 = String(state.last?.body || '')
+            if (/(已|都|已经)(修改|改好|改完|改为)|完成修改|修改完成/.test(b0)) {
+              hardFlags.push('声称改了文件但本轮零写入')
+              trace({ ts: new Date().toISOString(), sid: String(sessionId || '').slice(0, 8),
+                kind: 'zero_write_claim', step: state.step })
+            }
+          }
+        } catch { /* 守卫失败不影响主流程 */ }
         // gap 补修：持续拦截直到标记清除——预算不再停止拦截，只升级措辞。
         // 会话硬上限 20 是极端兜底（模型死活不调用工具时避免永久卡死）。
         if (hardFlags.length && (state.safetySessionBlocks || 0) < 20) {
@@ -3116,9 +3129,9 @@ function formatExecutorResult(pkg, exec) {
           const list0 = s.ambiguousPaths.map((p, i) => '  ' + (i + 1) + '. ' + p).join('\n')
           trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'ambiguity_injected',
             file: s.ambiguousName, step: s.step })
-          const t0 = '[harness 任务理解] 我看到多个同名 ' + s.ambiguousName + '：\n' + list0
-            + '\n先确认这次要改的是哪一个：看内容判断哪个包含目标配置，'
-            + '然后用带目录的完整路径操作。不需要反复读文件。'
+          const t0 = '[harness 任务理解] 我发现两个同名的 ' + s.ambiguousName + '，需要先二选一：\n' + list0
+            + '\n这次任务只针对其中一个，不是两个都改。我得看内容挑出唯一真正含目标配置的那一个，'
+            + '然后用它的完整路径改一次。另一个不要动。'
           const m0 = createMessage(t0, 'behavior-guard', s)
           const msgs0 = Array.isArray(decision?.messages) ? [...decision.messages, m0] : [m0]
           return { ...decision, messages: msgs0 }
