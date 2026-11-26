@@ -2365,7 +2365,6 @@ function formatExecutorResult(pkg, exec) {
   }
 
   function guardDecide(state) {
-    try { writeFileSync('D:/llama.cpp/_dbg.log', 'guardDecide: last=' + JSON.stringify(state.last) + ' toolCalls=' + state.toolCalls + ' wC=' + state.writeCalls + ' cont=' + state.continuations + ' maxC=' + cfg.maxContinuationsPerTurn + ' blockEmpty=' + cfg.blockEmptyFinish + '\n') } catch (e) { try { writeFileSync('D:/llama.cpp/_dbg.log', 'trace-err ' + e + '\n', {flag:'a'}) } catch {} }
     const last = state.last
     if (last === undefined) return null
     if (last.toolCalls > 0) return null
@@ -2420,6 +2419,19 @@ function formatExecutorResult(pkg, exec) {
       // 必须在 continuations 短路之前——原设计短路后所有闸门跳过，是最大漏洞。
       // 持续拦截直到标记被真实动作清除；预算上限防死循环（每轮 3 次 / 每会话 8 次）。
       try {
+        // 2026-11-26 实测修复（结构缺陷）：统一安全闸门一旦 steer 就 return，
+        // 其后的 verify-on-stop / handoff-gate 永远不执行（实测 6 次闸门全部止步于此，
+        // diag_turnstop 零输出）。改法：在闸门之前先结算 verifyFail，并入 hardFlags 统一处理。
+        try {
+          if (cfg.verifyOnStopEnabled && state.writeCalls > 0 && !state.verifyRan &&
+              (state.verifyOnStopCount || 0) < cfg.maxVerifyOnStopSteers) {
+            state.verifyOnStopCount = (state.verifyOnStopCount || 0) + 1
+            if (!state.safetyFlags) state.safetyFlags = {}
+            state.safetyFlags.verifyFail = true
+            trace({ ts: new Date().toISOString(), sid: String(sessionId || '').slice(0, 8),
+              kind: 'verify_on_stop', step: state.step, n: state.verifyOnStopCount, via: 'pre-gate' })
+          }
+        } catch { /* 结算失败不影响主流程 */ }
         const sf = state.safetyFlags || {}
         const hardFlags = []
         if (sf.forceStop || state.forceStop) hardFlags.push('重复探测已达上限')
@@ -2438,12 +2450,17 @@ function formatExecutorResult(pkg, exec) {
           trace({ ts: new Date().toISOString(), sid: sessionId.slice(0, 8), kind: 'safety_gate_block',
             step: state.step, flags: hardFlags, n: state.safetyBlockCount, sessionN: state.safetySessionBlocks })
           const n = state.safetyBlockCount
+          // 2026-11-26 调研落地：祈使句 → 自述句（docs/RESEARCH_INJECT_VS_ANCHOR_20261126.md）
+          // 依据：① IHEval 开源模型指令冲突仅 48% 准确率 ② 项目实测 16 次祈使句拦截 7 次纯文本收尾
+          // ③ 模板锚点会检测 '[harness' 前缀并切换到纠正态自述句锚点（必须保留该前缀）
+          // 原则：第一人称、陈述事实、表达自己的判断；不下命令、不假设未发生的事。
+          const flagText = hardFlags.join('；')
           const msg = n <= 2
-            ? '这些标记只会在你真正调用工具修正/验证后清除——输出纯文本报告不算完成。下一步：调用工具修正产物，或跑验证命令确认。'
+            ? '我刚检查了一下：' + flagText + '，但产物还没真正改动。光写文字说明不算完成——我得直接改文件，或者跑一遍验证确认。'
             : n <= 5
-              ? '已连续拦截 ' + n + ' 次仍未修正。停止文字说明，立即调用 write/pwsh 工具修正产物或验证。'
-              : '已拦截 ' + n + ' 次。这是未完成交付；只有工具调用能解除拦截。不要再用文字声称完成。'
-          agent.steer(createSteeringMessage('[harness 安全闸门] 本轮不能结束（第 ' + n + ' 次）：' + hardFlags.join('；') + '。' + msg, 'behavior-guard'))
+              ? '我又检查了一遍（第 ' + n + ' 次）：' + flagText + '，还是没真正改动产物。说明我一直在原地打转，得停下来换个做法。'
+              : '这是第 ' + n + ' 次检查：' + flagText + '，我一直没动手改。继续写说明没有意义，我需要立刻改文件。'
+          agent.steer(createSteeringMessage('[harness] ' + msg, 'behavior-guard'))
           return
         }
         if (hardFlags.length && (state.safetySessionBlocks || 0) >= 20) {
@@ -2452,7 +2469,16 @@ function formatExecutorResult(pkg, exec) {
         }
       } catch { /* 安全闸门失败不影响主流程 */ }
 
-      if (state.continuations >= cfg.maxContinuationsPerTurn) return
+      // 2026-11-26 实测修复：原短路在此处，导致 verify-on-stop / handoff-gate 全部被跳过
+      // （实测：edit 改完文件 → 纯文本收尾 → turn/end completed，闸门 0 次拦截）。
+      // 加"待验证"例外：本轮写过文件但没验证时，必须让它走到 verify-on-stop。
+      const _needVerifyBypass = cfg.verifyOnStopEnabled && state.writeCalls > 0 && !state.verifyRan &&
+        (state.verifyOnStopCount || 0) < cfg.maxVerifyOnStopSteers
+      try { trace({ ts: new Date().toISOString(), sid: String(sessionId||'').slice(0,8), kind: 'diag_turnstop',
+        wC: state.writeCalls, vR: !!state.verifyRan, vE: state.verifyEvidence||0, cont: state.continuations,
+        maxC: cfg.maxContinuationsPerTurn, vCount: state.verifyOnStopCount||0, bypass: _needVerifyBypass,
+        bodyLen: String(state.last?.body||'').length, tc: state.last?.toolCalls }) } catch {}
+      if (state.continuations >= cfg.maxContinuationsPerTurn && !_needVerifyBypass) return
       if (state.totalContinuations >= cfg.maxContinuationsPerSession) return
 
       // 旧硬闸门已由上方 safetyBlock 统一接管（保留 state.forceStop 等字段兼容旧读取点）
@@ -2480,9 +2506,10 @@ function formatExecutorResult(pkg, exec) {
           trace({ ts: new Date().toISOString(), sid: sessionId.slice(0, 8), kind: 'handoff_gate',
             step: state.step, blocked: true, lastMsgToolCalls })
           agent.steer(createSteeringMessage(
-            '[harness 交付闸门] 检测到把工作甩给用户手动执行（F12/粘贴代码/控制台）。'
-            + '这是未完成交付——即使前面做了很多步，最后一步甩锅不算完成。'
-            + '要么自己调用工具完成验证，要么明确说明具体卡点并请求用户指示。', 'behavior-guard'))
+            // 2026-11-26 调研落地：祈使句 → 自述句（保留 [harness 前缀供模板锚点识别）
+            '[harness] 我刚发现自己在让你去手动操作（F12/粘贴代码/控制台），这其实是我该自己做的事。'
+            + '前面已经做了不少，最后一步推给用户不算完成——我得自己调用工具验证，'
+            + '如果确实卡住了，就直接说清卡在哪，而不是让你代劳。', 'behavior-guard'))
           return
         }
         trace({ ts: new Date().toISOString(), sid: sessionId.slice(0, 8), kind: 'handoff_gate',
