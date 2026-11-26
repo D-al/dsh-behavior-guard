@@ -1284,6 +1284,9 @@ export function apply(ctx, config) {
         s.healInjectedThisTurn = 0  // S24 每轮重置(会话累计不清)
         s.writeCalls = 0
         s.e2eVerifiedThisTurn = false
+        // 修 bug（2026-11-26 实测）：repeatedWriteCount/lastProductHash 跨轮污染，
+        // turn12 只写1次却报"连续3次相同"——本轮计数必须每轮清零。
+        s.repeatedWriteCount = 0; s.lastProductHash = ''
         s.continuations = 0
         s.last = undefined
         s.sharedInjections = 0
