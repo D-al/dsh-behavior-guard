@@ -191,6 +191,7 @@ const DEFAULTS = {
   todoEchoEnabled: true,
   maxEchoItems: 12,
   ledgerPath: `${BENCH_DIR}/_compaction_ledger.jsonl`,
+
   // 控制回合（meta-reasoning controller，零 LLM）：每 controlEverySteps 步注入一次控制器摘要，
   // 含 已确立/已排除/当前项/已用步数 + "列 2-3 个候选再选一个"——模拟 Meta Controller 的四个动作。
   controlEverySteps: 8,
@@ -227,6 +228,13 @@ const DEFAULTS = {
   // mind_state：跨步重复动作的中性事实注入（调研：质疑式措辞会让 76.6% 正确答案被推翻）
   mindStateEnabled: true,
   mindStateLoopThreshold: 3,
+  // ── step 层硬中断（2026-11-27）──
+  // 实测：闸门全挂 turn-stopping，模型陷入 read 循环时从不想结束 → 闸门全轮不到。
+  // L1 强提示（1 次机会）→ L2 reject 硬停。阈值取实测值的一半，留出正常探索余量。
+  hardStepBreakEnabled: true,
+  hardStepStreak: 5,
+  sameFileReadLimit: 3,
+  hardStepGrace: 2,
   maxMindStateInjections: 6,     // 与 GitHub v2.8 对齐：覆盖长会话 140+ 事件空窗
   // ── Observability（2026-11-18）：per-step trace（零 LLM，追加写 jsonl）──
   // 社区共识（Keyhole/Praison/ZOOZ）：没有 trace 就无法度量，没有度量就无法优化。
@@ -1306,6 +1314,9 @@ export function apply(ctx, config) {
         // continuity P1 计数重置
         s.turnTodoInjections = 0
         s.controlCount = 0
+        // 2026-11-27：硬中断判据每轮重置（跨轮累积会误判正常探索）
+        s.readFileCounts = new Map()
+        s.hardStepWarned = 0
         s.phaseBoundaryInjected = false
         s.remindedNoTodo = false
         // D4 present-gate 本轮重置
@@ -1434,6 +1445,17 @@ export function apply(ctx, config) {
         s.toolCalls += 1
         if (cfg.writeTools.includes(String(event.data?.name ?? ''))) { s.writeCalls += 1; s.stepsSinceWrite = 0 }
         else { s.stepsSinceWrite = (s.stepsSinceWrite || 0) + 1 }
+        // 2026-11-27：记录 read 的文件路径计数（硬中断判据）
+        try {
+          if (String(event.data?.name || '') === 'read') {
+            const _a = JSON.parse(String(event.data?.arguments || '{}'))
+            const _fp = String(_a.file_path || _a.path || '')
+            if (_fp) {
+              if (!(s.readFileCounts instanceof Map)) s.readFileCounts = new Map()
+              s.readFileCounts.set(_fp, (s.readFileCounts.get(_fp) || 0) + 1)
+            }
+          }
+        } catch { /* 路径解析失败忽略 */ }
         // 安全闸门标记清除（2026-11-26）：模型真正调用工具=在行动，不是甩锅。
         // handoffBlocked 在任意工具调用后清除；forceStop 在写/命令类工具后清除。
         try {
@@ -2984,6 +3006,42 @@ function formatExecutorResult(pkg, exec) {
             return { ...decision, messages }
           }
         } catch { /* ignore */ }
+      }
+
+      // ── step 层硬中断（2026-11-27 实测驱动）─────────────────────
+      // 背景：所有闸门挂在 turn-stopping（模型"想结束"时）。但空转的特征恰恰是
+      // "从不想结束"（read→read→read），闸门一次都轮不到。实测：改 1 个数值 55 次调用。
+      // L1：连续 N 步无 write 且同一文件被读 K 次 → 注入一次强提示（给改观机会）
+      // L2：警告后仍未改观 → reject 硬停本轮（turnEnds=blocked），止损
+      if (cfg.hardStepBreakEnabled) {
+        try {
+          const _streak = s.stepsSinceWrite || 0
+          const _counts = s.readFileCounts instanceof Map ? s.readFileCounts : new Map()
+          let _worstPath = '', _worstN = 0
+          for (const [_p, _n] of _counts) { if (_n > _worstN) { _worstN = _n; _worstPath = _p } }
+          if (_streak >= cfg.hardStepStreak && _worstN >= cfg.sameFileReadLimit) {
+            const _base = String(_worstPath).split(/[\\/]/).pop() || _worstPath
+            if (!s.hardStepWarned) {
+              s.hardStepWarned = s.step
+              s.sharedInjections += 1
+              trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'step_hard_warn',
+                step: s.step, streak: _streak, reads: _worstN, file: _base })
+              info('[step-hardbreak] L1 warn step=' + s.step + ' streak=' + _streak + ' reads=' + _worstN)
+              const _t = '[harness 状态] 我注意到自己已经连续 ' + _streak + ' 步没有改动任何文件，'
+                + '而且把 ' + _base + ' 读了 ' + _worstN + ' 次——它的内容不会因为再读一遍而变化。'
+                + '现在我必须做个决定：直接改文件，或者结束本轮说清卡在哪。'
+              const _m = createMessage(_t, 'behavior-guard', s)
+              const _msgs = Array.isArray(decision?.messages) ? [...decision.messages, _m] : [_m]
+              return { ...decision, messages: _msgs }
+            }
+            if (s.step - s.hardStepWarned >= cfg.hardStepGrace) {
+              trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'step_hard_stop',
+                step: s.step, streak: _streak, reads: _worstN, file: _base })
+              info('[step-hardbreak] L2 reject step=' + s.step + ' streak=' + _streak + ' reads=' + _worstN)
+              return { kind: 'reject', reason: '连续 ' + _streak + ' 步无改动，且 ' + _base + ' 已被读 ' + _worstN + ' 次' }
+            }
+          }
+        } catch { /* 硬中断失败不影响主流程 */ }
       }
 
       // ── 控制回合（meta-reasoning controller，每 N 步一次，零 LLM）──
