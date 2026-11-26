@@ -19,13 +19,18 @@
    - `verifyFail`（verify_on_stop 溢出）
 3. **持续拦截**：不再"拦一次就作废"。任一标记存在 → 每次 turn-stopping 都拦，
    直到标记被真实动作清除。
-4. **预算上限防死循环**：每轮 3 次、每会话 8 次（`safetyBlockCount`/`safetySessionBlocks`），
-   用完打 `safety_gate_exhausted` trace 后放行——避免无限循环卡死会话。
-5. **标记清除条件**：
+4. **跨轮持久**（gap 补修）：`safetyFlags` 存模块级 `safetyFlagsMap`（仿 goalAnchors），
+   state 引用同一对象，turn/start **只清本轮计数、不清标记**。原设计每轮清零是漏洞，
+   模型只要拖到下一轮就能绕过拦截。
+5. **预算只升级措辞、不停止拦截**（gap 补修）：原设计每轮 3 次 / 每会话 8 次用完就放行，
+   第 4 次甩锅穿透。改为**持续拦截**——预算只用来升级提示措辞（1-2 次温和、3-5 次强硬、
+   6+ 次最后通牒），会话硬上限 20 是极端兜底（模型死活不调工具时避免永久卡死）。
+6. **标记清除条件**（gap 补修后）：
    - `handoffBlocked`：任意工具调用（模型在行动而非甩锅）
    - `forceStop`：写/命令类工具（真正推进）
    - `verifyFail`：跑含 verify/test/compile 关键词的验证命令
-   - `criticRejected`：输出 >40 字且含"卡点/阶段性/已完成"等的状态报告
+   - `criticRejected`：**只由写/命令类工具清除**——原来"输出 >40 字含卡点/阶段性的报告就清"
+     被 seq1649 的"阶段性卡点报告"命中，等于换说法即绕过，已删除
    - `semanticFail`：下一次写后语义检查通过自动清除
 
 ## 8 项修复逐条
@@ -51,15 +56,18 @@
 
 ## 验证
 - `test_wargame_fixes.mjs`：8 项修复 + 两版一致性，全部 PASS
-- `replay_attack.mjs`：用攻击脚本 7 个真实动作逐条回放，全部有对应防线
-- 两版 `node --check` 通过、幂等 `--check` 通过
-- dsh 已重启（17:37）
+- `test_wargame_gaps.mjs`：4 个 gap 补修，全部 PASS
+- `replay_attack.mjs`：用攻击脚本 7 个真实动作逐条回放，7/7 全有对应防线
+- 两版 `node --check` 通过、7 个补丁幂等 `--check` 全通过
+- dsh 已重启（17:41）
 
 ## 诚实边界
 - 仍是**静态代码路径 + 单元级回放验证**，没有真实再跑一次受控实验——
-  运行时标记清除的真实行为（尤其"状态报告清 criticRejected"的正则）需实测。
-- slot 用途映射基于 slot 名前缀规律（sidebar.*=导航等），
-  DSH 若增加新 slot 前缀可能误报/漏报——映射表可配置但需维护。
-- 预算 3/8 是防死循环的妥协：用完仍会放行。若模型在预算内不改，最终仍能 completed——
+  运行时标记清除的真实行为需实测。
+- slot 用途映射基于 slot 名前缀规律（sidebar.*=导航等），已加存在性白名单
+  （`settings.section` 在 asar 中不存在，只有 `settings.section.icon`）——
+  DSH 若增加新 slot 前缀仍需维护映射表。
+- 会话硬上限 20 是防死循环兜底：极端情况（模型 20 次都不调工具）仍会放行。
   真正解决需要 dsh 侧 veto 接口。
-- `safetyBlockCount` 每轮重置，`safetySessionBlocks` 会话级；跨会话不延续。
+- `safetyFlags` 跨轮持久但跨会话不延续；`safetyBlockCount` 每轮重置用于措辞升级，
+  `safetySessionBlocks` 会话级累计。
