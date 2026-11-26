@@ -235,6 +235,11 @@ const DEFAULTS = {
   hardStepStreak: 5,
   sameFileReadLimit: 3,
   hardStepGrace: 2,
+  // ── read 门控（2026-11-27，ACI 做法）──
+  // SWE-agent 论文：把"有界文件视图"做进接口，而不是靠提示词劝阻。
+  // 实测触发场景：改 1 个数值时同一文件被 read 37 次。
+  readGuardEnabled: true,
+  readDenyThreshold: 3,   // 同一文件第 N 次 read 起拒绝（带 offset 的放行）
   maxMindStateInjections: 6,     // 与 GitHub v2.8 对齐：覆盖长会话 140+ 事件空窗
   // ── Observability（2026-11-18）：per-step trace（零 LLM，追加写 jsonl）──
   // 社区共识（Keyhole/Praison/ZOOZ）：没有 trace 就无法度量，没有度量就无法优化。
@@ -1265,6 +1270,38 @@ export function apply(ctx, config) {
         lastIntentDriftStep: -99 }  // M3: 漂移时机（StepShield: 时机随机=没用）
       states.set(id, s)
     }
+  // ── read 门控（2026-11-27）：dsh tools/pre-execute waterfall 拦截 ──
+  // 源码依据：dsh-tools/src/pipeline.ts:200 `ctx.waterfall(carrier,'tools/pre-execute',exec,...)`
+  // 决策类型：{kind:'allow'} | {kind:'deny',reason} | {kind:'cancel'} | {kind:'ask'}
+  // 设计：同文件第 N 次读且未带 offset → deny，把"别再读了"变成接口行为而非劝说。
+  try {
+    ctx.on('tools/pre-execute', async (exec, next) => {
+      if (!cfg.readGuardEnabled || exec?.name !== 'read') return next()
+      try {
+        const sid0 = exec?.agent?.session?.id ? String(exec.agent.session.id) : ''
+        if (!sid0) return next()
+        const st = states.get(sid0) || stateOf(sid0)
+        const a = exec.arguments || {}
+        const fp = String(a.file_path || a.path || '')
+        if (!fp) return next()
+        // 带 offset 说明想看特定片段，放行
+        if (a.offset !== undefined && a.offset !== null && Number(a.offset) > 0) return next()
+        const counts = st.readFileCounts instanceof Map ? st.readFileCounts : new Map()
+        const n = counts.get(fp) || 0
+        if (n >= cfg.readDenyThreshold) {
+          const base = String(fp).split(/[\\/]/).pop() || fp
+          trace({ ts: new Date().toISOString(), sid: sid0.slice(0, 8), kind: 'read_denied',
+            file: base, reads: n, step: st.step })
+          info('[read-guard] deny ' + base + ' reads=' + n)
+          return { kind: 'deny', reason: '这个文件已经读过 ' + n + ' 次，内容不会因为再读一遍而变化。'
+            + '如果只想看某一段，用 offset/limit 读指定范围；否则请直接改文件，或结束本轮说明卡在哪。' }
+        }
+      } catch { /* 门控失败按放行处理 */ }
+      return next()
+    })
+    info('behavior-guard: read 门控已注册（tools/pre-execute）')
+  } catch (e) { info('behavior-guard: read 门控注册失败 ' + (e?.message || e)) }
+
     // S3：让 trace 自动带当前 state 的 turn/controlTotal（频次审计可区分跨轮/跨会话）
     if (trace.setActiveState) trace.setActiveState(s)
     return s
