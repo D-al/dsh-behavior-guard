@@ -1207,7 +1207,8 @@ export function apply(ctx, config) {
   const states = new Map()
   // 目标锚定（2026-11-26）：模块级持久化最初用户目标——state 在压缩后会重建，
   // 存在 s 上的 anchorInitial 会丢失，实测存档【初始任务】漂移了三次。
-  // ALL_REMAINING-PATCHED (2026-11-26)
+  // AUDIT_ALLFIX-PATCHED (2026-11-26)
+// ALL_REMAINING-PATCHED (2026-11-26)
   // WARGAME_GAPS-PATCHED (2026-11-26)
   // WARGAME_FIXES-PATCHED (2026-11-26)
   const goalAnchors = new Map()
@@ -1431,7 +1432,8 @@ export function apply(ctx, config) {
           info('behavior-guard: [S22] disabled tool detected: ' + s22_name);
         }
         s.toolCalls += 1
-        if (cfg.writeTools.includes(String(event.data?.name ?? ''))) s.writeCalls += 1
+        if (cfg.writeTools.includes(String(event.data?.name ?? ''))) { s.writeCalls += 1; s.stepsSinceWrite = 0 }
+        else { s.stepsSinceWrite = (s.stepsSinceWrite || 0) + 1 }
         // 安全闸门标记清除（2026-11-26）：模型真正调用工具=在行动，不是甩锅。
         // handoffBlocked 在任意工具调用后清除；forceStop 在写/命令类工具后清除。
         try {
@@ -1697,14 +1699,37 @@ export function apply(ctx, config) {
                 const shaIssues = checkDualCopy(s.lastProduct)
                 semIssues.push(...shaIssues)
                 // ③ 连续相同内容写入（攻击 A2：连写3次相同 client.js）
+                // P0 修复（2026-11-26 审计实测）：原实现同一 step 会多次进入此检查 →
+                // 计数虚增（实际写2次却报"3次"）。加同 step 守卫，只计一次。
+                // 另：文案改为差异反馈（给出具体 sha 与该做什么），而非"重复写入不是进展"。
                 try {
                   const absP = path.isAbsolute(String(s.lastProduct)) ? String(s.lastProduct) : path.join(WORKSPACE_ROOT_FOR_CHECK, String(s.lastProduct))
-                  if (existsSync(absP)) {
+                  const checkKey = String(s.step) + '|' + absP
+                  if (existsSync(absP) && s._lastRepeatCheckKey !== checkKey) {
+                    s._lastRepeatCheckKey = checkKey
                     const h = createHash('sha256').update(readFileSync(absP)).digest('hex').slice(0, 16)
                     if (h === s.lastProductHash) {
                       s.repeatedWriteCount = (s.repeatedWriteCount || 0) + 1
-                      if (s.repeatedWriteCount >= 2) semIssues.push('连续 ' + (s.repeatedWriteCount + 1) + ' 次写入完全相同内容——重复写入不是进展，停止空转')
-                    } else { s.repeatedWriteCount = 0; s.lastProductHash = h }
+                      if (s.repeatedWriteCount >= 2) {
+                        semIssues.push('这个文件内容与上次写入完全相同（sha ' + h + '，已连续 '
+                          + (s.repeatedWriteCount + 1) + ' 次）。说明修改没有落到文件里：'
+                          + '先 read 出当前内容确认实际文本，再针对具体行改——不要整篇重写同一份内容。')
+                      }
+                    } else {
+                      const prev = s.lastProductHash
+                      s.repeatedWriteCount = 0; s.lastProductHash = h
+                      if (prev) s.lastProductChangeNote = '内容已变化（' + prev + ' → ' + h + '）'
+                    }
+                  }
+                } catch { /* ignore */ }
+                // P1 修复（2026-11-26 审计 E2）：言行一致性——正文声称"已重写/已修改/已更新"，
+                // 但本轮产物 sha 与上次相同 → 说明只是嘴上说改了。
+                try {
+                  const claimBody = String(s.last?.body || '')
+                  const claimRewrite = /(?:已(?:经)?(?:重写|修改|改写|更新|修好|完成修改)|重新(?:写|实现)了)/.test(claimBody)
+                  if (claimRewrite && s.repeatedWriteCount >= 1) {
+                    semIssues.push('你在正文里说已经重写/修改，但这个文件的内容和上次完全相同（sha 未变）。'
+                      + '实际没有改到——不要用文字声称完成，请真正修改文件内容或说明具体卡在哪一行。')
                   }
                 } catch { /* ignore */ }
                 // 全部修好：性能伪优化硬规则——检测 assistant 正文的加速主张，
@@ -1745,6 +1770,14 @@ export function apply(ctx, config) {
                 // 当场可观察的确定性偏差：产物未落盘。verified 是跨步骤状态，
                 // 不能在写完成瞬间判"未验证"（验证本就在后续步骤发生）——延后到 turn-stopping 判。
                 if (exp.expected.fileExists && !obs.fileExists) deviations.push('product-missing')
+                // P3 修复（2026-11-26 审计）：原 converged 只看"文件存在"，
+                // 连写 6 次相同内容仍报 converged:true。加：write 类工具后产物 hash 未变即判未收敛。
+                try {
+                  if (/^(write|edit|apply_patch)$/i.test(String(exp.tool || '')) && exp.expected.fileExists && obs.fileExists) {
+                    const _h = createHash('sha256').update(readFileSync(String(exp.target))).digest('hex').slice(0, 16)
+                    if (state.lastProductHash && _h === state.lastProductHash) deviations.push('no-content-change')
+                  }
+                } catch { /* ignore */ }
                 const cycle = {
                   ts: new Date().toISOString(), sid: s.sid || '', step: s.step,
                   tool: exp.tool, target: exp.target, expected: exp.expected, observed: obs,
@@ -2430,7 +2463,9 @@ function formatExecutorResult(pkg, exec) {
         const body = String(state.last?.body || '')
         // 收紧（2026-11-26 复核）：三条件——指令性移交 + 代码/控制台证据 + JS全局对象证据。
         // 避免把"请确认走哪个方案"这类正常提问误判为放弃式交付。
-        const handoffRe = /(?:打开|按|去|请).{0,8}(?:F12|控制台)|(?:粘贴|复制).{0,12}(?:代码|脚本|到.*控制台)|(?:手动|自行)(?:执行|运行)/i
+        // P1 修复（2026-11-26 审计 E4）：原正则只认 F12/控制台/粘贴代码，
+        // 认不出"请你重启 DSH / 截图给我 / 测试后告诉我"这类软甩锅（实测 2 次全放行）。
+        const handoffRe = /(?:打开|按|去|请).{0,8}(?:F12|控制台)|(?:粘贴|复制).{0,12}(?:代码|脚本|到.*控制台)|(?:手动|自行)(?:执行|运行)|(?:请|你).{0,10}(?:重启|重新启动|关闭).{0,10}(?:DSH|应用|程序|dsh)|(?:请|你).{0,6}(?:截图|测试).{0,14}(?:给我|反馈|告诉我|后)|(?:测试结果|反馈).{0,10}(?:告诉我|贴给|发我)/i
         const jsEvidenceRe = /(?:window\.|document\.|Object\.keys\(|console\.log|querySelector|__ModuleLoader__)/i
         // 修复（2026-11-26 受控实验）：原条件 state.toolCalls===0（本轮累计）在"干了一堆活后甩锅"
         // 场景永远不成立（实验 step44 toolCalls=44）。改为判断**最后一条 assistant 消息本身**
@@ -2630,6 +2665,19 @@ function formatExecutorResult(pkg, exec) {
         agent.steer(createSteeringMessage(text, 'behavior-guard'))
         return
       }
+      // P2 修复（2026-11-26 审计 E13）：verify_on_stop 原只数"是否有验证类调用"，
+      // 但 read 回读也算验证 → 全程没做过 HTTP/UI 检查仍能通过。
+      // 加：若本轮改的是 web/UI 产物（client.js 等），要求出现 http/curl/浏览器类证据。
+      try {
+        const _prod = String(state.lastProduct || '')
+        const _isWeb = /\.(?:js|jsx|ts|tsx|html|css)$/i.test(_prod) || /client\.js/i.test(_prod)
+        if (_isWeb && state.wroteThisTurn) {
+          const _trail = Array.isArray(state.trail) ? state.trail : []
+          const _hasHttp = _trail.some((x) => x && x.kind === 'call'
+            && /(curl|Invoke-WebRequest|fetch\(|http:\/\/|localhost:\d+|8999|截图|screenshot|playwright)/i.test(String(x.fullArgs || '')))
+          if (!_hasHttp) state.safetyFlags = Object.assign({}, state.safetyFlags, { verifyWeak: true })
+        }
+      } catch { /* ignore */ }
       // 行为根因 P1（2026-11-26）：verify_on_stop 到上限后完全放行 →
       // 今天 14:57 第3次结束尝试（放弃式完成）畅通无阻。
       // 修复：超限但本轮写过文件仍未验证时，不再重复 steer（避免死循环），
@@ -2914,9 +2962,16 @@ function formatExecutorResult(pkg, exec) {
       // ── 控制回合（meta-reasoning controller，每 N 步一次，零 LLM）──
       // P1 修复：maxControlPerSession 是会话级上限，controlCount 是每轮节流——
       // 原先每轮把 controlCount 清零，导致会话级上限形同虚设。
-      if (cfg.controlEnabled && s.step > 0 && s.step % cfg.controlEverySteps === 0 &&
-          (s.controlCount || 0) < 1 &&   // 每轮至多一次（controlCount 在 turn/start 清零）
+      // P2 修复（2026-11-26 审计）：原条件要求 step % 8 === 0 且每轮至多一次，
+      // 导致 21 分钟退化循环期（21:25-21:46）**0 次触发**。加"连续 6 步无 write"旁路：
+      // 退化循环的典型特征就是只在 read/grep 打转，此时必须做元决策。
+      const _noWriteStreak = (s.stepsSinceWrite || 0)
+      const _degradeBypass = _noWriteStreak >= 6 && (s.controlTotal || 0) < cfg.maxControlPerSession &&
+        (s.step - (s.lastDegradeControlStep ?? -99) >= 4)
+      if (cfg.controlEnabled && s.step > 0 &&
+          ((s.step % cfg.controlEverySteps === 0 && (s.controlCount || 0) < 1) || _degradeBypass) &&
           (s.controlTotal || 0) < cfg.maxControlPerSession) {
+        if (_degradeBypass) s.lastDegradeControlStep = s.step
         s.controlCount = (s.controlCount || 0) + 1
         s.controlTotal = (s.controlTotal || 0) + 1
         try {
