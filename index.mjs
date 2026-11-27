@@ -3231,7 +3231,8 @@ function formatExecutorResult(pkg, exec) {
             const matched = pats0.filter(q => body0.toLowerCase().includes(String(q).toLowerCase()))
             if (matched.length) {
               const ln = body0.split('\n').findIndex(l => pats0.some(q => l.toLowerCase().includes(String(q).toLowerCase()))) + 1
-              hits0.push({ p: abs0, line: ln, pat: matched[0] })
+              const lineText0 = (body0.split('\n')[ln - 1] || '').trim().slice(0, 600)
+              hits0.push({ p: abs0, line: ln, pat: matched[0], lineText: lineText0 })
             } else misses0.push({ p: p0, why: 'no-target-string' })
           }
           trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'ambiguity_resolved',
@@ -3241,7 +3242,8 @@ function formatExecutorResult(pkg, exec) {
             const h = hits0[0]
             const other = misses0.map(m => String(m.p).split(/[\\/]/).pop()).join('、')
             const old0 = h.pat
-            t0 = '[harness 环境事实] 目标已确定：' + h.p + '（第 ' + h.line + ' 行当前是 ' + old0 + '）。'
+            t0 = '[harness 环境事实] 目标已确定：' + h.p + ' 第 ' + h.line + ' 行。'
+              + '该行完整内容（可直接用作编辑的 old_string，不必再读文件）：\n' + (h.lineText || '') + '\n'
               + (other ? '另一个同名文件 ' + other + ' 不含该配置，不要动它。' : '')
               + '这一处还没改成目标值，需要实际调用编辑工具修改；不要认为已经完成。'
           } else if (hits0.length > 1) {
