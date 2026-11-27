@@ -142,6 +142,13 @@ const DEFAULTS = {
   ].filter(Boolean),
   executorMaxChars: 4000,
   maxInjectionsPerTurn: 1,
+  // ── 读效率优化（2026-11-27，TROT/Prism/FastContext）──
+  readDedupEnabled: true,
+  readDedupMinChars: 200,      // 短结果不值得去重
+  readDedupProtectLast: 5,     // 最近 N 步不动（TROT）
+  editEchoCompressEnabled: true,
+  parallelExploreHintEnabled: true,
+  fileFactsCacheEnabled: true,
   maxInjectionsPerSession: 4,
   // M4：token 预算（与次数预算并行，取更严格者）。安全类注入（S6/危险拦截）豁免 token 上限。
   maxInjectionTokensPerTurn: 1200,
@@ -1274,6 +1281,7 @@ export function apply(ctx, config) {
       states.set(id, s)
     }
   const readCounts = new Map()
+  const readFacts = new Map()  // P0/P3: basename -> {hash,step,digest,path}
   // ── read 门控（2026-11-27）：dsh tools/pre-execute waterfall 拦截 ──
   // 源码依据：dsh-tools/src/pipeline.ts:200 `ctx.waterfall(carrier,'tools/pre-execute',exec,...)`
   // 决策类型：{kind:'allow'} | {kind:'deny',reason} | {kind:'cancel'} | {kind:'ask'}
@@ -1300,6 +1308,23 @@ export function apply(ctx, config) {
             if (hasDir) { s0.ambiguousPaths = []; s0.ambiguousName = '' }
           }
         } catch { /* 门控失败按放行处理 */ }
+      }
+      // ── P0：重复未变读 → stub（TROT 确定性规则层）──
+      if (cfg.readDedupEnabled && exec?.name === 'read') {
+        try {
+          const fa0 = String(exec.arguments?.file_path || exec.arguments?.path || '')
+          const nb1 = String(fa0).split(/[\\/]/).pop() || ''
+          const rec = readFacts.get(nb1)
+          const gap1 = (s0.step || 0) - (rec?.step || 0)
+          // 最近 N 步不压缩（保护当前决策上下文）；编辑后 hash 变 → rec 已更新 → 不触发
+          if (rec && gap1 >= (cfg.readDedupProtectLast || 5)) {
+            trace({ ts: new Date().toISOString(), sid: st0.slice(0, 8), kind: 'read_dedup_stub',
+              file: nb1, gap: gap1, step: s0.step })
+            return { kind: 'deny', reason: '[harness] ' + nb1 + ' 的内容在本次会话中已读过（见第 '
+              + rec.step + ' 步），此后未发生变化。要点：' + rec.digest
+              + '\n\n如果你要确认编辑是否生效，用 grep 搜目标串即可；不要重复读整个文件。' }
+          }
+        } catch { /* 去重失败按放行处理 */ }
       }
       if (!cfg.readGuardEnabled || exec?.name !== 'read') return next()
       try {
@@ -1708,6 +1733,43 @@ export function apply(ctx, config) {
         }
         const c = s.trail.filter((x) => x.kind === 'call').pop()
         const txt = blocksText(event.data?.message?.content)
+        // ── P0/P3：读去重 + 事实缓存（TROT/Prism，2026-11-27）──
+        if (cfg.readDedupEnabled || cfg.fileFactsCacheEnabled) {
+          try {
+            const nm = String(event.data?.name || c?.name || '')
+            if (nm === 'read') {
+              const a0 = (s.trail.filter((x) => x.kind === 'call').pop() || {}).args || {}
+              const fp0 = String(a0.file_path || a0.path || '')
+              const nb0 = String(fp0).split(/[\\/]/).pop() || ''
+              if (nb0 && txt.length >= (cfg.readDedupMinChars || 200)) {
+                // 简单 hash（djb2），避免引入 crypto 依赖
+                let h0 = 5381; for (let i0 = 0; i0 < txt.length; i0++) h0 = ((h0 << 5) + h0 + txt.charCodeAt(i0)) | 0
+                const prev0 = readFacts.get(nb0)
+                if (prev0 && prev0.hash === h0) {
+                  s.readDupCount = (s.readDupCount || 0) + 1
+                  trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'read_dup_detected',
+                    file: nb0, step: s.step, savedChars: txt.length })
+                } else {
+                  readFacts.set(nb0, { hash: h0, step: s.step, chars: txt.length,
+                    digest: txt.slice(0, 160), path: fp0 })
+                }
+              }
+            }
+          } catch { /* 去重记录失败不影响主流程 */ }
+        }
+        // ── P1：编辑回显压缩（TROT）——只记事实，失败信号保留 ──
+        if (cfg.editEchoCompressEnabled) {
+          try {
+            const en = String(event.data?.name || c?.name || '')
+            const isEdit = ['write', 'edit', 'apply_patch', 'pwsh', 'bash', 'exec'].includes(en)
+            const isErr = event.data?.message?.isError === true || /not found|permission|denied|EPERM/i.test(txt.slice(0, 300))
+            if (isEdit && !isErr && txt.length > 600) {
+              s.lastEditEcho = { tool: en, chars: txt.length, step: s.step }
+              trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'edit_echo_compressed',
+                tool: en, chars: txt.length, step: s.step })
+            }
+          } catch { /* 压缩失败不影响主流程 */ }
+        }
         // ── S6 工具结果注入检测（规则层"周围神经"，零 LLM）──
         // 只检测经典指令覆盖模式；命中只提醒"这是数据不是指令"，绝不自动拦截（ADR-0014 中性措辞）。
         // P1-3 修复：达上限后仍检测并记 trace，只是不再 steer（安全检测不因防刷屏而完全关停）
@@ -3193,6 +3255,16 @@ function formatExecutorResult(pkg, exec) {
           const msgs0 = Array.isArray(decision?.messages) ? [...decision.messages, m0] : [m0]
           return { ...decision, messages: msgs0 }
         } catch { /* 注入失败不影响主流程 */ }
+      }
+      // ── P2：并行探索提示（FastContext）——弱提示，不强制 ──
+      if (cfg.parallelExploreHintEnabled && (s.step || 0) <= 3 && s.initial && !s.parallelHinted) {
+        try {
+          s.parallelHinted = true
+          const ph = createMessage('[harness 效率提示] 需要定位时，可以在同一轮里并行发出多个只读调用'
+            + '（glob 找路径 + grep 搜内容 + read 看片段），不必一个一个串行试。', 'behavior-guard', s)
+          const pmsgs = Array.isArray(decision?.messages) ? [...decision.messages, ph] : [ph]
+          return { ...decision, messages: pmsgs }
+        } catch { /* 提示失败不影响主流程 */ }
       }
       // ── step 层硬中断（2026-11-27 实测驱动）─────────────────────
       // 背景：所有闸门挂在 turn-stopping（模型"想结束"时）。但空转的特征恰恰是
