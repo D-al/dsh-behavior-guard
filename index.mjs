@@ -37,6 +37,8 @@ import { buildTrailText as _buildTrailText } from './tools/build_trail_text.mjs'
 // 不再内联双份——消除漂移与 DATA_BOUNDARY 作用域 bug（原内联版 ReferenceError）。
 import { formatCorrection as _formatCorrection } from './tools/format_correction.mjs'
 import { formatExecutorResult as _formatExecutorResult } from './tools/format_executor_result.mjs'
+// P0/P1 (2026-11-27): 自发反思捕获与 HVR 分流（单一真相源在 tools/）
+import { hvrGate as _hvrGate, mineCandidates as _mineCandidates, promotionGate as _promotionGate, compactMetacognitive as _compactMetacognitive } from './tools/reflection_miner.mjs'
 
 export const name = 'agent-harness'
 
@@ -1459,6 +1461,23 @@ export function apply(ctx, config) {
         s.last = summarizeAssistant(event.data?.message)
         // 防线2：抓取 reasoning 里"发现问题但未修复"的线索，供压缩存档强制保留
         try { captureOpenCorrection(s) } catch { /* 纠错抓取失败不影响主流程 */ }
+        // P0/P1: HVR 分流 + 自发反思捕获（只候选，不立即入库；适配 2605.12978 倒 U 型警告）
+        try {
+          const _rs = String(s.last?.reasoning || '')
+          const _gate = _hvrGate(_rs)
+          if (_gate.shouldCapture) {
+            const _cands = _mineCandidates(_rs, { sid: s.sid || '', step: s.step || 0, ts: Date.now() })
+            if (_cands.length) {
+              if (!Array.isArray(s.reflectionCandidates)) s.reflectionCandidates = []
+              s.reflectionCandidates.push(..._cands.slice(0, 3))
+              if (s.reflectionCandidates.length > 60) s.reflectionCandidates = s.reflectionCandidates.slice(-60)
+              trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'reflection_mined',
+                count: _cands.length, hvr: _gate.reason, confidence: _gate.confidence, step: s.step || 0 })
+            }
+          } else if (_rs.length > 20) {
+            trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'reflection_skipped', reason: _gate.reason, step: s.step || 0 })
+          }
+        } catch { /* 反思捕获失败不影响主流程 */ }
         // gap 补修（2026-11-26）：删除"纯文本报告清 criticRejected"——
         // seq1649 的"阶段性卡点报告"正好命中，等于换个说法就清除。
         // criticRejected 现在只由真实工具调用（写/命令）清除，见 tool/call 段。
@@ -1882,6 +1901,9 @@ export function apply(ctx, config) {
                 evidence_ref: `trace:${s.step}:${c.name}`,
                 goal: String(s.initial || '').slice(0, 300),
                 provenance: s.frame?.provenance || 'user',
+                // P0-3: 保留原始反思片段（一等证据，不压缩不整合 — 2605.12978）
+                reasoning: String(s.last?.reasoning || '').slice(-600),
+                reflection_candidates: Array.isArray(s.reflectionCandidates) ? s.reflectionCandidates.slice(-3) : [],
               })
             }
           }
@@ -1902,6 +1924,9 @@ export function apply(ctx, config) {
                 evidence_ref: `trace:${s.step}:${c.name}`,
                 goal: String(s.initial || '').slice(0, 300),
                 provenance: s.frame?.provenance || 'user',
+                // P0-3: 保留原始反思片段（一等证据，不压缩不整合 — 2605.12978）
+                reasoning: String(s.last?.reasoning || '').slice(-600),
+                reflection_candidates: Array.isArray(s.reflectionCandidates) ? s.reflectionCandidates.slice(-3) : [],
               })
             }
             // ── verify-on-edit（确定性语法检查，0 LLM 成本）──
@@ -3120,7 +3145,13 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
               }
             }
             // 存档签名：初始任务 + todo 状态 + 已排除项 + 未闭环纠错。纠错状态变化必须视为"新存档"。
-            archiveSig = JSON.stringify([s.initial, todos.map((t) => [t?.content, t?.status]), (s.rejectedItems || []).slice(-5), (s.openCorrections || []).map(c => [c.text, c.resolved])])
+            // P2: 紧凑元认知反馈（不塞原始 reasoning 全文，防锚定 — Metacognitive Harness 2605.14186）
+            if (Array.isArray(s.reflectionCandidates) && s.reflectionCandidates.length) {
+              const _compact = _compactMetacognitive(s.reflectionCandidates.slice(-5))
+              if (_compact) parts.push('【重新反思提示（仅信号）】' + _compact)
+              trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'reflection_compact_injected', count: s.reflectionCandidates.length })
+            }
+            archiveSig = JSON.stringify([s.initial, todos.map((t) => [t?.content, t?.status]), (s.rejectedItems || []).slice(-5), (s.openCorrections || []).map(c => [c.text, c.resolved]), (s.reflectionCandidates || []).length])
             const repeats = archiveSig === s.lastArchiveSig ? (s.archiveRepeatCount || 0) + 1 : 0
             s.lastArchiveSig = archiveSig
             s.archiveRepeatCount = repeats
@@ -3414,7 +3445,8 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
                   ['tools/episodic_search.py', q, '--inject'],
                   { cwd: new URL('.', import.meta.url).pathname.replace(/^\//,''), timeout: 2500,
                     windowsHide: true, encoding: 'utf8', stdio: ['ignore','pipe','ignore'] })
-                const lines = String(epiOut).split('\n').filter((l) => l.trim().startsWith('- ')).slice(0, 3)
+                // P2: Top-1（ReasoningBank 消融 k=1 49.7 → k=4 44.4，多检索即噪声）
+                const lines = String(epiOut).split('\n').filter((l) => l.trim().startsWith('- ')).slice(0, 1)
                 if (lines.length) {
                   parts.push('【历史经验 · top-' + lines.length + '】' + lines.join(' ').slice(0, 300))
                   trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'evidence_cited',
