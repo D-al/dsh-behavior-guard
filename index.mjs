@@ -3178,9 +3178,10 @@ function formatExecutorResult(pkg, exec) {
           if (hits0.length === 1) {
             const h = hits0[0]
             const other = misses0.map(m => String(m.p).split(/[\\/]/).pop()).join('、')
-            t0 = '[harness 环境事实] 目标已确定：' + h.p + '（第 ' + h.line + ' 行含 ' + h.pat + '）。'
+            const old0 = h.pat
+            t0 = '[harness 环境事实] 目标已确定：' + h.p + '（第 ' + h.line + ' 行当前是 ' + old0 + '）。'
               + (other ? '另一个同名文件 ' + other + ' 不含该配置，不要动它。' : '')
-              + '直接改这一处即可，不需要再搜索或确认。'
+              + '这一处还没改成目标值，需要实际调用编辑工具修改；不要认为已经完成。'
           } else if (hits0.length > 1) {
             t0 = '[harness 环境事实] 多个候选都含目标配置，需要你判断：' + hits0.map(h => h.p).join('、')
               + '。请选一个用完整路径操作，不要全部改。'
