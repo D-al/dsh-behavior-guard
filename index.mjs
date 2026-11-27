@@ -1317,7 +1317,7 @@ export function apply(ctx, config) {
           const rec = readFacts.get(nb1)
           const gap1 = (s0.step || 0) - (rec?.step || 0)
           // 最近 N 步不压缩（保护当前决策上下文）；编辑后 hash 变 → rec 已更新 → 不触发
-          if (rec && gap1 >= (cfg.readDedupProtectLast || 5)) {
+          if (rec && rec.step !== (s0.step || 0) && gap1 >= 1) {
             trace({ ts: new Date().toISOString(), sid: st0.slice(0, 8), kind: 'read_dedup_stub',
               file: nb1, gap: gap1, step: s0.step })
             return { kind: 'deny', reason: '[harness] ' + nb1 + ' 的内容在本次会话中已读过（见第 '
@@ -1738,7 +1738,9 @@ export function apply(ctx, config) {
           try {
             const nm = String(event.data?.name || c?.name || '')
             if (nm === 'read') {
-              const a0 = (s.trail.filter((x) => x.kind === 'call').pop() || {}).args || {}
+              const cCall = s.trail.filter((x) => x.kind === 'call').pop() || {}
+              let a0 = {}
+              try { a0 = JSON.parse(String(cCall.fullArgs || cCall.args || '')) } catch {}
               const fp0 = String(a0.file_path || a0.path || '')
               const nb0 = String(fp0).split(/[\\/]/).pop() || ''
               if (nb0 && txt.length >= (cfg.readDedupMinChars || 200)) {
