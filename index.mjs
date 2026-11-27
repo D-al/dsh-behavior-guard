@@ -1765,6 +1765,14 @@ export function apply(ctx, config) {
             const en = String(event.data?.name || c?.name || '')
             const isEdit = ['write', 'edit', 'apply_patch', 'pwsh', 'bash', 'exec'].includes(en)
             const isErr = event.data?.message?.isError === true || /not found|permission|denied|EPERM/i.test(txt.slice(0, 300))
+            // ── 精确编辑成功即验证（2026-11-27 实测）──
+            // edit 带 old_string 的语义是精确替换，工具返回 updated successfully 即证明改对了。
+            // 强行要求再跑命令验证 → 制造 4 次无效 read（实测颜色场景 edit 成功后空转）。
+            if (en === 'edit' && !isErr && /has been updated successfully|updated successfully/i.test(txt)) {
+              s.verifyRan = true
+              s.verifiedThisTurn = true
+              trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'edit_is_verify', step: s.step })
+            }
             if (isEdit && !isErr && txt.length > 600) {
               s.lastEditEcho = { tool: en, chars: txt.length, step: s.step }
               trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'edit_echo_compressed',
