@@ -25,7 +25,7 @@
 const PATCH_EVIDENCE_DIR = 'docs/archive/a16-patch-scripts'; // _apply_*.py targets live here
 
 import { randomUUID, createHash } from 'node:crypto'
-import { writeFileSync, readFileSync, readdirSync, statSync, existsSync, appendFileSync, openSync, readSync, closeSync, renameSync, realpathSync } from 'node:fs'
+import { writeFileSync, readFileSync, readdirSync, statSync, fstatSync, existsSync, appendFileSync, openSync, readSync, closeSync, renameSync, realpathSync } from 'node:fs'
 import path from 'node:path'
 import { execFile, execFileSync } from 'node:child_process'
 import { shouldClassify as s6ShouldClassify } from './tools/s6_signal_gate.mjs'
@@ -1203,7 +1203,11 @@ function resolveSafePathWithCfg(rawPath, cfg) {
     })
     if (!realAllowed) return null
     return real
-  } catch { return norm }
+  } catch {
+    // 根因级：realpath 失败（目标不存在/权限/断链）必须 fail-closed。
+    // 原 catch{return norm} 是 fail-open——未解析的 norm 可能穿过 junction 逃逸。
+    return null
+  }
 }
 
 export function apply(ctx, config) {
@@ -2488,6 +2492,32 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
 
   // resolveSafePath 已外置为顶层 resolveSafePathWithCfg + 上方 cfg 注入别名（重构阶段1）
 
+  // 根因级 TOCTOU 防护：打开 fd 后基于 fd 读取，并校验 realpath 身份四元组。
+  // 原路径 readFileSync(target) 在 realpath 校验后重解析路径，存在替换窗口。
+  function readSafeFile(target, maxChars) {
+    let fd = -1
+    try {
+      fd = openSync(target, 'r')
+      const st = fstatSync(fd)
+      if (!st.isFile()) throw new Error('目标不是普通文件')
+      if (st.size > 2 * 1024 * 1024) throw new Error('文件过大（>2MB），拒绝代读')
+      // 身份校验：realpath 解析结果必须与 fd 指向同一文件（dev+size+mtime+ctime 四元组）
+      const realTarget = realpathSync(target)
+      const realSt = statSync(realTarget)
+      if (realSt.dev !== st.dev || realSt.size !== st.size ||
+          Math.abs(realSt.mtimeMs - st.mtimeMs) > 1 || Math.abs(realSt.ctimeMs - st.ctimeMs) > 1) {
+        throw new Error('文件在校验后被替换，拒绝代读（TOCTOU 防护）')
+      }
+      const want = Math.min(st.size, maxChars)
+      const buf = Buffer.alloc(want)
+      let off = 0, n
+      while (off < want && (n = readSync(fd, buf, off, want - off, null)) > 0) off += n
+      return { body: buf.toString('utf8', 0, off), total: st.size }
+    } finally {
+      if (fd >= 0) { try { closeSync(fd) } catch { /* ignore */ } }
+    }
+  }
+
   function executeReadOnly(pkg) {
     try {
       // S3: grep executor (single-file line match, max 50)
@@ -2523,7 +2553,7 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
         if (!pat0) return { ok: false, error: 'grep missing pattern' }
         let re0
         try { re0 = new RegExp(pat0, 'i') } catch (e) { return { ok: false, error: 'grep bad regex' } }
-        const lines0 = readFileSync(target, 'utf-8').split('\n')
+        const lines0 = readSafeFile(target, 2 * 1024 * 1024).body.split('\n')
         const hits0 = []
         for (let i0 = 0; i0 < lines0.length && hits0.length < 50; i0++) {
           if (re0.test(lines0[i0])) hits0.push('L' + (i0 + 1) + ': ' + lines0[i0].slice(0, 300))
@@ -2531,11 +2561,12 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
         return { ok: true, kind: 'grep', target, content: hits0.join('\n') || '(no matches)', matches: hits0.length }
       }
 
-      const body = readFileSync(target, 'utf-8')
-      const cut = body.length > cfg.executorMaxChars
-        ? body.slice(0, cfg.executorMaxChars) + `\n…[截断，全文共 ${body.length} 字符]`
+      const rf = readSafeFile(target, cfg.executorMaxChars)
+      const body = rf.body
+      const cut = rf.total > cfg.executorMaxChars
+        ? body + `\n…[截断，全文共 ${rf.total} 字符]`
         : body
-      return { ok: true, kind: 'read', target, content: cut, truncated: body.length > cfg.executorMaxChars }
+      return { ok: true, kind: 'read', target, content: cut, truncated: rf.total > cfg.executorMaxChars }
     } catch (error) {
       return { ok: false, error: String(error) }
     }
