@@ -3,6 +3,8 @@ const src = fs.readFileSync(new URL('../index.mjs', import.meta.url), 'utf8')
 const checks = {
   '干预开关默认关': /reflectionInjectEnabled:\s*false/.test(src),
   '干预逻辑存在': src.includes('reflection_live_injected'),
+  '即时回注(短会话)': src.includes('inject-on 时立即回注'),
+  '动态开关存在': src.includes('function _abInject') && src.includes('function _abMining'),
   '验证门槛': src.includes('c.verified === true || c.confidence >= 0.85'),
   '去重防重复注入': src.includes('s.lastReflectionInjectSig !== _sig'),
   '只喂信号非原文': src.includes('_compactMetacognitive(_ready)'),

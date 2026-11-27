@@ -40,6 +40,32 @@ import { formatExecutorResult as _formatExecutorResult } from './tools/format_ex
 // P0/P1 (2026-11-27): 自发反思捕获与 HVR 分流（单一真相源在 tools/）
 import { hvrGate as _hvrGate, mineCandidates as _mineCandidates, promotionGate as _promotionGate, compactMetacognitive as _compactMetacognitive } from './tools/reflection_miner.mjs'
 
+// A/B 判优实验（2026-11-27）：运行时动态模式，避免为切组重启（消除时序混杂）。
+// 文件不存在 → 读不到 → 用 cfg 默认（生产不受影响）。
+let _abModeCache = { mt: 0, mode: null }
+function _abMode() {
+  try {
+    const p = 'D:/Brain/workspace/bench/_ab_mode.json'
+    const mt = statSync(p).mtimeMs
+    if (_abModeCache.mt === mt) return _abModeCache.mode
+    const mode = JSON.parse(readFileSync(p, 'utf8')).mode || null
+    _abModeCache = { mt, mode }
+    return mode
+  } catch { return null }
+}
+function _abMining(cfg) {
+  const m = _abMode()
+  if (m === 'off') return false
+  if (m === 'on' || m === 'inject-on') return true
+  return cfg.reflectionMiningEnabled !== false
+}
+function _abInject(cfg) {
+  const m = _abMode()
+  if (m === 'inject-on') return true
+  if (m === 'on' || m === 'off') return false
+  return cfg.reflectionInjectEnabled === true
+}
+
 export const name = 'agent-harness'
 
 // ── 任务级上下文（2026-11-21）：守卫共享"这是什么任务"信号 ──
@@ -1469,7 +1495,7 @@ export function apply(ctx, config) {
         // P0/P1: HVR 分流 + 自发反思捕获（只候选，不立即入库；适配 2605.12978 倒 U 型警告）
         // A/B: reflectionMiningEnabled=false 时整段跳过（对照组）
         try {
-          if (cfg.reflectionMiningEnabled !== false) {
+          if (_abMining(cfg)) {
           const _rs = String(s.last?.reasoning || '')
           const _gate = _hvrGate(_rs)
           if (_gate.shouldCapture) {
@@ -1480,6 +1506,17 @@ export function apply(ctx, config) {
               if (s.reflectionCandidates.length > 60) s.reflectionCandidates = s.reflectionCandidates.slice(-60)
               trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'reflection_mined',
                 count: _cands.length, hvr: _gate.reason, confidence: _gate.confidence, step: s.step || 0 })
+              // A/B 干预层：inject-on 时立即回注（不走控制回合——4步短会话没有控制回合）。
+              // 只回注高置信信号、不喂原文（防锚定）、去重、不覆盖更重要的守卫注入。
+              if (_abInject(cfg) && !s.pendingInject && (s.turnInjections || 0) < cfg.maxInjectionsPerTurn) {
+                const _ready = _cands.filter((c) => c.verified === true || c.confidence >= 0.85).slice(-2)
+                const _sig = _ready.map((c) => c.signal).join('|')
+                if (_sig && s.lastReflectionInjectSig !== _sig) {
+                  s.pendingInject = '[harness 自我提醒（仅信号，勿照搬原文）]\n' + _compactMetacognitive(_ready)
+                  s.lastReflectionInjectSig = _sig
+                  trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'reflection_live_injected', count: _ready.length, step: s.step || 0 })
+                }
+              }
             }
           } else if (_rs.length > 20) {
             trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'reflection_skipped', reason: _gate.reason, step: s.step || 0 })
@@ -3181,7 +3218,7 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
             }
             // 存档签名：初始任务 + todo 状态 + 已排除项 + 未闭环纠错。纠错状态变化必须视为"新存档"。
             // P2: 紧凑元认知反馈（不塞原始 reasoning 全文，防锚定 — Metacognitive Harness 2605.14186）
-            if (cfg.reflectionMiningEnabled !== false && Array.isArray(s.reflectionCandidates) && s.reflectionCandidates.length) {
+            if (_abMining(cfg) && Array.isArray(s.reflectionCandidates) && s.reflectionCandidates.length) {
               const _compact = _compactMetacognitive(s.reflectionCandidates.slice(-5))
               if (_compact) parts.push('【重新反思提示（仅信号）】' + _compact)
               // P1-2: 未闭环纠错的具体值必须保留（会话 e22d97fd seq481：模型发现 @local 是错的，
@@ -3483,7 +3520,7 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
           parts.push('④ 下一步：在思考里列出 2-3 个候选动作，评估哪个对完成目标收益最高，再选一个执行。')
           // A/B 干预层：把捕获的高置信反思即时回注（不等 compaction），默认关。
           // 只有验证通过的候选才回注——无验证的反思会把对的改错（arXiv:2310.01798）。
-          if (cfg.reflectionInjectEnabled === true && Array.isArray(s.reflectionCandidates) && s.reflectionCandidates.length) {
+          if (_abInject(cfg) && Array.isArray(s.reflectionCandidates) && s.reflectionCandidates.length) {
             const _ready = s.reflectionCandidates.filter((c) => c.verified === true || c.confidence >= 0.85).slice(-2)
             const _sig = _ready.map((c) => c.signal).join('|')
             if (_sig && s.lastReflectionInjectSig !== _sig) {
