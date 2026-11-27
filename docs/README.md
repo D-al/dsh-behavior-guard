@@ -29,6 +29,8 @@
 | [REFLECTION_OPTIMIZATION_RESEARCH_20261127.md](REFLECTION_OPTIMIZATION_RESEARCH_20261127.md) | 调研/优化 | **接住自发反思：论文 HVR 分流/监控控制解耦/倒U型整合/Top-1检索 + 社区 thinking 抽取器/人审闸门/时序前移 + P0-P3 优化清单** |
 | [CAPABILITY_MISMATCH_AUDIT_20261127.md](CAPABILITY_MISMATCH_AUDIT_20261127.md) | 诊断/清单 | **能力错配：5类11会话级实证（做对被拦/验证没通道/回忆看不到/工具逼绕路/注入打断）+ P0三项已修** |
 | [AB_REFLECTION_EXPERIMENT_20261127.md](AB_REFLECTION_EXPERIMENT_20261127.md) | 实验设计 | **反思 A/B 实验：三层开关、指标、自然实验数据、关键自我纠错（mining 从未回注）** |
+| [AB_JUDGEMENT_METHOD_20261127.md](AB_JUDGEMENT_METHOD_20261127.md) | 实验方法 | **判优实验设计：动态开关同批次随机化、双指标、Holm+Fisher、指标变更声明** |
+| [AB_JUDGEMENT_FINAL_20261127.md](AB_JUDGEMENT_FINAL_20261127.md) | **判优结果** | **85组实验：inject-on硬停10% vs off30%但Holm p=0.28未达95%；n=74曾显著后反转（防p-hacking活教材）；需+230会话** |
 | [AB_EXPERIMENT_FINAL_20261127.md](AB_EXPERIMENT_FINAL_20261127.md) | **实验结果** | **根治三项完成 + A/B 三组数据（off/on/inject-on）；诚实结论：机制生效但拿不到越学越聪明因果证据，需 n>=20 同批次随机化** |
 | [CAPABILITY_MISMATCH_P1_EXECUTED_20261127.md](CAPABILITY_MISMATCH_P1_EXECUTED_20261127.md) | **已执行** | **P1三项做完并验证（绝对路径/compaction纠错必留/去重回归）+ P2工具面裁剪核查后主动不做（1948次/719次禁用反例）** |
 | [REFLECTION_EFFECT_VERIFIED_20261127.md](REFLECTION_EFFECT_VERIFIED_20261127.md) | **实测/已落地** | **反思捕获 P0-P2 已实现并验证：reflection_mined 7条/skipped 1条、真实候选10个全hold(防污染)、去锚定90字符、outcome保留原始reasoning；含未验证项与下一步** |
