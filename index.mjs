@@ -279,6 +279,8 @@ const DEFAULTS = {
   // 消费这两类事件跑 crit_decay/skill_draft/crit_revision/trace_timeline，并写入回注队列。
   // 本文件在 pre-step 读回注队列，把"沉淀结论"注入下一轮——形成 轨迹→沉淀→回注 闭环。
   learningEnabled: true,
+  // A/B 开关（2026-11-27）：关掉反思捕获用于对照组，默认开。
+  reflectionMiningEnabled: true,
   outcomePath: `${BENCH_DIR}/_outcome.jsonl`,
   pendingLearnPath: `${BENCH_DIR}/_pending_learn.jsonl`,
   feedbackQueuePath: `${BENCH_DIR}/_learn_feedback.jsonl`,
@@ -1463,7 +1465,9 @@ export function apply(ctx, config) {
         // 防线2：抓取 reasoning 里"发现问题但未修复"的线索，供压缩存档强制保留
         try { captureOpenCorrection(s) } catch { /* 纠错抓取失败不影响主流程 */ }
         // P0/P1: HVR 分流 + 自发反思捕获（只候选，不立即入库；适配 2605.12978 倒 U 型警告）
+        // A/B: reflectionMiningEnabled=false 时整段跳过（对照组）
         try {
+          if (cfg.reflectionMiningEnabled !== false) {
           const _rs = String(s.last?.reasoning || '')
           const _gate = _hvrGate(_rs)
           if (_gate.shouldCapture) {
@@ -1477,6 +1481,7 @@ export function apply(ctx, config) {
             }
           } else if (_rs.length > 20) {
             trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'reflection_skipped', reason: _gate.reason, step: s.step || 0 })
+          }
           }
         } catch { /* 反思捕获失败不影响主流程 */ }
         // gap 补修（2026-11-26）：删除"纯文本报告清 criticRejected"——
@@ -3174,7 +3179,7 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
             }
             // 存档签名：初始任务 + todo 状态 + 已排除项 + 未闭环纠错。纠错状态变化必须视为"新存档"。
             // P2: 紧凑元认知反馈（不塞原始 reasoning 全文，防锚定 — Metacognitive Harness 2605.14186）
-            if (Array.isArray(s.reflectionCandidates) && s.reflectionCandidates.length) {
+            if (cfg.reflectionMiningEnabled !== false && Array.isArray(s.reflectionCandidates) && s.reflectionCandidates.length) {
               const _compact = _compactMetacognitive(s.reflectionCandidates.slice(-5))
               if (_compact) parts.push('【重新反思提示（仅信号）】' + _compact)
               // P1-2: 未闭环纠错的具体值必须保留（会话 e22d97fd seq481：模型发现 @local 是错的，
