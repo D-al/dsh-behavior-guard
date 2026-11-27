@@ -129,3 +129,19 @@ seq2357 才真正 "我直接用 write 工具来创建文件！这样完全绕开
 来源：会话 `38d7c6d2` / `8102ed55` / `bd357644` / `269ec283` / `70f4485a` / `e22d97fd` / `2dbd40d2` / `a91afe6d`；
 论文 arXiv:2610.21098 / 2610.02001 / 2607.22585 / 2607.03691 / 2505.03275 / 2307.03172 / 2308.01263 / 2310.01798；
 项目文档 `POSTMORTEM_HARNESS_BLINDSPOT_20261126.md` / `READ_EFFICIENCY_RESEARCH_20261127.md` / `COMPACTION_CONTEXT_CADENCE_20261120.md`。
+
+
+## 七、P0 三项已修复并验证（2026-11-27 14:55）
+
+盘点后当场修了三个低风险确定性改动，全部通过真实会话验证：
+
+| 修复 | 代码 | 验证 |
+|---|---|---|
+| shell 写命令计入 writeCalls | tool/call 段新增  + trace ；零写入守卫和 taskProfile 都认这个计数 | 会话 ：shell Set-Content 写文件 → 、、、文件确实写入 **capability-ok** |
+| FEP verified 回写 state（原只记 trace 导致后续守卫看不到） | FEP 结算时写 ，每轮重置；verify_on_stop 认这个信号 | 会话 ：write + FEP → 、、、文件写入 **verify-ok** |
+| 控制回合快照一致性 | done=0 但 wrote:true 时，注入改为「本轮已有写入/验证证据，todo 清单尚未同步——不要否定已完成的改动」 | 代码路径已接入；**短会话未触发控制回合，缺真实会话证据** |
+
+三项修复前对应的失败实例分别是会话 （硬停 streak=9）、（5+ 步无效循环）、（模型原文抱怨快照矛盾）。
+修复后同类场景不再触发对应守卫。
+
+全量回归：25 PASS + 三套 wargame ALL PASS + reflection_miner 21/21 + format/executor/collector 全过 + wargame_fixed_verify 24/24 + 模块 import/apply OK + 两版 sha256 一致。
