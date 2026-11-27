@@ -61,7 +61,7 @@ assert(result4.failDetail.includes('step2'), '应包含最近的失败(step2)')
 // ── 测试 5：fullEvidence=false 的成功调用不计入证据 ──
 const trail5 = [
   { kind: 'call', step: 1, name: 'read', ok: true, fullEvidence: false, args: '{}', result: 'data' },
-  { kind: 'call', step: 2, name: 'write', ok: true, fullEvidence: true, args: '{file:"x.md"}', result: 'wrote x.md line 1' },
+  { kind: 'call', step: 2, name: 'read', ok: true, fullEvidence: true, args: '{file:"x.md"}', result: 'wrote x.md line 1' },
 ]
 const result5 = collectCorrectorInput(trail5)
 assert(!result5.evidence.includes('step1'), 'fullEvidence=false 不应计入')
@@ -81,10 +81,10 @@ assert(!result6.failDetail.includes('step3'), 'kind=other 应被忽略')
 // ── 测试 7：args 截断验证（>100字符） ──
 const longArgs = 'a'.repeat(150)
 const trail7 = [
-  { kind: 'call', step: 1, name: 'big_call', ok: true, fullEvidence: true, args: longArgs, result: 'ok_result' },
+  { kind: 'call', step: 1, name: 'grep', ok: true, fullEvidence: true, args: longArgs, result: 'ok_result' },
 ]
 const result7 = collectCorrectorInput(trail7)
-const argMatch = result7.evidence.match(/big_call\(([^)]+)\)/)
+const argMatch = result7.evidence.match(/grep\(([^)]+)\)/)
 if (argMatch) {
   assert(argMatch[1].length <= 100, `args 应被截断到100字符内，实际${argMatch[1].length}`)
 } else {

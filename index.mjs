@@ -25,7 +25,7 @@
 const PATCH_EVIDENCE_DIR = 'docs/archive/a16-patch-scripts'; // _apply_*.py targets live here
 
 import { randomUUID, createHash } from 'node:crypto'
-import { writeFileSync, readFileSync, readdirSync, statSync, existsSync, appendFileSync, openSync, readSync, closeSync, renameSync } from 'node:fs'
+import { writeFileSync, readFileSync, readdirSync, statSync, existsSync, appendFileSync, openSync, readSync, closeSync, renameSync, realpathSync } from 'node:fs'
 import path from 'node:path'
 import { execFile, execFileSync } from 'node:child_process'
 import { shouldClassify as s6ShouldClassify } from './tools/s6_signal_gate.mjs'
@@ -1178,7 +1178,16 @@ function resolveSafePathWithCfg(rawPath, cfg) {
     return norm === nr || norm.startsWith(nr + '/')
   })
   if (!allowed) return null
-  return norm
+  // S9 realpath: junction/symlink escape guard
+  try {
+    const real = realpathSync(norm).replace(/\\/g, '/')
+    const realAllowed = cfg.allowedRoots.some((r) => {
+      const nr = path.normalize(r).replace(/\\/g, '/').replace(/\/$/, '')
+      return real === nr || real.startsWith(nr + '/')
+    })
+    if (!realAllowed) return null
+    return real
+  } catch { return norm }
 }
 
 export function apply(ctx, config) {
@@ -1355,7 +1364,7 @@ export function apply(ctx, config) {
     }, { global: true })
     info('behavior-guard: read 门控已注册（tools/pre-execute）')
 
-
+
   } catch (e) { info('behavior-guard: read 门控注册失败 ' + (e?.message || e)) }
 
     // S3：让 trace 自动带当前 state 的 turn/controlTotal（频次审计可区分跨轮/跨会话）
@@ -2454,23 +2463,41 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
   // ── formatCorrection — v1 (2026-11-21) ──
   // 纯函数：无副作用、零外部依赖；规范副本在 tools/format_correction.mjs。
   // 设计原则：确定性/零 LLM/fail-closed。action 未识别时返回 null。
+  // S4（2026-11-27 攻防）：工具白名单 + 危险参数拒绝 + reason 提示注入中和。
+  const SAFE_TOOLS = new Set(['read', 'glob', 'grep', 'list_agents', 'job_output'])
+  const DANGEROUS_ARG = /\b(rm\s+-rf|del\s+\/[sS]|format\s+[a-zA-Z]:|DROP\s+TABLE|shutdown|reboot)\b/i
+  const INJECT_RE = /(忽略.{0,8}(之前|上述|所有).{0,4}(指令|规则)|ignore (all )?(previous|prior) instructions|you are now a (different|new))/i
+  function defaultReasonFor(action) {
+    if (action === 'ask_user') return '请向用户确认下一步。'
+    if (action === 'abandon') return '目标不存在'
+    return '见证据'
+  }
+  function sanitizeReason(r) {
+    let s = String(r || '见证据').replace(/[\r\n]+/g, ' ')
+    if (s.length > 200) s = s.slice(0, 200) + '…'
+    if (INJECT_RE.test(s)) s = '[已过滤疑似指令内容] ' + s.replace(INJECT_RE, '')
+    return s
+  }
   function formatCorrection(pkg) {
     if (!pkg || typeof pkg !== 'object') return null
 
     const action = pkg.action
-    const reason = pkg.reason || '见证据'
+    const reason = sanitizeReason(pkg.reason || defaultReasonFor(action))
 
     if (action === 'retry_with' && pkg.tool) {
+      // S4：工具白名单——纠正器不得建议任意工具（原漏洞：danger_shell 原样注入）
+      if (!SAFE_TOOLS.has(pkg.tool)) return null
       const argsStr = JSON.stringify(pkg.args ?? {}, null, 0)
+      if (DANGEROUS_ARG.test(argsStr)) return null
       return `[harness 系统修正] 独立纠正器依据环境证据确定了正确参数（理由：${reason}）。请原样调用：${pkg.tool}，参数：${argsStr}。这是一次性的参数修正——调用时不要改动任何字段。`
     }
 
     if (action === 'ask_user') {
-      return `[harness 系统修正] 独立纠正器认为环境证据不足以继续，需要用户澄清：${pkg.reason || '请向用户确认下一步。'}请立即向用户提问。`
+      return `[harness 系统修正] 独立纠正器认为环境证据不足以继续，需要用户澄清：${reason}。请立即向用户提问。`
     }
 
     if (action === 'abandon') {
-      return `[harness 系统修正] 独立纠正器依据环境证据判定该目标不可达：${pkg.reason || '目标不存在'}。停止尝试，从任务清单中移除该项并向用户说明。`
+      return `[harness 系统修正] 独立纠正器依据环境证据判定该目标不可达：${reason}。停止尝试，从任务清单中移除该项并向用户说明。`
     }
 
     // action 未识别 → fail-closed，返回 null 让上游决定
@@ -2486,7 +2513,8 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
 
   function executeReadOnly(pkg) {
     try {
-      if (pkg.tool !== 'read' && pkg.tool !== 'glob') return null
+      // S3: grep executor (single-file line match, max 50)
+      if (pkg.tool !== 'read' && pkg.tool !== 'glob' && pkg.tool !== 'grep') return null
       const args = pkg.args ?? {}
       const target = resolveSafePath(args.file_path ?? args.path ?? args.pattern ?? '')
       if (!target) return { ok: false, error: '路径不在允许的根目录内（安全边界拒绝）' }
@@ -2498,6 +2526,19 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
         return { ok: true, kind: 'list', target, content: items.join('\n') }
       }
       if (st.size > 2 * 1024 * 1024) return { ok: false, error: '文件过大（>2MB），拒绝代读' }
+      if (pkg.tool === 'grep') {
+        const pat0 = String(args.pattern || args.query || '')
+        if (!pat0) return { ok: false, error: 'grep missing pattern' }
+        let re0
+        try { re0 = new RegExp(pat0, 'i') } catch (e) { return { ok: false, error: 'grep bad regex' } }
+        const lines0 = readFileSync(target, 'utf-8').split('\n')
+        const hits0 = []
+        for (let i0 = 0; i0 < lines0.length && hits0.length < 50; i0++) {
+          if (re0.test(lines0[i0])) hits0.push('L' + (i0 + 1) + ': ' + lines0[i0].slice(0, 300))
+        }
+        return { ok: true, kind: 'grep', target, content: hits0.join('\n') || '(no matches)', matches: hits0.length }
+      }
+
       const body = readFileSync(target, 'utf-8')
       const cut = body.length > cfg.executorMaxChars
         ? body.slice(0, cfg.executorMaxChars) + `\n…[截断，全文共 ${body.length} 字符]`
