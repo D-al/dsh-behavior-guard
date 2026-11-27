@@ -15,7 +15,7 @@
 const HESITATION_RE = [
   /\bactually\b/i, /\brealized?\b/i, /\bthe issue\b/i, /\bturns out\b/i,
   /\bI was wrong\b/i, /\bnow I see\b/i, /\bmisunderstood\b/i,
-  /等等|等一下|慢着|不对|我怀疑|不确定|让我重新|先确认|再想想|我意识到|我发现.{0,20}(?:错|误|问题)|我发现自己|原来.*不是|搞错了|写错了|语法有误|有问题/i
+  /等等|等一下|慢着|不对|我怀疑|不确定|让我重新|先确认|再想想|我意识到|我发现.{0,20}(?:错|误|问题)|我发现自己|原来.*不是|搞错了|写错了|语法有误|有问题|可能是个?问题|是个错误|这是错的|不对劲/i
 ].map(r => new RegExp(r.source, r.flags.includes('i') ? r.flags : r.flags + 'i'))
 
 // 验证行为：质疑之后是否跟了显式检查（HVR 的分母）

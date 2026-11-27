@@ -17,7 +17,7 @@
     "id": "C-003",
     "tags": ["完成", "交付", "present", "汇报", "结尾"],
     "signal": "声称完成/交付但本轮无独立验收痕迹",
-    "lesson": "做的人不能自己签字。present 前要么 spawn 独立验收（只给路径+标准，不给工作过程），要么跑 verify_agent.py 三态判定；自己的测试全绿不算数。",
+    "lesson": "做的人不能自己签字。present 前要么 spawn 独立验收（只给路径+标准，不给工作过程），要么跑 D:/Brain/publish/dsh-behavior-guard/tools/verify_agent.py 三态判定；自己的测试全绿不算数。",
     "source": "IOV Labs 896 任务实测（小模型虚假完成 13%，自检仅降 0.9pp）+ verify-gate"
   },
   {
@@ -52,7 +52,7 @@
     "id": "C-008",
     "tags": ["子智能体", "spawn", "验收", "wait"],
     "signal": "spawn 后 wait 连续超时仍反复等待，或宣布验收通过但子智能体没回应",
-    "lesson": "wait 连续 2 次超时说明验收者已卡住：不要继续等——检查子智能体状态或直接跑 verify_agent.py；宣布 PASS 前必须看到验收者的实际结论。",
+    "lesson": "wait 连续 2 次超时说明验收者已卡住：不要继续等——检查子智能体状态或直接跑 D:/Brain/publish/dsh-behavior-guard/tools/verify_agent.py；宣布 PASS 前必须看到验收者的实际结论。",
     "source": "2026-11-17 P5 现场（wait×3 超时后宣布通过，回注 7 分钟后才到）+ Calibrated to Act (2608.27167)"
   },
   {

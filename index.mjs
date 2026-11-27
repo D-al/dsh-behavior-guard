@@ -3177,16 +3177,33 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
             if (Array.isArray(s.reflectionCandidates) && s.reflectionCandidates.length) {
               const _compact = _compactMetacognitive(s.reflectionCandidates.slice(-5))
               if (_compact) parts.push('【重新反思提示（仅信号）】' + _compact)
+              // P1-2: 未闭环纠错的具体值必须保留（会话 e22d97fd seq481：模型发现 @local 是错的，
+              // compaction 抹掉后 seq646 仍用坏源码覆盖）。只保留带具体路径/值的 raw 片段，
+              // 最多 2 条 —— 不是全量 reasoning，符合 2605.12978 的"原始轨迹一等证据+显式 gate"。
+              const _concrete = s.reflectionCandidates.slice(-8).filter((c) =>
+                c.raw && /(@|[/\\]|\.js|\.py|\.yml|\.json|\.md|::|=>|=)/.test(c.raw)
+              ).slice(-2)
+              if (_concrete.length) {
+                parts.push('【未闭环的自我纠错（具体值，压缩必留）】' + _concrete.map((c, i) =>
+                  (i + 1) + '. ' + c.raw.slice(0, 160)).join('；'))
+                trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'unclosed_correction_preserved', count: _concrete.length })
+              }
               trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'reflection_compact_injected', count: s.reflectionCandidates.length })
             }
-            archiveSig = JSON.stringify([s.initial, todos.map((t) => [t?.content, t?.status]), (s.rejectedItems || []).slice(-5), (s.openCorrections || []).map(c => [c.text, c.resolved]), (s.reflectionCandidates || []).length])
+            // P1-3: reflectionCandidates 不进 archiveSig——它每步增长，会让"相同存档"签名
+            // 一直变化，破坏 82 次重复的去重（自己引入的回归，2026-11-27 修）。
+            archiveSig = JSON.stringify([s.initial, todos.map((t) => [t?.content, t?.status]), (s.rejectedItems || []).slice(-5), (s.openCorrections || []).map(c => [c.text, c.resolved])])
             const repeats = archiveSig === s.lastArchiveSig ? (s.archiveRepeatCount || 0) + 1 : 0
             s.lastArchiveSig = archiveSig
             s.archiveRepeatCount = repeats
             if (repeats > 0) {
               // 去重：同一份存档已注入过 → 不再刷屏完整存档，改为"未变化"的简短纠偏。
               // 实测依据：s1 会话 82 次压缩注入完全相同的存档（todo 2/完成 0），形成自我强化循环。
+              // P1-2/P1-3: 去重只清常规存档，但"未闭环纠错的具体值"必须穿透——
+              // 会话 e22d97fd 就是重复 compaction 抹掉 @local 线索导致坏源码回灌。
+              const _preserve = parts.filter((x) => String(x).startsWith('【未闭环的自我纠错（具体值'))
               parts.length = 0
+              parts.push(..._preserve)
               parts.push('[harness 任务存档] 任务状态自上次压缩后**完全没有变化**（已重复 ' + repeats + ' 次）：'
                 + doneItems.length + '/' + todos.length + ' 项完成。')
               parts.push('这不是新的指令——不要因此重新规划或重做已完成的事。'
