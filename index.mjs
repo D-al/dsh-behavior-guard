@@ -281,6 +281,8 @@ const DEFAULTS = {
   learningEnabled: true,
   // A/B 开关（2026-11-27）：关掉反思捕获用于对照组，默认开。
   reflectionMiningEnabled: true,
+  // A/B 干预层开关：默认关（观测层不影响行为）；实验时开，验证"回注是否改变行为"。
+  reflectionInjectEnabled: false,
   outcomePath: `${BENCH_DIR}/_outcome.jsonl`,
   pendingLearnPath: `${BENCH_DIR}/_pending_learn.jsonl`,
   feedbackQueuePath: `${BENCH_DIR}/_learn_feedback.jsonl`,
@@ -3479,6 +3481,17 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
           if (cur) parts.push('② 当前项：' + String(cur.content).slice(0, 60))
           if (rej.length) parts.push('③ 已排除：' + rej.join('｜'))
           parts.push('④ 下一步：在思考里列出 2-3 个候选动作，评估哪个对完成目标收益最高，再选一个执行。')
+          // A/B 干预层：把捕获的高置信反思即时回注（不等 compaction），默认关。
+          // 只有验证通过的候选才回注——无验证的反思会把对的改错（arXiv:2310.01798）。
+          if (cfg.reflectionInjectEnabled === true && Array.isArray(s.reflectionCandidates) && s.reflectionCandidates.length) {
+            const _ready = s.reflectionCandidates.filter((c) => c.verified === true || c.confidence >= 0.85).slice(-2)
+            const _sig = _ready.map((c) => c.signal).join('|')
+            if (_sig && s.lastReflectionInjectSig !== _sig) {
+              parts.push('⑤ 本轮自我提醒（仅信号，勿照搬原文）：' + _compactMetacognitive(_ready))
+              s.lastReflectionInjectSig = _sig
+              trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'reflection_live_injected', count: _ready.length, step: s.step })
+            }
+          }
           // ── P1: 状态板（每 N 步注入一次，计入 shared 预算）──
           if (
             cfg.stateBoardEnabled &&

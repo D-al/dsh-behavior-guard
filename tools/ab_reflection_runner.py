@@ -13,7 +13,7 @@
 用法:
   python tools/ab_reflection_runner.py <group> <n>   # group = on | off
 """
-import json, subprocess, time, os, sys, datetime
+import json, subprocess, time, os, sys, re
 
 BRIDGE = r'D:/Brain/workspace/bench/dsh-session-bridge'
 TRACE = r'D:/Brain/workspace/bench/_trace.jsonl'
@@ -33,7 +33,9 @@ def wait_done(sid, timeout=180):
     while time.time() - t0 < timeout:
         out = bridge(['sessions'])
         line = next((l for l in out.splitlines() if sid in l), '')
-        if line and 'running=false' in line: return True
+        if line and 'running=false' in line:
+            time.sleep(3)  # 等 trace 落盘
+            return True
         time.sleep(5)
     return False
 
@@ -43,7 +45,9 @@ def metrics_for(sid):
         for l in f:
             try: d = json.loads(l)
             except Exception: continue
-            if str(d.get('sid','')).startswith(sid[:8]): rows.append(d)
+            m = re.search(r'([0-9a-f]{8})', sid)
+            key = m.group(1) if m else sid[:8]
+            if str(d.get('sid','')).startswith(key): rows.append(d)
     from collections import Counter
     c = Counter(r.get('kind') for r in rows)
     return dict(tool_calls=c.get('tool_call',0), failures=c.get('tool_failure',0),
