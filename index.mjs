@@ -2039,7 +2039,14 @@ export function apply(ctx, config) {
           const tail = s.trail.filter((x) => x.kind === 'call').slice(-2)
           const sameArgsDoubleFail = tail.length === 2 &&
             tail.every((x) => x.status === 'FAIL' && x.name === c.name && x.args === c.args)
-          if (sameNameCalls.length >= 3 && sameNameBad >= 2 && !s.pendingInject) {
+          // D2 优先于 D1（2026-11-27 攻防演练）：同参双败是更强信号，
+          // 排在 D1 之后会被 pendingInject/强制停止抢先，导致纠正器从不触发（实测 corrector 0 次）。
+          if (sameArgsDoubleFail && !s.pendingCorrector) {
+            s.pendingCorrector = true
+            info(`audit-loop: D2 同参数双重失败命中 (${c.name})`)
+            trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'd2_corrector_triggered',
+              tool: c.name, step: s.step })
+          } else if (sameNameCalls.length >= 3 && sameNameBad >= 2 && !s.pendingInject) {
             // 行为根因 P1（2026-11-26）：D1 今天触发5次，每次只"换工具"不停止（read→grep→read→pwsh…），
             // 长窗口 repeated probe 直到 step47。第3次起升级为"强制结束本轮"指令（零 LLM）。
             const probeN = sameNameCalls.length
