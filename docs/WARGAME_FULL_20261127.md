@@ -131,3 +131,46 @@ collector 只认 `fullEvidence` 标志不认工具名——上游标志一旦被
 - 实战会话：`session-2423f6b7-300d-4ccb-bc2a-6940b4e5a2f2`（D2 双败不触发的证据）
 - 本报告：`docs/WARGAME_FULL_20261127.md`
 - 全量回归：25 PASS + 三套 wargame ALL PASS + 本演练 35/35
+
+
+## 七、P0 修复与验证（2026-11-27 10:25）
+
+演练后立刻修了最致命的 S1 和 S2，并在真实会话中验证：
+
+### 修复 1：D2 纠正器优先级
+- 把 `sameArgsDoubleFail → pendingCorrector` 从 D1 的 `else if` 提到前面
+- 加 `d2_corrector_triggered` trace 锚点
+
+### 修复 2：collector 加固
+- 绿灯过滤下沉到代码：纯状态字样（PASS/OK/成功/done）不算证据
+- 同源去重：相同 tool+args 只保留最后一条
+- 保守过滤，避免误杀 `content_a` / `b.md,c.md` 这类合法短内容
+- 更新 1 个过时测试（`ok` 作为证据确实无意义）
+
+### 端到端验证（会话 af09fc7c）
+同一个"连续两次读不存在文件"实验，修复前后对比：
+
+| | 修复前 | 修复后 |
+|---|---|---|
+| corrector LLM 调用 | **0 次** | **1 次**（9897ms） |
+| 纠正器注入 | 无 | `abandon`：目标不存在 + C-001 教训 |
+| 审计 | 无 | ISSUE → 纠正器完整链 |
+
+trace 证据：
+```
+review_verdict audit ISSUE
+llm tag:corrector ms:9897 ok:true
+注入: [harness 系统修正] 独立纠正器依据环境证据判定该目标不可达...
+```
+
+**结论更新**：纠正器从"实际失效"变成"在典型场景下确实工作"。
+S2（绿灯证据）也在运行时验证修复：`PASS` 被过滤、`content_a` 保留、同源 3 次去重为 1。
+
+### 仍未修复（按优先级留给后续）
+- S3 取证断层（grep 白名单 vs read/glob 执行器）
+- S4 纠正器输出无白名单校验
+- S5 审计被 pendingInject 抢先
+- S6 auditEverySteps 日志谎言
+- S7 标记清除过宽/sticky
+- S8 Critic 盲区
+- S9 路径无 realpath
