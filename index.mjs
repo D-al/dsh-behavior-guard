@@ -3126,8 +3126,6 @@ function formatExecutorResult(pkg, exec) {
       // 根因：纠正器给 grep（代执行白名单只有 read/glob）→ 退化成"请抄参数"→ 主模型不抄。
       if (cfg.disambiguationEnabled && s.ambiguousPaths?.length && !s.ambiguityInjected) {
         try {
-          s.ambiguityInjected = true
-          s.sharedInjections += 1
           const goal0 = String(s.initial || '')
           // ── 泛化目标串提取（2026-11-27 早·场景化）──
           // 原来只认 \d{3,5}px / width —— 换个场景(颜色/文案/布尔)就瞎。
@@ -3189,6 +3187,8 @@ function formatExecutorResult(pkg, exec) {
             t0 = '[harness 环境事实] 候选里没找到目标串（' + pats0.join('/') + '）。'
               + '先用完整路径读一个候选确认内容，不要反复读。'
           }
+          s.ambiguityInjected = true
+          s.sharedInjections += 1
           const m0 = createMessage(t0, 'behavior-guard', s)
           const msgs0 = Array.isArray(decision?.messages) ? [...decision.messages, m0] : [m0]
           return { ...decision, messages: msgs0 }
