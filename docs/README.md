@@ -26,6 +26,7 @@
 | [MISTAKE_BOOK_RESEARCH_20261127.md](MISTAKE_BOOK_RESEARCH_20261127.md) | 调研/设计 | **错题本可行性：Reflexion/ExpeL/ACE/ReasoningBank 论文实证 + 社区实现 + 项目 60% 骨架 + 可插拔可纠错设计 + P0-P5 落地路径** |
 | [REFLECTION_RECALL_GAP_20261127.md](REFLECTION_RECALL_GAP_20261127.md) | 诊断/设计 | **主动反思回忆缺口：代码级证明 12 项机制全被动、工具注册 0 处、反思产物被丢弃；三条补位路线与反面证据** |
 | [REFLECTION_TENDENCY_MEASURED_20261127.md](REFLECTION_TENDENCY_MEASURED_20261127.md) | **实测数据** | **35B 反思倾向：53 会话/1400 思维链，87% 会话有反思、44.7% 自我质疑、harness 注入激发 0%、反思后改参数 169:17——修正"不能依赖元认知"结论的适用范围** |
+| [REFLECTION_OPTIMIZATION_RESEARCH_20261127.md](REFLECTION_OPTIMIZATION_RESEARCH_20261127.md) | 调研/优化 | **接住自发反思：论文 HVR 分流/监控控制解耦/倒U型整合/Top-1检索 + 社区 thinking 抽取器/人审闸门/时序前移 + P0-P3 优化清单** |
 | [MIND_GAPS_AND_TRUST_20261122.md](MIND_GAPS_AND_TRUST_20261122.md) | 解释 | 6 路广搜：心智还缺哪些拼图 |
 | [AUTONOMY_AND_SELF_HARNESS_20261122.md](AUTONOMY_AND_SELF_HARNESS_20261122.md) | 方案 | harness 自进化四阶段（短期①实现路径，2026-11-19）|
 | [GPU_ENGINE_GUARD.md](GPU_ENGINE_GUARD.md) | 操作 | 3D/Copy 引擎争抢诊断 + 主动降帧守护（2026-11-19）|
