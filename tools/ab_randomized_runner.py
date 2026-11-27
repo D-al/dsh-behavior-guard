@@ -63,6 +63,7 @@ def metrics_for(sid):
 def main():
     rounds = int(sys.argv[1]) if len(sys.argv)>1 else 5
     seed = int(sys.argv[2]) if len(sys.argv)>2 else 42
+    append = '--append' in sys.argv  # 追加到已有批次（换seed避免重复顺序）
     random.seed(seed)
     order = GROUPS * rounds
     random.shuffle(order)  # 同批次内随机交错
@@ -86,13 +87,18 @@ def main():
         print(f'[{i+1}/{len(order)}] {group:10s} {sid[:14]} '
               f'calls={m["tool_calls"]} fail={m["failures"]} hs={m["hard_stop"]} '
               f'mined={m["mined"]} inject={m["live_injected"]} done={ok}', flush=True)
-        # 增量保存（防中断丢数据）：保留非本批次记录 + 本批次已完成记录
+        # 增量保存（防中断丢数据）：按 sid 全局去重，避免重复追加
         old = []
         if os.path.isfile(RESULT):
             try: old = json.load(open(RESULT, encoding='utf-8'))
             except Exception: old = []
-        keep = [r for r in old if r.get('batch') != LABEL]
-        json.dump(keep + results, open(RESULT,'w',encoding='utf-8'), ensure_ascii=False, indent=2)
+        merged, seen = [], set()
+        for r in old + results:
+            s = r.get('sid')
+            if s and s in seen: continue
+            if s: seen.add(s)
+            merged.append(r)
+        json.dump(merged, open(RESULT,'w',encoding='utf-8'), ensure_ascii=False, indent=2)
     set_mode('off')  # 实验结束恢复默认（生产安全）
     print('完成，模式已恢复 off')
 

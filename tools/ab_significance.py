@@ -163,7 +163,8 @@ def main_pair(rows, g1, g2):
         "direction_consistent": bool(consistent),
         "tost": tost(a, b), "n_required": required_n(a, b),
         "binary": {"hard_stop": binary_test(series(rows, g1, 'hard_stop'), series(rows, g2, 'hard_stop'), 1),
-                   "completed": binary_test(series(rows, g1, 'completed'), series(rows, g2, 'completed'), True)},
+                   "completed": binary_test(series(rows, g1, 'completed'), series(rows, g2, 'completed'), True),
+                   "answer_correct": binary_test(series(rows, g1, 'answer_correct'), series(rows, g2, 'answer_correct'), True)},
     }
 
 
@@ -190,10 +191,12 @@ def build_report(src, rows):
     hm = holm([p["p_primary"] for p in pairs])
     hh = holm([p["binary"]["hard_stop"]["p"] for p in pairs])
     hc = holm([p["binary"]["completed"]["p"] for p in pairs])
-    for p, pm, ph, pc in zip(pairs, hm, hh, hc):
+    ha = holm([p["binary"]["answer_correct"]["p"] for p in pairs])
+    for p, pm, ph, pc, pa in zip(pairs, hm, hh, hc, ha):
         p["p_holm"] = r(pm, 6)
         p["binary"]["hard_stop"]["p_holm"] = r(ph, 6)
         p["binary"]["completed"]["p_holm"] = r(pc, 6)
+        p["binary"]["answer_correct"]["p_holm"] = r(pa, 6)
         p["verdict"] = verdict_of(p, pm)
     return {"meta": {"source": src, "alpha": ALPHA, "power": POWER, "equivalence_bound": BOUND,
                      "bootstrap_resamples": BOOT,
