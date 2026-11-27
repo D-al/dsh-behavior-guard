@@ -1424,6 +1424,7 @@ export function apply(ctx, config) {
         // 实验修复：硬闸门标记每轮重置（否则一个 turn 的 forceStop 污染后续所有 turn）
         s.forceStop = false; s.criticRejected = false; s.handoffBlocked = false
         s.criticAccepted = false  // S7: 每轮重置，防止一次ACCEPT永久关闭 Critic + D4
+        s.criticLowConfidence = false  // 每轮重置，避免低置信标记永久触发 D4
         // hardGateInjected 死字段已删除（safetyBlock 用 safetyBlockCount/safetyFlags 取代）
         // gap 补修：safetyFlags 跨轮持久（不清），只清本轮计数
         s.safetyBlockCount = 0
@@ -2865,9 +2866,10 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
         cfg.presentGateEnabled &&
         taskProfile(state).needsTreeCheck &&
         state.presentCalled === true &&
-        state.criticAccepted !== true &&
-        state.spawnedThisTurn !== true &&
-        state.verifyRan !== true &&
+        // 根治：Critic 是"产物质量评审"，不是"独立验收者"（spawn/verify_agent）。
+        // 原 criticAccepted 放行把"评审通过"误当"独立验收通过"——一次 ACCEPT 关闭 D4。
+        // 低置信 REJECT 降级为 UNCERTAIN 时，必须强制触发 D4 兜底。
+        (state.criticLowConfidence === true || (state.spawnedThisTurn !== true && state.verifyRan !== true)) &&
         (state.presentGateCount || 0) < cfg.maxPresentGatePerTurn &&
         (state.presentGateTotal || 0) < cfg.maxPresentGatePerSession
       ) {
