@@ -1226,7 +1226,7 @@ export function apply(ctx, config) {
 
   const info = (t) => { try { ctx.logger?.info?.(t) } catch { /* ignore */ } }
   const warn = (t) => { try { ctx.logger?.warn?.(t) } catch { /* ignore */ } }
-  info(`audit-loop v2: 已加载（每 ${cfg.auditEverySteps} 步审计 + 纠正角色实时化）`)
+  info(`audit-loop v2: loaded (D5 gated audit: repeated-failure / low-draft-acceptance / no-progress / pre-delivery / post-compaction)`)
 
   if (cfg.probePath) {
     try { writeFileSync(cfg.probePath, JSON.stringify({ loadedAt: new Date().toISOString(), version: 2, config: cfg }, null, 2)) }
@@ -1403,6 +1403,7 @@ export function apply(ctx, config) {
         s.sharedInjections = 0
         // 实验修复：硬闸门标记每轮重置（否则一个 turn 的 forceStop 污染后续所有 turn）
         s.forceStop = false; s.criticRejected = false; s.handoffBlocked = false
+        s.criticAccepted = false  // S7: 每轮重置，防止一次ACCEPT永久关闭 Critic + D4
         // hardGateInjected 死字段已删除（safetyBlock 用 safetyBlockCount/safetyFlags 取代）
         // gap 补修：safetyFlags 跨轮持久（不清），只清本轮计数
         s.safetyBlockCount = 0
@@ -1566,7 +1567,8 @@ export function apply(ctx, config) {
         // handoffBlocked 在任意工具调用后清除；forceStop 在写/命令类工具后清除。
         try {
           const tn = String(event.data?.name || '')
-          if (s.safetyFlags && s.safetyFlags.handoffBlocked) { delete s.safetyFlags.handoffBlocked; info('behavior-guard: safetyFlag handoffBlocked cleared by tool=' + tn) }
+          // S7: handoffBlocked 需真实写入，任 read/glob 不能清
+          if (s.safetyFlags && s.safetyFlags.handoffBlocked && /^(write|edit|apply_patch|multi_edit|create_file|str_replace|write_file|pwsh|bash|exec)$/.test(tn)) { delete s.safetyFlags.handoffBlocked; info('behavior-guard: safetyFlag handoffBlocked cleared by write tool=' + tn) }
           if (s.safetyFlags && s.safetyFlags.forceStop && (cfg.writeTools.includes(tn) || ['pwsh','bash','exec'].includes(tn))) {
             delete s.safetyFlags.forceStop; info('behavior-guard: safetyFlag forceStop cleared by action=' + tn)
           }
@@ -1576,7 +1578,7 @@ export function apply(ctx, config) {
           }
           // verifyFail：跑真实验证命令（含 verify/test/compile 关键词）后清除
           const targs = String(event.data?.arguments || '')
-          if (s.safetyFlags && s.safetyFlags.verifyFail && /(verify|test|compile|pytest|py_compile|node --check)/i.test(targs)) {
+          if (s.safetyFlags && s.safetyFlags.verifyFail && c?.ok !== false && /(verify|test|compile|pytest|py_compile|node --check)/i.test(targs)) {
             delete s.safetyFlags.verifyFail; info('behavior-guard: safetyFlag verifyFail cleared by verify tool=' + tn)
           }
         } catch { /* ignore */ }
@@ -2397,8 +2399,9 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
       // Critic 只读前3000字符 → 看不到新增段落 → 误判"未添加"→ 2次REJECT死循环。
       // 提到 12000（配置/文档类产物常见长度）；更大的文件靠 present 时指定关键段落。
       const raw = readFileSync(product, 'utf8')
+      // S8: 中段采样，防止把问题藏在中段避检
       content = raw.length > 12000
-        ? raw.slice(0, 4000) + '\n…[中段省略 ' + (raw.length - 8000) + ' 字符]…\n' + raw.slice(-4000)
+        ? raw.slice(0, 4000) + '\n[中段采样]\n' + raw.slice(Math.floor(raw.length / 2) - 1000, Math.floor(raw.length / 2) + 1000) + '\n[末尾]\n' + raw.slice(-4000)
         : raw
     } catch {
       return null
@@ -2835,8 +2838,10 @@ function formatExecutorResult(pkg, exec) {
           let critic = await runCritic(state)
           // G4：低置信 + 有 UNCERTAIN 通道 → 不硬判，回退到验收闸门
           if (critic && critic.verdict === 'REJECT' && critic.confidence === 'low') {
+            // S8: 保留低置信信号，不让 REJECT+low 成为逃逸门
             critic = { ...critic, verdict: 'UNCERTAIN' }
-            info(`behavior-guard: [Critic] REJECT→UNCERTAIN（confidence=low, ${critic.error_class || '?'})`)
+            state.criticLowConfidence = true
+            info(`behavior-guard: [Critic] REJECT→UNCERTAIN (confidence=low, flagged=${critic.error_class || '?'})`)
           }
           if (critic && critic.verdict === 'ACCEPT') {
             state.criticAccepted = true
@@ -3073,7 +3078,8 @@ function formatExecutorResult(pkg, exec) {
             '。本轮先确认它是否已解决，再继续新工作；若已解决请明确说明，不要重新引入。'
         trace({ ts: new Date().toISOString(), sid: s.sid || '', kind: 'review_echo', step: s.step, cycles: s.reviewCycles, overLimit })
         const msg = createMessage(text, 'review-loop', s)
-        s.reviewState.resolved = true  // 已回灌一次，下轮不再重复（除非新问题）
+        // S7: 只有真实写入(writeCalls>0)才算修正，防文本洗白
+        s.reviewState.resolved = (s.writeCalls || 0) > 0
         const messages = Array.isArray(decision?.messages) ? [...decision.messages, msg] : [msg]
         return { ...decision, messages }
       }
@@ -3622,6 +3628,11 @@ function formatExecutorResult(pkg, exec) {
       }
 
       // v3.1 D1/D2 确定性信号（每步检查，不等审计窗口）
+      // S5 (2026-11-27): 在 pendingInject/pendingCorrector 清 trail 前，先固定审计债累记 badCount
+      if ((s.trail || []).length) {
+        const _badNow = s.trail.filter((x) => x.kind === 'call' && (x.status === 'FAIL' || x.status === 'UNPRODUCTIVE')).length
+        if (_badNow > (s.auditDebt || 0)) s.auditDebt = _badNow
+      }
       if (s.pendingInject) {
         const text = s.pendingInject
         s.pendingInject = null
@@ -3668,7 +3679,8 @@ function formatExecutorResult(pkg, exec) {
       //   (c) 本轮 present 已调用（交付前 = 风险最高点，与 D4 合流）
       //   (d) 刚经历压缩（状态重建高危期；由 s.justCompacted 标记，处理一次即清）
       //   确定性信号（D1/D2/D3）仍然每步零成本检查——那部分不变。
-      const badCount = s.trail.filter((x) => x.kind === 'call' && (x.status === 'FAIL' || x.status === 'UNPRODUCTIVE')).length
+      // S5: 合并审计债（pendingInject 清 trail 前已快照）
+      const badCount = Math.max(s.auditDebt || 0, s.trail.filter((x) => x.kind === 'call' && (x.status === 'FAIL' || x.status === 'UNPRODUCTIVE')).length)
       // MTP 信心信号：读 llama-server 日志尾部最后一条 draft acceptance（零额外推理）
       const specAcc = cfg.specSignalEnabled ? readSpecAcceptance(cfg.specLogPath) : null
       s.specAcceptance = specAcc
@@ -3683,6 +3695,8 @@ function formatExecutorResult(pkg, exec) {
       else if (s.presentCalled === true) gateReason = 'pre-delivery'
       else if (s.justCompacted === true) gateReason = 'post-compaction'
       if (!gateReason) return decision
+      // S5: 门控已触发，清偿审计债
+      s.auditDebt = 0
       if (s.turnInjections >= cfg.maxInjectionsPerTurn) return decision
       if ((s.sessionInjections || 0) >= cfg.maxInjectionsPerSession) return decision
       // M4：token 预算（审计包可能很长，次数未超但 token 已超额时同样跳过）
