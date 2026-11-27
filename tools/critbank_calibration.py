@@ -36,7 +36,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 BENCH_DIR = os.environ.get('BENCH_DIR') or r'D:\Brain\workspace\bench'
-BANK_DEFAULT = ROOT / 'config' / 'critbank.json'
+BANK_DEFAULT = Path(BENCH_DIR) / 'critbank.json'  # 2026-11-27根治：与运行时读同一副本
 STATE_DEFAULT = Path(BENCH_DIR) / '_critbank_state.json'
 
 # 门禁阈值（可由 CLI 覆盖；依据见模块 docstring）
@@ -58,7 +58,7 @@ MATH_BASIS = (
 # ---------------------------------------------------------------------------
 
 def load_bank(path=None):
-    """读 config/critbank.json（9 条）；文件缺失/非法 → []，不造数。"""
+    """读 bench/critbank.json（与运行时同一副本）；文件缺失/非法 → []，不造数。"""
     p = Path(path) if path else BANK_DEFAULT
     try:
         obj = json.loads(p.read_text(encoding='utf-8'))
