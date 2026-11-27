@@ -137,8 +137,8 @@ seq2357 才真正 "我直接用 write 工具来创建文件！这样完全绕开
 
 | 修复 | 代码 | 验证 |
 |---|---|---|
-| shell 写命令计入 writeCalls | tool/call 段新增  + trace ；零写入守卫和 taskProfile 都认这个计数 | 会话 ：shell Set-Content 写文件 → 、、、文件确实写入 **capability-ok** |
-| FEP verified 回写 state（原只记 trace 导致后续守卫看不到） | FEP 结算时写 ，每轮重置；verify_on_stop 认这个信号 | 会话 ：write + FEP → 、、、文件写入 **verify-ok** |
+| shell 写命令计入 writeCalls | tool/call 段新增 `shellWriteCount` + trace `shell_write_counted`；零写入守卫和 taskProfile 都认这个计数 | 会话 `8f3b1b45`：shell Set-Content 写文件 → `shell_write_counted:1`、`zero_write_claim:0`、`step_hard_stop:0`，文件确实写入 **capability-ok** |
+| FEP verified 回写 state（原只记 trace 导致后续守卫看不到） | FEP 结算时写 `s.fepVerified`，每轮重置；verify_on_stop 认这个信号 | 会话 `77850261`：write + FEP → `fep_cycle:2`、`verify_on_stop:0`、`step_hard_stop:0`，文件写入 **verify-ok** |
 | 控制回合快照一致性 | done=0 但 wrote:true 时，注入改为「本轮已有写入/验证证据，todo 清单尚未同步——不要否定已完成的改动」 | 代码路径已接入；**短会话未触发控制回合，缺真实会话证据** |
 
 三项修复前对应的失败实例分别是会话 （硬停 streak=9）、（5+ 步无效循环）、（模型原文抱怨快照矛盾）。
