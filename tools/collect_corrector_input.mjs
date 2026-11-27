@@ -3,10 +3,11 @@
  *
  * 从 trail 中提取失败详情与成功证据，供 v2 纠正器使用。
  * 2026-11-27 攻防演练加固：
- *   - "绿灯不算证据"从 prompt 劝阻下沉到代码校验（原来只看工具名+OK 状态）
- *   - 同源多次成功去重（原来全部塞进 evidence）
+ *   - "绿灯不算证据"从 prompt 劝阻下沉到代码校验（只过滤纯状态字样）
+ *   - 同源多次成功去重（避免 3 次相同 PASS 挤满 evidence）
  */
-const GREEN_ONLY = /^(?:(?:pass|success|ok|全绿|成功|完成)(?:\s|[.!:,，。！：]|$))+$/i
+// 只匹配"纯状态字样"——保守过滤，避免误杀 content_a / b.md,c.md 这类真实内容
+const GREEN_ONLY = /^(?:pass|success|ok|全绿|成功|完成|done|true|1)[\\s.!:,，。！：]*$/i
 
 export function collectCorrectorInput(trail) {
   const fails = trail.filter((x) => x.kind === 'call' && x.ok === false)
@@ -14,15 +15,12 @@ export function collectCorrectorInput(trail) {
   const failDetail = fails.slice(-4).map((x) =>
     `step${x.step} ${x.name} 参数=${x.args}\n  错误=${(x.result || '').slice(0, 150)}`).join('\n')
 
-  // 绿灯不算证据：只含状态字样、没有可照抄实际内容 → 丢弃
+  // 绿灯不算证据：只含状态字样 → 丢弃
   const substantive = evid.filter((x) => {
     const r = String(x.result || '').trim()
-    if (!r) return false
-    if (GREEN_ONLY.test(r)) return false
-    // 至少要有路径/引号/行号/等号之一，才算"可照抄的事实"
-    return /[\/"'=:#]|[\u4e00-\u9fa5]{2,}/.test(r)
+    return r && !GREEN_ONLY.test(r)
   })
-  // 同源去重：相同 tool+args 只保留最后一条（避免 3 次 PASS 挤满 evidence）
+  // 同源去重：相同 tool+args 只保留最后一条
   const byKey = new Map()
   for (const x of substantive) byKey.set(x.name + '|' + String(x.args || ''), x)
   const deduped = [...byKey.values()]
@@ -32,7 +30,6 @@ export function collectCorrectorInput(trail) {
   return { failDetail, evidence }
 }
 
-// 兼容旧版 require 风格调用
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { collectCorrectorInput }
 }

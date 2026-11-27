@@ -61,11 +61,11 @@ assert(result4.failDetail.includes('step2'), '应包含最近的失败(step2)')
 // ── 测试 5：fullEvidence=false 的成功调用不计入证据 ──
 const trail5 = [
   { kind: 'call', step: 1, name: 'read', ok: true, fullEvidence: false, args: '{}', result: 'data' },
-  { kind: 'call', step: 2, name: 'write', ok: true, fullEvidence: true, args: '{file:"x.md"}', result: 'ok' },
+  { kind: 'call', step: 2, name: 'write', ok: true, fullEvidence: true, args: '{file:"x.md"}', result: 'wrote x.md line 1' },
 ]
 const result5 = collectCorrectorInput(trail5)
 assert(!result5.evidence.includes('step1'), 'fullEvidence=false 不应计入')
-assert(result5.evidence.includes('step2'), 'fullEvidence=true 应计入')
+assert(result5.evidence.includes('step2'), 'fullEvidence=true + 实质内容 应计入')
 
 // ── 测试 6：非 call 类型的 trail 项被忽略 ──
 const trail6 = [
