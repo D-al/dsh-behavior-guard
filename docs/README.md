@@ -27,6 +27,8 @@
 | [REFLECTION_RECALL_GAP_20261127.md](REFLECTION_RECALL_GAP_20261127.md) | 诊断/设计 | **主动反思回忆缺口：代码级证明 12 项机制全被动、工具注册 0 处、反思产物被丢弃；三条补位路线与反面证据** |
 | [REFLECTION_TENDENCY_MEASURED_20261127.md](REFLECTION_TENDENCY_MEASURED_20261127.md) | **实测数据** | **35B 反思倾向：53 会话/1400 思维链，87% 会话有反思、44.7% 自我质疑、harness 注入激发 0%、反思后改参数 169:17——修正"不能依赖元认知"结论的适用范围** |
 | [REFLECTION_OPTIMIZATION_RESEARCH_20261127.md](REFLECTION_OPTIMIZATION_RESEARCH_20261127.md) | 调研/优化 | **接住自发反思：论文 HVR 分流/监控控制解耦/倒U型整合/Top-1检索 + 社区 thinking 抽取器/人审闸门/时序前移 + P0-P3 优化清单** |
+| [CAPABILITY_MISMATCH_AUDIT_20261127.md](CAPABILITY_MISMATCH_AUDIT_20261127.md) | 诊断/清单 | **能力错配：5类11会话级实证（做对被拦/验证没通道/回忆看不到/工具逼绕路/注入打断）+ P0三项已修** |
+| [CAPABILITY_MISMATCH_P1_EXECUTED_20261127.md](CAPABILITY_MISMATCH_P1_EXECUTED_20261127.md) | **已执行** | **P1三项做完并验证（绝对路径/compaction纠错必留/去重回归）+ P2工具面裁剪核查后主动不做（1948次/719次禁用反例）** |
 | [REFLECTION_EFFECT_VERIFIED_20261127.md](REFLECTION_EFFECT_VERIFIED_20261127.md) | **实测/已落地** | **反思捕获 P0-P2 已实现并验证：reflection_mined 7条/skipped 1条、真实候选10个全hold(防污染)、去锚定90字符、outcome保留原始reasoning；含未验证项与下一步** |
 | [MIND_GAPS_AND_TRUST_20261122.md](MIND_GAPS_AND_TRUST_20261122.md) | 解释 | 6 路广搜：心智还缺哪些拼图 |
 | [AUTONOMY_AND_SELF_HARNESS_20261122.md](AUTONOMY_AND_SELF_HARNESS_20261122.md) | 方案 | harness 自进化四阶段（短期①实现路径，2026-11-19）|

@@ -3181,7 +3181,11 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
               // compaction 抹掉后 seq646 仍用坏源码覆盖）。只保留带具体路径/值的 raw 片段，
               // 最多 2 条 —— 不是全量 reasoning，符合 2605.12978 的"原始轨迹一等证据+显式 gate"。
               const _concrete = s.reflectionCandidates.slice(-8).filter((c) =>
-                c.raw && /(@|[/\\]|\.js|\.py|\.yml|\.json|\.md|::|=>|=)/.test(c.raw)
+                c.raw && /(@|[/\\]|\.js|\.py|\.yml|\.json|\.md|::|=>|=)/.test(c.raw) &&
+                // 排除纯执行意图（"我需要读取X"不是未闭环纠错）
+                !/^(嗯[，,]?)?我(需要|将|会)?(先)?(读取|读|创建|写|按照|执行)/.test(c.raw.trim()) &&
+                // 必须有"已做错 + 应恢复"语义（不是泛泛的"重新考虑"）
+                /(恢复|改回|撤销|还原|是错的|是个错误|搞错|写错|改错|有问题|可能是个问题)/.test(c.signal)
               ).slice(-2)
               if (_concrete.length) {
                 parts.push('【未闭环的自我纠错（具体值，压缩必留）】' + _concrete.map((c, i) =>
