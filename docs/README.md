@@ -23,6 +23,7 @@
 | 文档 | 类型 | 职责 |
 |---|---|---|
 | [OPTIMIZATION_BACKLOG_20261125.md](OPTIMIZATION_BACKLOG_20261125.md) | **活文档/待办** | **优化方向 total backlog：四组深挖的已证伪/未验证/待95%验证方向 + 优先级总表** |
+| [MISTAKE_BOOK_RESEARCH_20261127.md](MISTAKE_BOOK_RESEARCH_20261127.md) | 调研/设计 | **错题本可行性：Reflexion/ExpeL/ACE/ReasoningBank 论文实证 + 社区实现 + 项目 60% 骨架 + 可插拔可纠错设计 + P0-P5 落地路径** |
 | [MIND_GAPS_AND_TRUST_20261122.md](MIND_GAPS_AND_TRUST_20261122.md) | 解释 | 6 路广搜：心智还缺哪些拼图 |
 | [AUTONOMY_AND_SELF_HARNESS_20261122.md](AUTONOMY_AND_SELF_HARNESS_20261122.md) | 方案 | harness 自进化四阶段（短期①实现路径，2026-11-19）|
 | [GPU_ENGINE_GUARD.md](GPU_ENGINE_GUARD.md) | 操作 | 3D/Copy 引擎争抢诊断 + 主动降帧守护（2026-11-19）|
