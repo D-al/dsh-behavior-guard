@@ -51,7 +51,7 @@ function taskProfile(s) {
     return { kind: 'unknown', needsTodo: true, needsVerify: true, needsDeepReview: true,
       needsTreeCheck: true, reason: 'state 缺失——fail-closed，不放松任何守卫' }
   }
-  const writeCalls = Number(s.writeCalls || 0)
+  const writeCalls = Number(s.writeCalls || 0) + Number(s.shellWriteCount || 0)
   const hasProduct = String(s.lastProduct || '').length > 0
   if (writeCalls === 0 && !hasProduct) {
     return { kind: 'read-only', needsTodo: false, needsVerify: false,
@@ -1427,6 +1427,7 @@ export function apply(ctx, config) {
         s.forceStop = false; s.criticRejected = false; s.handoffBlocked = false
         s.criticAccepted = false  // S7: 每轮重置，防止一次ACCEPT永久关闭 Critic + D4
         s.criticLowConfidence = false  // 每轮重置，避免低置信标记永久触发 D4
+        s.fepVerified = false; s.fepLastTarget = ''  // P0: FEP 结论每轮重置，防跨轮污染
         // hardGateInjected 死字段已删除（safetyBlock 用 safetyBlockCount/safetyFlags 取代）
         // gap 补修：safetyFlags 跨轮持久（不清），只清本轮计数
         s.safetyBlockCount = 0
@@ -1590,8 +1591,26 @@ export function apply(ctx, config) {
           info('behavior-guard: [S22] disabled tool detected: ' + s22_name);
         }
         s.toolCalls += 1
-        if (cfg.writeTools.includes(String(event.data?.name ?? ''))) { s.writeCalls += 1; s.stepsSinceWrite = 0 }
-        else { s.stepsSinceWrite = (s.stepsSinceWrite || 0) + 1 }
+        const _tn = String(event.data?.name ?? '')
+        if (cfg.writeTools.includes(_tn)) { s.writeCalls += 1; s.stepsSinceWrite = 0 }
+        else {
+          // P0 能力错配修复：shell 写命令也算"本轮有写入"（会话 38d7c6d2 实证：
+          // shell 改标题成功 + read 回读确认，却被判"零写入"→ 硬停 streak=9）。
+          // 只认明确的写操作符，读类命令不计入，避免放过真的"只说不写"。
+          let _isShellWrite = false
+          if (/^(pwsh|bash|exec|shell)$/i.test(_tn)) {
+            try {
+              const _shArgs = JSON.parse(String(event.data?.arguments || '{}'))
+              const _cmd = String(_shArgs.command || _shArgs.cmd || _shArgs.script || '')
+              if (/(Set-Content|Add-Content|Out-File|\[IO\.File\]::WriteAllText|New-Item|Move-Item|Copy-Item|Remove-Item|\bcp\b|\bmv\b|\btee\b|>)/i.test(_cmd)) {
+                s.shellWriteCount = (s.shellWriteCount || 0) + 1
+                _isShellWrite = true
+                trace({ ts: new Date().toISOString(), sid: String(s.sid || '').slice(0, 8), kind: 'shell_write_counted', step: s.step })
+              }
+            } catch { /* 参数解析失败不计入 */ }
+          }
+          s.stepsSinceWrite = _isShellWrite ? 0 : (s.stepsSinceWrite || 0) + 1
+        }
         // 2026-11-27：记录 read 的文件路径计数（硬中断判据）
         try {
           if (String(event.data?.name || '') === 'read') {
@@ -2034,6 +2053,11 @@ export function apply(ctx, config) {
                   deviation: deviations, converged: deviations.length === 0,
                 }
                 trace({ ...cycle, kind: 'fep_cycle' })
+                // P0 能力错配修复：FEP 结论只记 trace、不存 state，导致 verify_on_stop
+                // 看不到 verified:true 而强制重复验证（会话 8102ed55 实证 5+ 步无效循环）。
+                // 这里把结论写回 state，让后续守卫能承接。
+                s.fepVerified = cycle.converged === true && deviations.length === 0
+                s.fepLastTarget = exp.target
                 // 偏差进 pendingLearn 队列——B 段 watcher 消费，沉淀到 CritBank/技能草稿
                 if (deviations.length && s.appendPendingLearn) {
                   s.appendPendingLearn({
@@ -2687,7 +2711,10 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
         // 其后的 verify-on-stop / handoff-gate 永远不执行（实测 6 次闸门全部止步于此，
         // diag_turnstop 零输出）。改法：在闸门之前先结算 verifyFail，并入 hardFlags 统一处理。
         try {
-          if (cfg.verifyOnStopEnabled && state.writeCalls > 0 && !state.verifyRan &&
+          // P0 能力错配修复：FEP 已判 verified:true（会话 8102ed55 实证）或 grep 验证已通过，
+          // 不再强制重复验证——原逻辑制造 5+ 步无效循环并触发 step_hard_stop。
+          const _fepVerified = !!(state.fepVerified || state.stateReadbackOk)
+          if (cfg.verifyOnStopEnabled && state.writeCalls > 0 && !state.verifyRan && !_fepVerified &&
               (state.verifyOnStopCount || 0) < cfg.maxVerifyOnStopSteers) {
             state.verifyOnStopCount = (state.verifyOnStopCount || 0) + 1
             if (!state.safetyFlags) state.safetyFlags = {}
@@ -2707,7 +2734,8 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
         // 实测：歧义告知后模型声称"两个 client.js 都已修改完成"，但 writeCalls=0，
         // 产物一字未改。verify-on-stop 只在 writeCalls>0 时触发，漏掉这种幻觉。
         try {
-          if (state.ambiguityInjected && (state.writeCalls || 0) === 0) {
+          // P0: shell 写命令已计入 shellWriteCount，不再误判"零写入"
+          if (state.ambiguityInjected && (state.writeCalls || 0) === 0 && (state.shellWriteCount || 0) === 0) {
             const b0 = String(state.last?.body || '')
             const claim0 = /(已|都|已经)(修改|改好|改完|改为)|完成修改|修改完成/.test(b0)
             const present0 = !!state.presentCalled || /present/.test(String(state.last?.body || ''))
@@ -3417,7 +3445,11 @@ ${(CRITIC_RUBRIC.dimensions || []).map((d) => `${d.id}. ${d.name}：${d.question
           const cur = snap.todos.find((t) => t.status === 'in_progress')
           const rej = snap.rejected.slice(-3).map((x) => String(x).slice(0, 60))
           const parts = ['[harness 控制回合] 你现在处在第 ' + s.step + ' 步。先做一次元决策再继续：']
-          parts.push('① 已确立：' + (done.length ? done.join('；') : '(暂无完成项)'))
+          // P0 能力错配修复：会话 bd357644 实证——本轮已 edit 成功（wrote:true）但 todo 未更新，
+          // 注入却说"暂无完成项"，模型明知答案仍被迫重查 5 次。有写入证据时不否定已完成的工作。
+          const _wroteEvidence = !!(snap.wrote || (s.shellWriteCount || 0) > 0 || snap.verifiedDeterministic)
+          parts.push('① 已确立：' + (done.length ? done.join('；')
+            : (_wroteEvidence ? '(本轮已有写入/验证证据，todo 清单尚未同步——不要否定已完成的改动)' : '(暂无完成项)')))
           if (cur) parts.push('② 当前项：' + String(cur.content).slice(0, 60))
           if (rej.length) parts.push('③ 已排除：' + rej.join('｜'))
           parts.push('④ 下一步：在思考里列出 2-3 个候选动作，评估哪个对完成目标收益最高，再选一个执行。')
