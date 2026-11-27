@@ -1,0 +1,20 @@
+# 根因级换行符统一（2026-11-27）
+# core.autocrlf=true + 混合换行 → Python 文本读写产生全文件 diff 噪声。
+# 显式 eol=lf：git 内部与工作区统一 LF，脚本读写不再翻转行尾。
+* text=auto eol=lf
+*.mjs text eol=lf
+*.py text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.jinja text eol=lf
+# Windows 批处理/脚本需 CRLF
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+# 二进制/数据不转换
+*.png binary
+*.jpg binary
+*.zst binary
+*.gguf binary
