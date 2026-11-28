@@ -72,31 +72,49 @@ def cancel_session(sid):
         print(f'  [cancel失败] {e}', flush=True)
         return False
 
-def wait_done(sid, soft_timeout=240, stall_ms=120000):
-    """等待会话完成。根治雪球效应的关键：
+def _dsh_last_event_ms(sid):
+    """从 bridge events 取该会话最后一条事件时间（ms）。
+    2026-11-28 二次修复：harness trace 可能不写盘（插件未挂），
+    但 dsh 自身 events（step/start、tool/call）总能反映真实进展。"""
+    try:
+        out = bridge(['events', sid, '5'])
+        last = 0
+        for l in out.splitlines():
+            if not l.startswith('{'): continue
+            try: d = json.loads(l)
+            except Exception: continue
+            e = d.get('event', {})
+            t = e.get('time', 0)
+            if isinstance(t, (int, float)): last = max(last, int(t))
+        return last
+    except Exception:
+        return 0
 
-    - soft_timeout: 总时长上限（240s，覆盖正常 audit 20-28s）
-    - stall_ms: trace 无新事件超过 120s → 判定真卡死
-    - 超时/卡死时调用 cancel_session() 硬刹车，绝不留残留
+def wait_done(sid, soft_timeout=600, stall_ms=150000):
+    """等待会话完成。两轮修复后的最终版本：
+
+    - soft_timeout: 600s（10 分钟）——实测正常任务 11 步需 243s，240s 会误杀
+    - stall_ms: dsh events 无新事件超过 150s → 真卡死
+    - 进度判据用 dsh events 而非 harness trace（trace 可能不落盘）
+    - 超时/卡死必 cancel，绝不留残留（根治雪球）
     """
     t0 = time.time()
     last_progress = time.time()
-    last_ts = 0
+    last_ev = 0
     while time.time() - t0 < soft_timeout:
         out = bridge(['sessions'])
         line = next((l for l in out.splitlines() if sid in l), '')
         if line and 'running=false' in line:
             time.sleep(3)
             return True, None
-        # trace 有推进 → 重置卡死计时
-        cur = _trace_last_ts(sid)
-        if cur > last_ts:
-            last_ts = cur
+        cur = _dsh_last_event_ms(sid)
+        if cur > last_ev:
+            last_ev = cur
             last_progress = time.time()
         if (time.time() - last_progress) * 1000 > stall_ms:
             stopped = cancel_session(sid)
             return False, f'stall>{stall_ms//1000}s cancel={stopped}'
-        time.sleep(5)
+        time.sleep(8)
     stopped = cancel_session(sid)
     return False, f'total>{soft_timeout}s cancel={stopped}'
 
@@ -134,7 +152,8 @@ def metrics_for(sid):
 
 def main():
     rounds = int(sys.argv[1]) if len(sys.argv)>1 else 5
-    seed = int(sys.argv[2]) if len(sys.argv)>2 else 42
+    try: seed = int(sys.argv[2]) if len(sys.argv)>2 else 42
+    except ValueError: seed = sum(ord(c) for c in sys.argv[2])  # 支持字母批次标签
     append = '--append' in sys.argv  # 追加到已有批次（换seed避免重复顺序）
     random.seed(seed)
     order = GROUPS * rounds
