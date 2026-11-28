@@ -83,6 +83,17 @@ def main():
         ok = wait_done(sid)
         m = metrics_for(sid)
         m.update(group=group, sid=sid, completed=ok, batch=LABEL, seed=seed, order=i)
+        # 错误类型记录（2026-11-28 用户要求：尤其标记新类型）
+        try:
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            from ab_error_recorder import record_session
+            codes, novel_n, novel_b = record_session(sid, group, mode=group)
+            m['error_codes'] = codes
+            m['novel_narrow'] = novel_n
+            m['novel_broad'] = novel_b
+        except Exception as e:
+            m['error_codes'] = []
+            m['error_record_error'] = str(e)[:100]
         results.append(m)
         print(f'[{i+1}/{len(order)}] {group:10s} {sid[:14]} '
               f'calls={m["tool_calls"]} fail={m["failures"]} hs={m["hard_stop"]} '
