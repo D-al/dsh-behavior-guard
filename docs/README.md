@@ -30,6 +30,7 @@
 | [CAPABILITY_MISMATCH_AUDIT_20261127.md](CAPABILITY_MISMATCH_AUDIT_20261127.md) | 诊断/清单 | **能力错配：5类11会话级实证（做对被拦/验证没通道/回忆看不到/工具逼绕路/注入打断）+ P0三项已修** |
 | [AB_REFLECTION_EXPERIMENT_20261127.md](AB_REFLECTION_EXPERIMENT_20261127.md) | 实验设计 | **反思 A/B 实验：三层开关、指标、自然实验数据、关键自我纠错（mining 从未回注）** |
 | [AB_JUDGEMENT_METHOD_20261127.md](AB_JUDGEMENT_METHOD_20261127.md) | 实验方法 | **判优实验设计：动态开关同批次随机化、双指标、Holm+Fisher、指标变更声明** |
+| [AB_FINAL_20261128.md](AB_FINAL_20261128.md) | **最终结论** | **268组跑完未达95%(Holm p=0.125效应缩水14pp需n289);冻死根治45%→0%;新错误类型RECALL_BLIND/INTENT_DRIFT+候选工具失败幻觉** |
 | [FREEZE_ROOTCAUSE_20261128.md](FREEZE_ROOTCAUSE_20261128.md) | **根因根治** | **冻死真相=runner超时240s太短误杀+超时不cancel致残留雪球抢llama单槽；llama/harness无罪；修复后9/9成功0残留** |
 | [AB_CONTINUE_20261128.md](AB_CONTINUE_20261128.md) | **续跑阶段** | **续跑遇dsh高频冻死45%；108组有效(方向一致Holm p=0.13未达95%)；错误类型新类型告警0，纠错85%误报** |
 | [ERROR_TAXONOMY_BASELINE_20261128.md](ERROR_TAXONOMY_BASELINE_20261128.md) | **错误分类** | **15类错误基线+新类型检测；发现并修复"空想验证"85%误报（正则扫注入文本的铁律再验证）** |
