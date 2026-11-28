@@ -1,7 +1,8 @@
 import fs from 'node:fs'
 const src = fs.readFileSync(new URL('../index.mjs', import.meta.url), 'utf8')
 const checks = {
-  '干预开关默认关': /reflectionInjectEnabled:\s*false/.test(src),
+  // 2026-11-29：A/B 用户选 B，正式启用回注（原断言"默认关"已过期）
+  '干预开关默认启用': /reflectionInjectEnabled:\s*true/.test(src),
   '干预逻辑存在': src.includes('reflection_live_injected'),
   '即时回注(短会话)': src.includes('inject-on 时立即回注'),
   '动态开关存在': src.includes('function _abInject') && src.includes('function _abMining'),

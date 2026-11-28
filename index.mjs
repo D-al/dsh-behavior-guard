@@ -307,8 +307,11 @@ const DEFAULTS = {
   learningEnabled: true,
   // A/B 开关（2026-11-27）：关掉反思捕获用于对照组，默认开。
   reflectionMiningEnabled: true,
-  // A/B 干预层开关：默认关（观测层不影响行为）；实验时开，验证"回注是否改变行为"。
-  reflectionInjectEnabled: false,
+  // 2026-11-29：A/B 判优用户选 B（接受方向性结论）——正式启用回注。
+  // 268 组实验：硬停率 off40% → inject-on26%（方向稳定，Holm p=0.125 未达统计显著）；
+  // 质量正确率三组持平（9%/9%/10%），新错误类型无组间恶化。
+  // 决策记录见 docs/AB_FINAL_20261128.md。若需回退：改回 false 并重启 dsh。
+  reflectionInjectEnabled: true,
   outcomePath: `${BENCH_DIR}/_outcome.jsonl`,
   pendingLearnPath: `${BENCH_DIR}/_pending_learn.jsonl`,
   feedbackQueuePath: `${BENCH_DIR}/_learn_feedback.jsonl`,
