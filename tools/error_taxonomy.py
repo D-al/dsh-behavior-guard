@@ -41,6 +41,12 @@ class Ctx:
     def __init__(self, rows, text):
         self.rows = list(rows or [])
         self.text = text or ""
+        # 2026-11-28 修：注入文本不是模型自己的话，不能用于"空想验证"等认知类判据
+        # （项目铁律：守卫正则只认执行动作，绝不扫注入内容）
+        self.assistant_text = "\n".join(
+            ln for ln in self.text.splitlines()
+            if not ln.startswith("[注入]") and not ln.startswith("[harness")
+        )
         self.counts = collections.Counter(str(r.get("kind") or "") for r in self.rows)
         self.codes = collections.Counter(
             str(r.get("code") or "") for r in self.rows if r.get("code")
@@ -103,10 +109,16 @@ def _fake_verify(c):
 
 
 def _verify_narration_loop(c):
-    """反复声称'确认改动生效'却没有任何写入——空想验证，与自签验证区分。"""
-    n = c.re_n(r"确认.{0,12}(改动|修改|生效)")
-    if n >= 2 and (c.tool_names.get("edit", 0) + c.tool_names.get("write", 0)) == 0:
-        return True, "text:verify-narration-loop-x%d(no-edit/write)" % n
+    """反复声称'确认改动生效'却连一次读回都没有——空想验证，与自签验证区分。
+
+    2026-11-28 修正误报：原判据 >=2 次 + 无 edit/write 太宽——本任务本就不要求 write，
+    且 harness 注入文本/"确认刚才改动生效"的正常推理都会被计入，导致 85% 会话误报。
+    新判据：只看 assistant 文本（排除注入）、>=3 次、且完全没有 read 工具调用。
+    """
+    n = len(re.findall(r"确认.{0,12}(改动|修改|生效)", c.assistant_text))
+    reads = c.tool_names.get("read", 0)
+    if n >= 3 and reads == 0:
+        return True, "text:verify-narration-loop-x%d(no-read)" % n
     return False, ""
 
 
@@ -475,7 +487,8 @@ def _self_test():
         ("INJ_INTERRUPT", [dict(kind="d1_probe_guard", escalated=True),
                            dict(kind="tool_call", name="ask_user_question")], ""),
         ("FAKE_VERIFY", [dict(kind="edit_is_verify")], ""),
-        ("VERIFY_NARRATION_LOOP", [], "我得先确认刚才那次改动到底生效了没有。\n再确认一下改动生效了没有。"),
+        # 2026-11-28：新判据要求 >=3 次确认措辞且无 read 调用（排除注入文本）
+        ("VERIFY_NARRATION_LOOP", [], "确认改动生效。\n确认修改生效。\n再次确认改动生效。"),
         ("DOING_RIGHT_BLOCKED", [dict(kind="zero_write_claim"),
                                  dict(kind="step_hard_stop", streak=9)], ""),
         ("TOOL_DETOUR", [dict(kind="shell_write_counted"),
