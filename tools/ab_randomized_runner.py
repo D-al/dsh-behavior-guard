@@ -34,7 +34,9 @@ def set_mode(mode):
     json.dump({'mode': mode, 'ts': datetime.datetime.now().isoformat()},
               open(MODE_FILE, 'w', encoding='utf-8'))
 
-def wait_done(sid, timeout=240):
+def wait_done(sid, timeout=150):
+    """等待会话完成。2026-11-28 修：dsh 会偶发冻死（running=true 永久卡住），
+    超时缩短到 150s，返回 False 时主循环计数，连续 2 次触发自动重启。"""
     t0 = time.time()
     while time.time() - t0 < timeout:
         out = bridge(['sessions'])
@@ -44,6 +46,23 @@ def wait_done(sid, timeout=240):
             return True
         time.sleep(5)
     return False
+
+def restart_dsh():
+    """重启 dsh 清理冻死会话（需已登录，走计划任务）。"""
+    try:
+        subprocess.run(['powershell', '-NoProfile', '-Command',
+                        "Get-Process -Name 'DeepSeek Harness' -ErrorAction SilentlyContinue | Stop-Process -Force; "
+                        "Start-Sleep -Seconds 5; "
+                        "Get-Process -Name 'llama-server' -ErrorAction SilentlyContinue | Stop-Process -Force; "
+                        "Start-Sleep -Seconds 3; "
+                        "Stop-ScheduledTask -TaskName RestartDsh -ErrorAction SilentlyContinue; "
+                        "Start-ScheduledTask -TaskName RestartDsh"],
+                       capture_output=True, text=True, timeout=60)
+        time.sleep(25)
+        return True
+    except Exception as e:
+        print(f'  [重启失败] {e}', flush=True)
+        return False
 
 def metrics_for(sid):
     m = re.search(r'([0-9a-f]{8})', sid)
@@ -70,6 +89,7 @@ def main():
     print(f'批次={LABEL} rounds={rounds} seed={seed} 总会话={len(order)}')
     print('顺序:', '→'.join(order))
     results = []
+    frozen_streak = 0  # 2026-11-28: 连续冻死计数，>=2 自动重启
     for i, group in enumerate(order):
         set_mode(group)
         time.sleep(1)  # 等 harness mtime 缓存失效（下次事件读取）
@@ -81,6 +101,16 @@ def main():
         set_mode(group)
         bridge(['send', sid, TASK])
         ok = wait_done(sid)
+        if ok:
+            frozen_streak = 0
+        else:
+            frozen_streak += 1
+            print(f'  [冻死 {frozen_streak}] {sid[:14]} 超时，跳过', flush=True)
+            if frozen_streak >= 2:
+                print('  [自动重启] 连续 2 次冻死，重启 dsh 清理', flush=True)
+                restart_dsh()
+                frozen_streak = 0
+            continue  # 不记录污染数据
         m = metrics_for(sid)
         m.update(group=group, sid=sid, completed=ok, batch=LABEL, seed=seed, order=i)
         # 错误类型记录（2026-11-28 用户要求：尤其标记新类型）
